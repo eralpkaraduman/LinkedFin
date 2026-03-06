@@ -271,9 +271,11 @@
           rowMode: 'object'
         });
 
-        // Add language display names for search
-        const langNames = { tur: 'Turkish', ell: 'Greek', arb: 'Standard Arabic', arz: 'Egyptian Arabic', apc: 'Levantine Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami' };
-        allNames = allNames.map(n => ({ ...n, language: langNames[n.lang] || n.lang }));
+        // Add language display names for search (Intl.DisplayNames with overrides for edge cases)
+        const langDisplayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+        const langOverrides = { arb: 'Standard Arabic', apc: 'Levantine Arabic' }; // Intl gaps
+        const getLangName = (code) => langOverrides[code] || langDisplayNames.of(code) || code;
+        allNames = allNames.map(n => ({ ...n, language: getLangName(n.lang) }));
 
         // Load all relations
         allRelations = db.exec({
@@ -393,10 +395,12 @@
       const fieldsEl = document.getElementById('detail-fields');
       let fieldsHtml = '';
 
-      // ISO 639-3 to language name
-      const langNames = { tur: 'Turkish', ell: 'Greek', arb: 'Standard Arabic', arz: 'Egyptian Arabic', apc: 'Levantine Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami' };
+      // ISO 639-3 to language name (Intl.DisplayNames with overrides)
+      const langDisplayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+      const langOverrides = { arb: 'Standard Arabic', apc: 'Levantine Arabic' };
+      const getLangName = (code) => langOverrides[code] || langDisplayNames.of(code) || code;
       if (item.lang) {
-        fieldsHtml += `<dt>Language</dt><dd>${langNames[item.lang] || item.lang}</dd>`;
+        fieldsHtml += `<dt>Language</dt><dd>${getLangName(item.lang)}</dd>`;
       }
       if (item.measurement_unit) {
         const max = item.measurement_max ? item.measurement_max : '∞';
