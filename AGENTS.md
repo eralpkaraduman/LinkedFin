@@ -115,12 +115,29 @@ sqlite3 fish.db "SELECT name || '|' || COALESCE(etymology, '') || '|' || COALESC
 | Μπαρμπούνι | Barboúni |
 | Χταπόδι | Chtapódi |
 
-### Optional but Recommended
+### Required for Nordic Languages
 
-**Turkish (tur)** and **Sami (sme)** names with special characters should include transliteration:
+**Finnish (fin)**, **Swedish (swe)**, **Estonian (est)** names MUST have transliterations:
+
+| Language | Conversion |
+|----------|-----------|
+| Finnish | ä→a, ö→o |
+| Swedish | å→a, ä→a, ö→o |
+| Estonian | õ→o, ä→a, ö→o, ü→u |
+
+**Examples:**
+| Original | Transliteration |
+|----------|----------------|
+| Särki (fin) | Sarki |
+| Gädda (swe) | Gadda |
+| Lõhi (est) | Lohi |
+
+### Optional
+
+**Turkish (tur)** and **Sami (sme)** - transliteration recommended for special characters:
 - Turkish: ğ→g, ı→i, ş→s, ç→c, ö→o, ü→u
 - Sami: č→c, đ→d, ŋ→n, š→s, ŧ→t, ž→z
 
 ### Not Required
 
-**English (eng)**, **Finnish (fin)**, **Swedish (swe)**, **Estonian (est)** - Standard Latin script, no transliteration needed.
+**English (eng)** - Standard Latin script, no transliteration needed.
