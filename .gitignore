@@ -1,4 +1,13 @@
-.claude/
+node_modules
 .DS_Store
-node_modules/
-bun.lock
+dist
+dist-ssr
+*.local
+.env
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+__unconfig*
+todos.json
