@@ -42,12 +42,8 @@ for (const n of names) {
   const measurement = n.measurement_unit
     ? ` [${n.measurement_min}-${n.measurement_max ?? "∞"} ${n.measurement_unit}]`
     : "";
-  const flags = [
-    n.native ? "NATIVE" : "",
-    n.disputed ? "DISPUTED" : "",
-  ].filter(Boolean).join(", ");
 
-  console.log(`  ${n.name} (${n.region_name})${measurement}${flags ? ` {${flags}}` : ""}`);
+  console.log(`  ${n.name} (${n.region_name})${measurement}`);
   if (n.etymology) console.log(`    Etymology: ${n.etymology}`);
 }
 

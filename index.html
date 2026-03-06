@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐟 LinkedFin</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #0a0a0a;
+      color: #fafafa;
+    }
+    h1 { font-size: 2.5rem; }
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: #1a1a1a;
+      color: #fafafa;
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.5rem;
+      border-bottom: 1px solid #333;
+    }
+    th { color: #888; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #1a1a1a; }
+    #status { color: #888; margin-bottom: 1rem; }
+
+    /* Detail modal */
+    #detail {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-width: 600px;
+      width: 90%;
+      color: #fafafa;
+    }
+    #detail::backdrop {
+      background: rgba(0, 0, 0, 0.75);
+    }
+    #detail h2 { margin: 0 0 0.25rem 0; font-size: 1.75rem; }
+    #detail .scientific { color: #888; font-style: italic; margin-bottom: 1rem; }
+    #detail .etymology {
+      background: #252525;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+    #detail .notes {
+      color: #999;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+      padding-left: 1rem;
+      border-left: 2px solid #333;
+    }
+    #detail .meta { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
+    #detail .meta span { margin-right: 1rem; }
+    #detail .fields {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.25rem 1rem;
+      background: #252525;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+    #detail .fields dt { color: #666; }
+    #detail .fields dd { margin: 0; font-family: monospace; }
+    #detail .fields .ipa { font-family: "Doulos SIL", "Charis SIL", "Gentium", serif; font-size: 1rem; }
+    #detail .related { margin-top: 1.5rem; }
+    #detail .related h3 { font-size: 0.875rem; color: #888; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    #detail .related-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    #detail .related-item {
+      background: #252525;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      border: 1px solid transparent;
+    }
+    #detail .related-item:hover { background: #333; border-color: #444; }
+    #detail .related-item.current { border-color: #666; }
+    #detail .related-item .region { color: #666; font-size: 0.75rem; display: block; }
+    #detail .close {
+      float: right;
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    #detail .close:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>🐟 LinkedFin</h1>
+  <p><em>A so<strong>fish</strong>ticated database for fish names and their fishy etymologies across cultures</em></p>
+
+  <div id="status">Loading database...</div>
+
+  <dialog id="detail">
+    <button class="close" onclick="closeDetail()">×</button>
+    <h2 id="detail-name"></h2>
+    <div class="scientific" id="detail-scientific"></div>
+    <div class="meta">
+      <span id="detail-id"></span>
+      <span id="detail-region"></span>
+    </div>
+    <div class="fields" id="detail-fields"></div>
+    <div class="etymology" id="detail-etymology"></div>
+    <div class="notes" id="detail-notes"></div>
+    <div class="related">
+      <h3>Same species, different names</h3>
+      <div class="related-list" id="detail-related"></div>
+    </div>
+  </dialog>
+
+  <input type="text" id="search" placeholder="Search fish names... (e.g., lufer, tsipura, sultan)" disabled />
+
+  <table id="results">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Region</th>
+        <th>Species</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module">
+    import sqlite3InitModule from 'https://esm.sh/@sqlite.org/sqlite-wasm@3.51.2-build6';
+    import Fuse from 'https://esm.sh/fuse.js@7.1.0';
+
+    let db;
+    let fuse;
+    let allNames = [];
+
+    async function init() {
+      const status = document.getElementById('status');
+      const search = document.getElementById('search');
+
+      try {
+        status.textContent = 'Loading SQLite WASM...';
+        const sqlite3 = await sqlite3InitModule();
+
+        status.textContent = 'Fetching database...';
+        const response = await fetch('/fish.db');
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+
+        status.textContent = 'Initializing database...';
+        const p = sqlite3.wasm.allocFromTypedArray(bytes);
+        db = new sqlite3.oo1.DB();
+        sqlite3.capi.sqlite3_deserialize(
+          db.pointer,
+          'main',
+          p,
+          bytes.length,
+          bytes.length,
+          sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE |
+            sqlite3.capi.SQLITE_DESERIALIZE_READONLY
+        );
+
+        // Load all names for fuzzy search
+        allNames = db.exec({
+          sql: `SELECT n.id, n.name, n.lang, n.transliteration, n.phonetic,
+                       n.etymology, n.measurement_unit, n.measurement_min, n.measurement_max,
+                       n.species_id, r.name as region, s.scientific_name, s.notes as species_notes
+                FROM names n
+                JOIN species s ON n.species_id = s.id
+                JOIN regions r ON n.region_id = r.id
+                ORDER BY n.name`,
+          returnValue: 'resultRows',
+          rowMode: 'object'
+        });
+
+        // Initialize Fuse.js for fuzzy search
+        fuse = new Fuse(allNames, {
+          keys: [
+            { name: 'name', weight: 1 },
+            { name: 'transliteration', weight: 0.8 },
+            { name: 'phonetic', weight: 0.6 },
+            { name: 'scientific_name', weight: 0.5 },
+          ],
+          threshold: 0.4,
+          distance: 100,
+          includeScore: true,
+          ignoreLocation: true,
+        });
+
+        status.textContent = `Ready! ${allNames.length} names loaded.`;
+        search.disabled = false;
+        search.focus();
+
+        render(allNames.slice(0, 50));
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        console.error(err);
+      }
+    }
+
+    function render(rows) {
+      const tbody = document.querySelector('#results tbody');
+      tbody.innerHTML = rows.map(row => {
+        const item = row.item || row;
+        return `
+          <tr onclick="showDetail('${item.id}')">
+            <td>${item.name}</td>
+            <td>${item.region}</td>
+            <td><em>${item.scientific_name}</em></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function doSearch(term) {
+      if (!term) {
+        render(allNames.slice(0, 50));
+        return;
+      }
+      const results = fuse.search(term, { limit: 50 });
+      render(results);
+    }
+
+    // Make showDetail global
+    window.showDetail = function(id) {
+      const item = allNames.find(n => n.id === id);
+      if (!item) return;
+
+      document.getElementById('detail-name').textContent = item.name;
+      document.getElementById('detail-scientific').textContent = item.scientific_name;
+      document.getElementById('detail-id').textContent = `#${item.id}`;
+      document.getElementById('detail-region').textContent = `📍 ${item.region}`;
+
+      // Build fields grid
+      const fieldsEl = document.getElementById('detail-fields');
+      let fieldsHtml = '';
+
+      // ISO 639-3 to language name
+      const langNames = { tur: 'Turkish', ell: 'Greek', ara: 'Arabic', eng: 'English', lat: 'Latin' };
+      if (item.lang) {
+        fieldsHtml += `<dt>Language</dt><dd>${langNames[item.lang] || item.lang}</dd>`;
+      }
+      if (item.measurement_unit) {
+        const max = item.measurement_max ? item.measurement_max : '∞';
+        fieldsHtml += `<dt>Measurement</dt><dd>${item.measurement_min} – ${max} ${item.measurement_unit}</dd>`;
+      }
+      if (item.transliteration) {
+        fieldsHtml += `<dt>Transliteration</dt><dd>${item.transliteration}</dd>`;
+      }
+      if (item.phonetic && !item.phonetic.startsWith('[')) {
+        fieldsHtml += `<dt>IPA</dt><dd><span class="ipa">${item.phonetic}</span></dd>`;
+      }
+
+      fieldsEl.innerHTML = fieldsHtml;
+      fieldsEl.style.display = fieldsHtml ? 'grid' : 'none';
+
+      // Etymology
+      const etymEl = document.getElementById('detail-etymology');
+      etymEl.textContent = item.etymology || 'Etymology unknown.';
+
+      // Species notes
+      const notesEl = document.getElementById('detail-notes');
+      if (item.species_notes) {
+        notesEl.textContent = item.species_notes;
+        notesEl.style.display = 'block';
+      } else {
+        notesEl.style.display = 'none';
+      }
+
+      // Related names (same species)
+      const related = allNames.filter(n => n.species_id === item.species_id);
+      const relatedEl = document.getElementById('detail-related');
+      relatedEl.innerHTML = related.map(r => `
+        <div class="related-item ${r.id === id ? 'current' : ''}" onclick="showDetail('${r.id}')">
+          ${r.name}
+          <span class="region">${r.region}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('detail').showModal();
+    }
+
+    window.closeDetail = function() {
+      document.getElementById('detail').close();
+    }
+
+    // Close on backdrop click
+    document.getElementById('detail').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeDetail();
+    });
+
+    document.getElementById('search').addEventListener('input', (e) => {
+      doSearch(e.target.value);
+    });
+
+    init();
+  </script>
+</body>
+</html>

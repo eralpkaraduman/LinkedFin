@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.51.2-build6",
+    "fuse.js": "^7.1.0"
+  }
+}

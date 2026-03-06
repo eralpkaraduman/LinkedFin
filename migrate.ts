@@ -34,8 +34,6 @@ db.run(`
     species_id TEXT NOT NULL REFERENCES species(id),
     region_id TEXT NOT NULL REFERENCES regions(id),
     etymology TEXT,
-    native INTEGER DEFAULT 0,
-    disputed INTEGER DEFAULT 0,
     measurement_unit TEXT,
     measurement_min REAL,
     measurement_max REAL,
@@ -135,8 +133,8 @@ function mapRegion(oldRegion: string): string {
 
 // Insert names
 const insertName = db.prepare(`
-  INSERT INTO names (id, name, species_id, region_id, etymology, native, disputed, measurement_unit, measurement_min, measurement_max, notes)
-  VALUES ($id, $name, $species_id, $region_id, $etymology, $native, $disputed, $measurement_unit, $measurement_min, $measurement_max, $notes)
+  INSERT INTO names (id, name, species_id, region_id, etymology, measurement_unit, measurement_min, measurement_max, notes)
+  VALUES ($id, $name, $species_id, $region_id, $etymology, $measurement_unit, $measurement_min, $measurement_max, $notes)
 `);
 
 let nameCounter = 1;
@@ -148,25 +146,14 @@ for (const record of records) {
   for (const nameEntry of record.names) {
     const id = `nm_${String(nameCounter++).padStart(4, "0")}`;
     const regionId = mapRegion(nameEntry.region);
-
-    // Detect native/disputed from etymology
     const etymology = nameEntry.etymology || "";
-    const isNative = etymology.toLowerCase().includes("native turkish") || etymology.toLowerCase().includes("old turkish");
-    const isDisputed = etymology.toUpperCase().includes("DISPUTED");
-
-    // Clean etymology (remove prefixes)
-    let cleanEtymology = etymology
-      .replace(/^Native Turkish:\s*/i, "")
-      .replace(/^DISPUTED:\s*/i, "");
 
     insertName.run({
       $id: id,
       $name: nameEntry.name,
       $species_id: speciesId,
       $region_id: regionId,
-      $etymology: cleanEtymology || null,
-      $native: isNative ? 1 : 0,
-      $disputed: isDisputed ? 1 : 0,
+      $etymology: etymology || null,
       $measurement_unit: measurement?.unit || null,
       $measurement_min: measurement?.value_range?.[0] ?? null,
       $measurement_max: measurement?.value_range?.[1] ?? null,
