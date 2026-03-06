@@ -181,7 +181,7 @@
 </head>
 <body>
   <h1>🐟 LinkedFin</h1>
-  <p><em>A so<strong>fish</strong>ticated database for fish names and their fishy etymologies across cultures</em></p>
+  <p><em>A so<strong>fish</strong>ticated database for fish names and their etymologies across cultures</em></p>
 
   <div id="status">Loading database...</div>
 
@@ -207,7 +207,7 @@
   </dialog>
 
   <div class="search-container" id="search-container">
-    <input type="text" id="search" placeholder="Search fish names... (e.g., lufer, tsipura, sultan)" disabled />
+    <input type="text" id="search" placeholder="Search by name, species, or region (e.g., ahven, salmo, finland, aegean)" disabled />
     <button class="clear-btn" onclick="clearSearch()" title="Clear">×</button>
   </div>
 
@@ -285,6 +285,7 @@
             { name: 'transliteration', weight: 0.8 },
             { name: 'phonetic', weight: 0.6 },
             { name: 'scientific_name', weight: 0.5 },
+            { name: 'region', weight: 0.4 },
           ],
           threshold: 0.4,
           distance: 100,
@@ -388,7 +389,7 @@
       let fieldsHtml = '';
 
       // ISO 639-3 to language name
-      const langNames = { tur: 'Turkish', ell: 'Greek', ara: 'Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish' };
+      const langNames = { tur: 'Turkish', ell: 'Greek', ara: 'Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami' };
       if (item.lang) {
         fieldsHtml += `<dt>Language</dt><dd>${langNames[item.lang] || item.lang}</dd>`;
       }
