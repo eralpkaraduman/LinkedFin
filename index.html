@@ -82,6 +82,7 @@
       border-radius: 4px;
       margin-bottom: 1rem;
       line-height: 1.6;
+      white-space: pre-line;
     }
     #detail .notes {
       color: #999;
@@ -130,6 +131,7 @@
     #detail .confused { color: #f59e0b; font-size: 0.9rem; margin-top: 0.5rem; }
     #detail .alt-link { color: #4ade80; cursor: pointer; }
     #detail .alt-link:hover { text-decoration: underline; }
+    #detail .alt-link small { color: #666; font-weight: normal; }
     #detail .meta { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
     #detail .meta span { margin-right: 1rem; }
     #detail .fields {
@@ -177,6 +179,26 @@
     }
     #detail .dialog-actions button:hover { color: #fff; }
     #detail .share.copied { color: #4ade80; }
+
+    /* Mobile responsive */
+    @media (max-width: 480px) {
+      #detail {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        border-radius: 0;
+        min-height: 100vh;
+        border: none;
+      }
+      #results {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      #results th, #results td {
+        white-space: nowrap;
+      }
+    }
   </style>
 </head>
 <body>
@@ -207,7 +229,7 @@
   </dialog>
 
   <div class="search-container" id="search-container">
-    <input type="text" id="search" placeholder="Search by name, species, region, or language (e.g., ahven, salmo, finland, finnish)" disabled />
+    <input type="text" id="search" placeholder="Search names, species, regions..." disabled />
     <button class="clear-btn" onclick="clearSearch()" title="Clear">×</button>
   </div>
 
@@ -273,7 +295,7 @@
 
         // Add language display names for search (Intl.DisplayNames with overrides for edge cases)
         const langDisplayNames = new Intl.DisplayNames(['en'], { type: 'language' });
-        const langOverrides = { arb: 'Standard Arabic', apc: 'Levantine Arabic' }; // Intl gaps
+        const langOverrides = { arb: 'Standard Arabic', apc: 'Levantine Arabic', grc: 'Ancient Greek' }; // Intl gaps
         const getLangName = (code) => langOverrides[code] || langDisplayNames.of(code) || code;
         allNames = allNames.map(n => ({ ...n, language: getLangName(n.lang) }));
 
@@ -397,7 +419,7 @@
 
       // ISO 639-3 to language name (Intl.DisplayNames with overrides)
       const langDisplayNames = new Intl.DisplayNames(['en'], { type: 'language' });
-      const langOverrides = { arb: 'Standard Arabic', apc: 'Levantine Arabic' };
+      const langOverrides = { arb: 'Standard Arabic', apc: 'Levantine Arabic', grc: 'Ancient Greek' };
       const getLangName = (code) => langOverrides[code] || langDisplayNames.of(code) || code;
       if (item.lang) {
         fieldsHtml += `<dt>Language</dt><dd>${getLangName(item.lang)}</dd>`;
@@ -462,7 +484,7 @@
         const others = alternates.filter(nid => nid !== id);
         const otherNames = others.map(nid => {
           const n = allNames.find(x => x.id === nid);
-          return n ? `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name}</span>` : '';
+          return n ? `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name} <small>(${n.region})</small></span>` : '';
         }).join(', ');
         evolutionHtml += `<div class="alternates">Alternates: ${otherNames}</div>`;
       }
