@@ -1,87 +1,133 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { useState } from "react"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { Input } from "#/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "#/components/ui/table"
+import { useDatabase } from "#/lib/DatabaseContext"
+import { useSearch, getItem } from "#/hooks/useSearch"
+import { DetailModal } from "#/components/DetailModal"
+import { NameDetail } from "#/components/NameDetail"
+import type { FishName } from "#/lib/types"
 
-export const Route = createFileRoute('/')({ component: App })
+interface SearchParams {
+  q?: string
+}
 
-function App() {
+export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): SearchParams => ({
+    q: typeof search.q === "string" ? search.q : undefined,
+  }),
+  component: HomePage,
+})
+
+function HomePage() {
+  const { q = "" } = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
+  const { names } = useDatabase()
+  const results = useSearch(q)
+  const [selectedName, setSelectedName] = useState<FishName | null>(null)
+
+  const handleSearch = (value: string) => {
+    navigate({
+      search: { q: value || undefined },
+      replace: true,
+    })
+  }
+
+  const displayResults = results.map(getItem)
+
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">TanStack Start Base Template</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Start simple, ship quickly.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          This base starter intentionally keeps things light: two routes, clean
-          structure, and the essentials you need to build from scratch.
+    <main className="page-wrap flex flex-col px-4 pb-8">
+      <div className="mb-6 mt-4">
+        <p className="mb-4 text-sm text-muted-foreground">
+          A so<strong>fish</strong>ticated database for fish names and their
+          etymologies across cultures
         </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/about"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(79,184,178,0.24)]"
-          >
-            About This Starter
-          </a>
-          <a
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[rgba(23,58,64,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(23,58,64,0.35)]"
-          >
-            Router Guide
-          </a>
+        <div className="relative">
+          <Input
+            value={q}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search names, species, regions..."
+            className="h-10"
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => handleSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+            >
+              <span className="sr-only">Clear</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            </button>
+          )}
         </div>
-      </section>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {q ? `${displayResults.length} results` : `${names.length} names`}
+        </p>
+      </div>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          [
-            'Type-Safe Routing',
-            'Routes and links stay in sync across every page.',
-          ],
-          [
-            'Server Functions',
-            'Call server code from your UI without creating API boilerplate.',
-          ],
-          [
-            'Streaming by Default',
-            'Ship progressively rendered responses for faster experiences.',
-          ],
-          [
-            'Tailwind Native',
-            'Design quickly with utility-first styling and reusable tokens.',
-          ],
-        ].map(([title, desc], index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
-          >
-            <h2 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">
-              {title}
-            </h2>
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-          </article>
-        ))}
-      </section>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead className="hidden sm:table-cell">
+              Transliteration
+            </TableHead>
+            <TableHead>Region</TableHead>
+            <TableHead className="hidden md:table-cell">Species</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {displayResults.map((item) => (
+            <TableRow
+              key={item.id}
+              className="cursor-pointer"
+              onClick={() => setSelectedName(item)}
+            >
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell className="hidden sm:table-cell">
+                {item.transliteration || ""}
+              </TableCell>
+              <TableCell>{item.region}</TableCell>
+              <TableCell className="hidden italic md:table-cell">
+                {item.scientific_name}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-      <section className="island-shell mt-8 rounded-2xl p-6">
-        <p className="island-kicker mb-2">Quick Start</p>
-        <ul className="m-0 list-disc space-y-2 pl-5 text-sm text-[var(--sea-ink-soft)]">
-          <li>
-            Edit <code>src/routes/index.tsx</code> to customize the home page.
-          </li>
-          <li>
-            Update <code>src/components/Header.tsx</code> and{' '}
-            <code>src/components/Footer.tsx</code> for brand links.
-          </li>
-          <li>
-            Add routes in <code>src/routes</code> and tweak visual tokens in{' '}
-            <code>src/styles.css</code>.
-          </li>
-        </ul>
-      </section>
+      <DetailModal
+        open={!!selectedName}
+        onOpenChange={(open) => !open && setSelectedName(null)}
+        title={selectedName?.name || ""}
+        description={selectedName?.scientific_name}
+      >
+        {selectedName && (
+          <NameDetail
+            name={selectedName}
+            onNavigate={(id) => {
+              const newName = names.find((n) => n.id === id)
+              if (newName) setSelectedName(newName)
+            }}
+          />
+        )}
+      </DetailModal>
     </main>
   )
 }
