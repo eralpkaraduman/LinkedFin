@@ -35,15 +35,24 @@ Edit `index.html` language map:
 
 ```javascript
 const langNames = {
-  tur: 'Turkish', ell: 'Greek', ara: 'Arabic', eng: 'English',
-  lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian',
-  sme: 'Northern Sami',
-  nor: 'Norwegian',  // ← Add new language
-  rus: 'Russian'     // ← Add new language
+  tur: 'Turkish', ell: 'Greek', eng: 'English', lat: 'Latin',
+  fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami',
+  arb: 'Standard Arabic',    // MSA/formal
+  arz: 'Egyptian Arabic',    // Egyptian colloquial
+  apc: 'Levantine Arabic',   // Levantine colloquial
+  nor: 'Norwegian',          // ← Add new language
 };
 ```
 
 **Language codes:** Use ISO 639-3 (3-letter codes):
+
+Arabic varieties (use dialect codes, not generic `ara`):
+- `arb`: Standard Arabic (MSA/formal written)
+- `arz`: Egyptian Arabic (colloquial)
+- `apc`: Levantine Arabic (colloquial)
+- `ary`: Moroccan Arabic (if adding Maghreb)
+
+Other languages:
 - Norwegian: `nor` (or `nob`/`nno` for Bokmål/Nynorsk)
 - Russian: `rus`
 - Japanese: `jpn`
@@ -89,7 +98,9 @@ SELECT 'nm_' || printf('%04d', MAX(CAST(SUBSTR(id, 4) AS INTEGER)) + 1) FROM nam
 
 | Language | transliteration | phonetic |
 |----------|-----------------|----------|
-| Arabic (ara) | REQUIRED | recommended |
+| Standard Arabic (arb) | REQUIRED | recommended |
+| Egyptian Arabic (arz) | REQUIRED | recommended |
+| Levantine Arabic (apc) | REQUIRED | recommended |
 | Greek (ell) | REQUIRED | recommended |
 | Finnish (fin) | REQUIRED | REQUIRED |
 | Swedish (swe) | REQUIRED | REQUIRED |
@@ -309,7 +320,7 @@ sqlite3 fish.db "SELECT name || '|' || COALESCE(etymology, '') || '|' || COALESC
 
 ### Required Languages (enforced by database trigger)
 
-**Arabic (ara)** and **Greek (ell)** names MUST have a `transliteration` field. The database will reject inserts/updates without it.
+**Arabic (arb, arz, apc)** and **Greek (ell)** names MUST have a `transliteration` field. The database will reject inserts/updates without it.
 
 ### Transliteration Standards
 
