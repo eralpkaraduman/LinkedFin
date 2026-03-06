@@ -11,3 +11,9 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# Dictionaries (reference data, not deployed)
+dictionaries/
+
+# Local settings
+.claude/settings.local.json
