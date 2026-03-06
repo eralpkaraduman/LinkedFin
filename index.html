@@ -14,16 +14,37 @@
       color: #fafafa;
     }
     h1 { font-size: 2.5rem; }
-    input {
+    .search-container {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .search-container input {
       width: 100%;
       padding: 0.75rem;
+      padding-right: 2.5rem;
       font-size: 1rem;
       border: 1px solid #333;
       border-radius: 4px;
       background: #1a1a1a;
       color: #fafafa;
-      margin-bottom: 1rem;
+      box-sizing: border-box;
     }
+    .search-container .clear-btn {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.25rem;
+      line-height: 1;
+      display: none;
+    }
+    .search-container .clear-btn:hover { color: #fff; }
+    .search-container.has-value .clear-btn { display: block; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -105,6 +126,8 @@
     #detail .evolution-item .size { color: #888; font-size: 0.75rem; margin-top: 0.25rem; }
     #detail .evolution-arrow { color: #666; font-size: 1.25rem; }
     #detail .alternates { color: #888; font-size: 0.9rem; margin-top: 0.5rem; }
+    #detail .borrowed { color: #888; font-size: 0.9rem; margin-top: 0.5rem; }
+    #detail .confused { color: #f59e0b; font-size: 0.9rem; margin-top: 0.5rem; }
     #detail .alt-link { color: #4ade80; cursor: pointer; }
     #detail .alt-link:hover { text-decoration: underline; }
     #detail .meta { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
@@ -165,7 +188,7 @@
   <dialog id="detail">
     <div class="dialog-actions">
       <button class="share" onclick="copyLink()" title="Copy link">🔗</button>
-      <button class="close" onclick="closeDetail()">×</button>
+      <button class="close" onclick="closeDetail()" autofocus>×</button>
     </div>
     <h2 id="detail-name"></h2>
     <div class="scientific" id="detail-scientific"></div>
@@ -183,7 +206,10 @@
     </div>
   </dialog>
 
-  <input type="text" id="search" placeholder="Search fish names... (e.g., lufer, tsipura, sultan)" disabled />
+  <div class="search-container" id="search-container">
+    <input type="text" id="search" placeholder="Search fish names... (e.g., lufer, tsipura, sultan)" disabled />
+    <button class="clear-btn" onclick="clearSearch()" title="Clear">×</button>
+  </div>
 
   <table id="results">
     <thead>
@@ -420,7 +446,7 @@
         evolutionHtml += '</div>';
       }
 
-      // Alternate spellings
+      // Alternates
       const alternates = buildChain(id, 'alternate_of');
       if (alternates.length > 1) {
         const others = alternates.filter(nid => nid !== id);
@@ -428,7 +454,42 @@
           const n = allNames.find(x => x.id === nid);
           return n ? `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name}</span>` : '';
         }).join(', ');
-        evolutionHtml += `<div class="alternates">Also spelled: ${otherNames}</div>`;
+        evolutionHtml += `<div class="alternates">Alternates: ${otherNames}</div>`;
+      }
+
+      // Borrowed from (this name borrowed from another language)
+      const borrowedFrom = allRelations.filter(r => r.relation === 'borrowed_from' && r.source_id === id);
+      if (borrowedFrom.length > 0) {
+        const sources = borrowedFrom.map(rel => {
+          const n = allNames.find(x => x.id === rel.target_id);
+          return n ? `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name}</span>` : '';
+        }).join(', ');
+        evolutionHtml += `<div class="borrowed">Borrowed from: ${sources}</div>`;
+      }
+
+      // Lent to (this name was borrowed by other languages)
+      const lentTo = allRelations.filter(r => r.relation === 'borrowed_from' && r.target_id === id);
+      if (lentTo.length > 0) {
+        const borrowers = lentTo.map(rel => {
+          const n = allNames.find(x => x.id === rel.source_id);
+          return n ? `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name}</span>` : '';
+        }).join(', ');
+        evolutionHtml += `<div class="borrowed">Lent to: ${borrowers}</div>`;
+      }
+
+      // Confused with (different species, same/similar name)
+      const confusedWith = allRelations.filter(r =>
+        r.relation === 'confused_with' && (r.source_id === id || r.target_id === id)
+      );
+      if (confusedWith.length > 0) {
+        const confused = confusedWith.map(rel => {
+          const otherId = rel.source_id === id ? rel.target_id : rel.source_id;
+          const n = allNames.find(x => x.id === otherId);
+          if (!n) return '';
+          const species = allNames.find(x => x.id === otherId);
+          return `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name}</span> (${n.scientific_name})`;
+        }).join(', ');
+        evolutionHtml += `<div class="confused">⚠️ Often confused with: ${confused}</div>`;
       }
 
       evolutionEl.innerHTML = evolutionHtml;
@@ -495,9 +556,21 @@
 
     window.addEventListener('hashchange', handleHash);
 
-    document.getElementById('search').addEventListener('input', (e) => {
-      doSearch(e.target.value);
+    const searchInput = document.getElementById('search');
+    const searchContainer = document.getElementById('search-container');
+
+    searchInput.addEventListener('input', (e) => {
+      const value = e.target.value;
+      searchContainer.classList.toggle('has-value', value.length > 0);
+      doSearch(value);
     });
+
+    window.clearSearch = function() {
+      searchInput.value = '';
+      searchContainer.classList.remove('has-value');
+      doSearch('');
+      searchInput.focus();
+    }
 
     init().then(() => handleHash());
   </script>
