@@ -241,7 +241,7 @@
         const sqlite3 = await sqlite3InitModule();
 
         status.textContent = 'Fetching database...';
-        const response = await fetch('/fish.db');
+        const response = await fetch('fish.db');
         const arrayBuffer = await response.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
 
