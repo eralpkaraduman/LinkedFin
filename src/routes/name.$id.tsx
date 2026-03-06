@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useDatabase } from "#/lib/DatabaseContext"
 import { NameDetail } from "#/components/NameDetail"
 import { Button } from "#/components/ui/button"
@@ -11,7 +11,6 @@ export const Route = createFileRoute("/name/$id")({
 
 function DetailPage() {
   const { id } = Route.useParams()
-  const navigate = useNavigate()
   const { getNameById } = useDatabase()
   const [copied, setCopied] = useState(false)
 
@@ -50,7 +49,14 @@ function DetailPage() {
               Back to search
             </Link>
             <h1 className="text-2xl font-bold">{name.name}</h1>
-            <p className="text-muted-foreground italic">{name.scientific_name}</p>
+            <a
+              href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name.scientific_name)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted-foreground italic underline underline-offset-2"
+            >
+              {name.scientific_name}
+            </a>
           </div>
           <Button
             variant="ghost"
@@ -66,12 +72,7 @@ function DetailPage() {
           </Button>
         </div>
 
-        <NameDetail
-          name={name}
-          onNavigate={(newId) =>
-            navigate({ to: "/name/$id", params: { id: newId } })
-          }
-        />
+        <NameDetail name={name} />
       </div>
     </main>
   )

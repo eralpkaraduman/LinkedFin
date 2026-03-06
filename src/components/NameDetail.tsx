@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router"
 import { useDatabase } from "#/lib/DatabaseContext"
 import { buildChain, getRelationsForName } from "#/lib/relations"
 import type { FishName } from "#/lib/types"
-import { Badge } from "#/components/ui/badge"
 
 interface NameDetailProps {
   name: FishName
@@ -34,42 +33,83 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
         <button
           type="button"
           onClick={() => onNavigate(id)}
-          className={`text-primary hover:underline ${className}`}
+          className={`cursor-pointer ${className}`}
         >
           {children}
         </button>
       )
     }
     return (
-      <Link
-        to="/name/$id"
-        params={{ id }}
-        className={`text-primary hover:underline ${className}`}
-      >
+      <Link to="/name/$id" params={{ id }} className={className}>
         {children}
       </Link>
+    )
+  }
+
+  const NameCard = ({
+    item,
+    isCurrent,
+    subtitle,
+  }: {
+    item: FishName
+    isCurrent: boolean
+    subtitle: string
+  }) => {
+    const card = (
+      <div
+        className={`flex min-w-[100px] flex-col rounded-lg px-3 py-2 text-center ${
+          isCurrent
+            ? "border-2 border-foreground/50 bg-muted"
+            : "bg-muted/50 hover:bg-muted"
+        }`}
+      >
+        <span className="text-sm font-medium">{item.name}</span>
+        <span className="text-xs text-muted-foreground">{subtitle}</span>
+      </div>
+    )
+
+    if (isCurrent) return card
+    return (
+      <NameLink id={item.id} className="cursor-pointer">
+        {card}
+      </NameLink>
     )
   }
 
   return (
     <div className="space-y-4">
       {/* Meta info */}
-      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
         <span>#{name.id}</span>
         <span>📍 {name.region}</span>
-        <span>🗣️ {name.language}</span>
       </div>
 
       {/* Fields grid */}
-      {(name.transliteration ||
-        name.phonetic ||
-        name.measurement_unit) && (
-        <div className="rounded-lg bg-muted/50 p-3 text-sm">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+      {(name.language ||
+        name.measurement_unit ||
+        name.transliteration ||
+        name.phonetic) && (
+        <div className="rounded-lg bg-muted/50 p-4 text-sm">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
+            {name.language && (
+              <>
+                <dt className="text-muted-foreground">Language</dt>
+                <dd className="font-medium">{name.language}</dd>
+              </>
+            )}
+            {name.measurement_unit && (
+              <>
+                <dt className="text-muted-foreground">Measurement</dt>
+                <dd className="font-medium">
+                  {name.measurement_min} — {name.measurement_max || "∞"}{" "}
+                  {name.measurement_unit}
+                </dd>
+              </>
+            )}
             {name.transliteration && (
               <>
                 <dt className="text-muted-foreground">Transliteration</dt>
-                <dd className="font-mono">{name.transliteration}</dd>
+                <dd className="font-mono font-medium">{name.transliteration}</dd>
               </>
             )}
             {name.phonetic && !name.phonetic.startsWith("[") && (
@@ -78,68 +118,45 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
                 <dd className="font-serif">{name.phonetic}</dd>
               </>
             )}
-            {name.measurement_unit && (
-              <>
-                <dt className="text-muted-foreground">Size</dt>
-                <dd>
-                  {name.measurement_min}–{name.measurement_max || "∞"}{" "}
-                  {name.measurement_unit}
-                </dd>
-              </>
-            )}
           </dl>
         </div>
       )}
 
       {/* Etymology */}
-      {name.etymology && (
-        <div className="rounded-lg bg-muted/50 p-3">
-          <p className="whitespace-pre-line text-sm">{name.etymology}</p>
-        </div>
-      )}
+      <div className="rounded-lg bg-muted/50 p-4">
+        <p className="whitespace-pre-line text-sm">
+          {name.etymology || "Origin uncertain"}
+        </p>
+      </div>
 
       {/* Species notes */}
       {name.species_notes && (
-        <p className="border-l-2 border-muted pl-3 text-sm text-muted-foreground">
+        <p className="border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
           {name.species_notes}
         </p>
       )}
 
       {/* Size progression chain */}
       {sizeChain.length > 1 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Size Progression
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Progression
           </h3>
           <div className="flex flex-wrap items-center gap-2">
             {sizeChain.map((id, i) => {
               const n = getNameById(id)
               if (!n) return null
               const isCurrent = id === name.id
+              const sizeText = n.measurement_unit
+                ? `${n.measurement_min}–${n.measurement_max || "∞"} ${n.measurement_unit}`
+                : ""
               return (
-                <span key={id} className="flex items-center gap-2">
-                  <Badge
-                    variant={isCurrent ? "default" : "outline"}
-                    className={isCurrent ? "" : "cursor-pointer"}
-                    render={
-                      isCurrent ? undefined : (
-                        <NameLink id={id}>
-                          <span />
-                        </NameLink>
-                      )
-                    }
-                  >
-                    {n.name}
-                    {n.measurement_unit && (
-                      <span className="ml-1 text-xs opacity-70">
-                        {n.measurement_min}–{n.measurement_max || "∞"}
-                      </span>
-                    )}
-                  </Badge>
+                <div key={id} className="flex items-center gap-2">
+                  <NameCard item={n} isCurrent={isCurrent} subtitle={sizeText} />
                   {i < sizeChain.length - 1 && (
                     <span className="text-muted-foreground">→</span>
                   )}
-                </span>
+                </div>
               )
             })}
           </div>
@@ -157,7 +174,9 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
               if (!n) return null
               return (
                 <span key={id}>
-                  <NameLink id={id}>{n.name}</NameLink>
+                  <NameLink id={id} className="text-primary hover:underline">
+                    {n.name}
+                  </NameLink>
                   <span className="text-muted-foreground"> ({n.region})</span>
                   {i < arr.length - 1 && ", "}
                 </span>
@@ -175,7 +194,9 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
             if (!n) return null
             return (
               <span key={rel.target_id}>
-                <NameLink id={rel.target_id}>{n.name}</NameLink>
+                <NameLink id={rel.target_id} className="text-primary hover:underline">
+                  {n.name}
+                </NameLink>
                 {i < borrowedFrom.length - 1 && ", "}
               </span>
             )
@@ -192,7 +213,9 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
             if (!n) return null
             return (
               <span key={rel.source_id}>
-                <NameLink id={rel.source_id}>{n.name}</NameLink>
+                <NameLink id={rel.source_id} className="text-primary hover:underline">
+                  {n.name}
+                </NameLink>
                 {i < lentTo.length - 1 && ", "}
               </span>
             )
@@ -211,7 +234,10 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
             if (!n) return null
             return (
               <span key={otherId}>
-                <NameLink id={otherId} className="text-amber-600 dark:text-amber-400">
+                <NameLink
+                  id={otherId}
+                  className="text-amber-600 hover:underline dark:text-amber-400"
+                >
                   {n.name}
                 </NameLink>
                 <span> ({n.scientific_name})</span>
@@ -224,31 +250,19 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
 
       {/* Same species, different names */}
       {sameSpecies.length > 1 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Same species, different names
           </h3>
           <div className="flex flex-wrap gap-2">
-            {sameSpecies.map((n) => {
-              const isCurrent = n.id === name.id
-              return (
-                <Badge
-                  key={n.id}
-                  variant={isCurrent ? "default" : "outline"}
-                  className={isCurrent ? "" : "cursor-pointer"}
-                  render={
-                    isCurrent ? undefined : (
-                      <NameLink id={n.id}>
-                        <span />
-                      </NameLink>
-                    )
-                  }
-                >
-                  {n.name}
-                  <span className="ml-1 text-xs opacity-70">{n.region}</span>
-                </Badge>
-              )
-            })}
+            {sameSpecies.map((n) => (
+              <NameCard
+                key={n.id}
+                item={n}
+                isCurrent={n.id === name.id}
+                subtitle={n.region}
+              />
+            ))}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { Input } from "#/components/ui/input"
+import { Button } from "#/components/ui/button"
 import {
   Table,
   TableBody,
@@ -13,30 +13,64 @@ import { useDatabase } from "#/lib/DatabaseContext"
 import { useSearch, getItem } from "#/hooks/useSearch"
 import { DetailModal } from "#/components/DetailModal"
 import { NameDetail } from "#/components/NameDetail"
-import type { FishName } from "#/lib/types"
+import { LinkIcon, CheckIcon } from "lucide-react"
 
 interface SearchParams {
   q?: string
+  id?: string // Selected name ID for modal
 }
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     q: typeof search.q === "string" ? search.q : undefined,
+    id: typeof search.id === "string" ? search.id : undefined,
   }),
   component: HomePage,
 })
 
-function HomePage() {
-  const { q = "" } = Route.useSearch()
-  const navigate = useNavigate({ from: Route.fullPath })
-  const { names } = useDatabase()
-  const results = useSearch(q)
-  const [selectedName, setSelectedName] = useState<FishName | null>(null)
+function CopyLinkButton() {
+  const [copied, setCopied] = useState(false)
 
-  const handleSearch = (value: string) => {
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={copyLink}
+      title="Copy link"
+      className="shrink-0"
+    >
+      {copied ? (
+        <CheckIcon className="h-4 w-4 text-green-500" />
+      ) : (
+        <LinkIcon className="h-4 w-4" />
+      )}
+    </Button>
+  )
+}
+
+function HomePage() {
+  const { q = "", id } = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
+  const { names, getNameById } = useDatabase()
+  const results = useSearch(q)
+
+  const selectedName = id ? getNameById(id) : null
+
+  const openDetail = (nameId: string) => {
     navigate({
-      search: { q: value || undefined },
-      replace: true,
+      search: (prev) => ({ ...prev, id: nameId }),
+    })
+  }
+
+  const closeDetail = () => {
+    navigate({
+      search: (prev) => ({ q: prev.q }), // Remove id, keep q
     })
   }
 
@@ -44,42 +78,9 @@ function HomePage() {
 
   return (
     <main className="page-wrap flex flex-col px-4 pb-8">
-      <div className="mb-6 mt-4">
-        <p className="mb-4 text-sm text-muted-foreground">
-          A so<strong>fish</strong>ticated database for fish names and their
-          etymologies across cultures
-        </p>
-        <div className="relative">
-          <Input
-            value={q}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search names, species, regions..."
-            className="h-10"
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => handleSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
-            >
-              <span className="sr-only">Clear</span>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {q ? `${displayResults.length} results` : `${names.length} names`}
-        </p>
-      </div>
+      <p className="my-3 text-xs text-muted-foreground">
+        {q ? `${displayResults.length} results` : `${names.length} names`}
+      </p>
 
       <Table>
         <TableHeader>
@@ -97,7 +98,7 @@ function HomePage() {
             <TableRow
               key={item.id}
               className="cursor-pointer"
-              onClick={() => setSelectedName(item)}
+              onClick={() => openDetail(item.id)}
             >
               <TableCell className="font-medium">{item.name}</TableCell>
               <TableCell className="hidden sm:table-cell">
@@ -114,18 +115,24 @@ function HomePage() {
 
       <DetailModal
         open={!!selectedName}
-        onOpenChange={(open) => !open && setSelectedName(null)}
+        onOpenChange={(open) => !open && closeDetail()}
         title={selectedName?.name || ""}
-        description={selectedName?.scientific_name}
+        description={
+          selectedName?.scientific_name && (
+            <a
+              href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(selectedName.scientific_name)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              {selectedName.scientific_name}
+            </a>
+          )
+        }
+        action={<CopyLinkButton />}
       >
         {selectedName && (
-          <NameDetail
-            name={selectedName}
-            onNavigate={(id) => {
-              const newName = names.find((n) => n.id === id)
-              if (newName) setSelectedName(newName)
-            }}
-          />
+          <NameDetail name={selectedName} onNavigate={openDetail} />
         )}
       </DetailModal>
     </main>

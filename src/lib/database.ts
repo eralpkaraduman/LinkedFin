@@ -10,7 +10,9 @@ const langDisplayNames = new Intl.DisplayNames(["en"], { type: "language" })
 const langOverrides: Record<string, string> = {
   arb: "Standard Arabic",
   apc: "Levantine Arabic",
+  arz: "Egyptian Arabic",
   grc: "Ancient Greek",
+  sme: "Northern Sami",
 }
 
 function getLangName(code: string): string {

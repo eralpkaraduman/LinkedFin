@@ -1,38 +1,76 @@
-import { Link } from '@tanstack/react-router'
-import ThemeToggle from './ThemeToggle'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { Input } from '#/components/ui/input'
 
 export default function Header() {
+  const search = useSearch({ strict: false }) as { q?: string; id?: string }
+  const navigate = useNavigate()
+  const q = search.q || ''
+  const hasModal = !!search.id
+
+  const handleSearch = (value: string) => {
+    navigate({
+      to: '/',
+      search: (prev) => ({ ...prev, q: value || undefined }),
+      replace: true,
+    })
+  }
+
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] px-4 backdrop-blur-lg">
-      <nav className="page-wrap flex items-center gap-3 py-3 sm:py-4">
+    <header className="safe-top sticky top-0 z-50 overflow-hidden border-b border-border bg-background/95 px-4 backdrop-blur-sm">
+      <nav className="page-wrap flex items-center gap-3 py-3">
         <h1 className="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
           <Link
             to="/"
             search={{}}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-sm text-[var(--sea-ink)] no-underline shadow-[0_8px_24px_rgba(30,90,72,0.08)] sm:px-4 sm:py-2"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground no-underline transition hover:bg-muted"
           >
             <span className="text-lg">🐟</span>
             LinkedFin
           </Link>
         </h1>
 
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <a
-            href="https://github.com/eralpkaraduman/LinkedFin"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl p-2 text-[var(--sea-ink-soft)] transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)]"
-          >
-            <span className="sr-only">View on GitHub</span>
-            <svg viewBox="0 0 16 16" aria-hidden="true" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-              />
-            </svg>
-          </a>
-          <ThemeToggle />
+        <div className={`relative flex-1 transition-all ${hasModal ? 'opacity-40 blur-[2px]' : ''}`}>
+          <Input
+            value={q}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search names, species, regions..."
+            className="h-9"
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => handleSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground"
+            >
+              <span className="sr-only">Clear</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            </button>
+          )}
         </div>
+
+        <a
+          href="https://github.com/eralpkaraduman/LinkedFin"
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 rounded-xl p-2 text-muted-foreground no-underline transition hover:bg-muted hover:text-foreground"
+        >
+          <span className="sr-only">View on GitHub</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true" width="20" height="20">
+            <path
+              fill="currentColor"
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+            />
+          </svg>
+        </a>
       </nav>
     </header>
   )
