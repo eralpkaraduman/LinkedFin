@@ -534,11 +534,13 @@
       `).join('');
 
       document.getElementById('detail').showModal();
+      document.body.style.overflow = 'hidden';
       history.pushState(null, '', `#name/${id}`);
     }
 
     window.closeDetail = function() {
       document.getElementById('detail').close();
+      document.body.style.overflow = '';
     }
 
     window.copyLink = function() {
@@ -561,6 +563,7 @@
 
     // Clear hash when dialog closes (ESC key, etc.)
     document.getElementById('detail').addEventListener('close', () => {
+      document.body.style.overflow = '';
       if (location.hash) history.pushState(null, '', location.pathname);
     });
 
