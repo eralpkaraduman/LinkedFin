@@ -77,3 +77,50 @@ Export and review all etymologies:
 ```bash
 sqlite3 fish.db "SELECT name || '|' || COALESCE(etymology, '') || '|' || COALESCE(notes, '') FROM names" > /tmp/etymologies.txt
 ```
+
+---
+
+## Transliteration Requirements
+
+### Required Languages (enforced by database trigger)
+
+**Arabic (ara)** and **Greek (ell)** names MUST have a `transliteration` field. The database will reject inserts/updates without it.
+
+### Transliteration Standards
+
+**Arabic** - Use DIN 31635 romanization with vowels:
+- Include long vowels: ā, ī, ū
+- Include emphatic consonants: ṣ, ṭ, ḍ, ẓ
+- Include ʿayn: ʿ
+- Include hamza: ʾ
+
+**Examples:**
+| Arabic | Transliteration |
+|--------|----------------|
+| سلطان ابراهيم | Sulṭān Ibrāhīm |
+| حبار | Ḥabbār |
+| ثعبان البحر | Thuʿbān al-baḥr |
+
+**Greek** - Use standard romanization with accents:
+- Include stress accents: á, é, í, ó, ú
+- μπ at word start = b: Μπαρμπούνι → Barboúni
+- μπ mid-word = mb: keep as mb
+- ου = ou (not oy)
+- γγ/γκ = ng/nk
+
+**Examples:**
+| Greek | Transliteration |
+|-------|----------------|
+| Συναγρίδα | Synagrída |
+| Μπαρμπούνι | Barboúni |
+| Χταπόδι | Chtapódi |
+
+### Optional but Recommended
+
+**Turkish (tur)** and **Sami (sme)** names with special characters should include transliteration:
+- Turkish: ğ→g, ı→i, ş→s, ç→c, ö→o, ü→u
+- Sami: č→c, đ→d, ŋ→n, š→s, ŧ→t, ž→z
+
+### Not Required
+
+**English (eng)**, **Finnish (fin)**, **Swedish (swe)**, **Estonian (est)** - Standard Latin script, no transliteration needed.
