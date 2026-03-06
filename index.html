@@ -207,7 +207,7 @@
   </dialog>
 
   <div class="search-container" id="search-container">
-    <input type="text" id="search" placeholder="Search by name, species, or region (e.g., ahven, salmo, finland, aegean)" disabled />
+    <input type="text" id="search" placeholder="Search by name, species, region, or language (e.g., ahven, salmo, finland, finnish)" disabled />
     <button class="clear-btn" onclick="clearSearch()" title="Clear">×</button>
   </div>
 
@@ -271,6 +271,10 @@
           rowMode: 'object'
         });
 
+        // Add language display names for search
+        const langNames = { tur: 'Turkish', ell: 'Greek', arb: 'Standard Arabic', arz: 'Egyptian Arabic', apc: 'Levantine Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami' };
+        allNames = allNames.map(n => ({ ...n, language: langNames[n.lang] || n.lang }));
+
         // Load all relations
         allRelations = db.exec({
           sql: `SELECT source_id, target_id, relation FROM name_relations`,
@@ -286,6 +290,7 @@
             { name: 'phonetic', weight: 0.6 },
             { name: 'scientific_name', weight: 0.5 },
             { name: 'region', weight: 0.4 },
+            { name: 'language', weight: 0.4 },
           ],
           threshold: 0.4,
           distance: 100,
@@ -389,7 +394,7 @@
       let fieldsHtml = '';
 
       // ISO 639-3 to language name
-      const langNames = { tur: 'Turkish', ell: 'Greek', ara: 'Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami' };
+      const langNames = { tur: 'Turkish', ell: 'Greek', arb: 'Standard Arabic', arz: 'Egyptian Arabic', apc: 'Levantine Arabic', eng: 'English', lat: 'Latin', fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami' };
       if (item.lang) {
         fieldsHtml += `<dt>Language</dt><dd>${langNames[item.lang] || item.lang}</dd>`;
       }
