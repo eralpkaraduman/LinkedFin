@@ -266,6 +266,9 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
           </div>
         </div>
       )}
+
+      {/* Bottom spacer with safe area */}
+      <div className="min-h-[calc(1rem+env(safe-area-inset-bottom,0px))]" />
     </div>
   )
 }

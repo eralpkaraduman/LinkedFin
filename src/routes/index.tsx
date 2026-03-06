@@ -82,36 +82,32 @@ function HomePage() {
         {q ? `${displayResults.length} results` : `${names.length} names`}
       </p>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead className="hidden sm:table-cell">
-              Transliteration
-            </TableHead>
-            <TableHead>Region</TableHead>
-            <TableHead className="hidden md:table-cell">Species</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {displayResults.map((item) => (
-            <TableRow
-              key={item.id}
-              className="cursor-pointer"
-              onClick={() => openDetail(item.id)}
-            >
-              <TableCell className="font-medium">{item.name}</TableCell>
-              <TableCell className="hidden sm:table-cell">
-                {item.transliteration || ""}
-              </TableCell>
-              <TableCell>{item.region}</TableCell>
-              <TableCell className="hidden italic md:table-cell">
-                {item.scientific_name}
-              </TableCell>
+      <div className="-mx-4 overflow-x-auto px-4">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Transliteration</TableHead>
+              <TableHead>Region</TableHead>
+              <TableHead>Species</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {displayResults.map((item) => (
+              <TableRow
+                key={item.id}
+                className="cursor-pointer"
+                onClick={() => openDetail(item.id)}
+              >
+                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell>{item.transliteration || ""}</TableCell>
+                <TableCell>{item.region}</TableCell>
+                <TableCell className="italic">{item.scientific_name}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <DetailModal
         open={!!selectedName}
