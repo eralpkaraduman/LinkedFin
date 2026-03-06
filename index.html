@@ -48,6 +48,7 @@
       max-width: 600px;
       width: 90%;
       color: #fafafa;
+      position: relative;
     }
     #detail::backdrop {
       background: rgba(0, 0, 0, 0.75);
@@ -69,6 +70,43 @@
       padding-left: 1rem;
       border-left: 2px solid #333;
     }
+    #detail .evolution {
+      margin-bottom: 1rem;
+    }
+    #detail .evolution h3 {
+      font-size: 0.875rem;
+      color: #888;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    #detail .evolution-chain {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+    }
+    #detail .evolution-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: #252525;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 80px;
+      text-align: center;
+      border: 2px solid transparent;
+    }
+    #detail .evolution-item:hover { background: #333; }
+    #detail .evolution-item.current { border-color: #666; background: #333; }
+    #detail .evolution-item .name { font-weight: 500; font-size: 0.9rem; }
+    #detail .evolution-item .size { color: #888; font-size: 0.75rem; margin-top: 0.25rem; }
+    #detail .evolution-arrow { color: #666; font-size: 1.25rem; }
+    #detail .alternates { color: #888; font-size: 0.9rem; margin-top: 0.5rem; }
+    #detail .alt-link { color: #4ade80; cursor: pointer; }
+    #detail .alt-link:hover { text-decoration: underline; }
     #detail .meta { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
     #detail .meta span { margin-right: 1rem; }
     #detail .fields {
@@ -98,16 +136,24 @@
     #detail .related-item:hover { background: #333; border-color: #444; }
     #detail .related-item.current { border-color: #666; }
     #detail .related-item .region { color: #666; font-size: 0.75rem; display: block; }
-    #detail .close {
-      float: right;
+    #detail .dialog-actions {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    #detail .dialog-actions button {
       background: none;
       border: none;
       color: #666;
-      font-size: 1.5rem;
+      font-size: 1.25rem;
       cursor: pointer;
       line-height: 1;
+      padding: 0.25rem;
     }
-    #detail .close:hover { color: #fff; }
+    #detail .dialog-actions button:hover { color: #fff; }
+    #detail .share.copied { color: #4ade80; }
   </style>
 </head>
 <body>
@@ -117,7 +163,10 @@
   <div id="status">Loading database...</div>
 
   <dialog id="detail">
-    <button class="close" onclick="closeDetail()">×</button>
+    <div class="dialog-actions">
+      <button class="share" onclick="copyLink()" title="Copy link">🔗</button>
+      <button class="close" onclick="closeDetail()">×</button>
+    </div>
     <h2 id="detail-name"></h2>
     <div class="scientific" id="detail-scientific"></div>
     <div class="meta">
@@ -127,6 +176,7 @@
     <div class="fields" id="detail-fields"></div>
     <div class="etymology" id="detail-etymology"></div>
     <div class="notes" id="detail-notes"></div>
+    <div class="evolution" id="detail-evolution"></div>
     <div class="related">
       <h3>Same species, different names</h3>
       <div class="related-list" id="detail-related"></div>
@@ -139,6 +189,7 @@
     <thead>
       <tr>
         <th>Name</th>
+        <th>Transliteration</th>
         <th>Region</th>
         <th>Species</th>
       </tr>
@@ -153,6 +204,7 @@
     let db;
     let fuse;
     let allNames = [];
+    let allRelations = [];
 
     async function init() {
       const status = document.getElementById('status');
@@ -193,6 +245,13 @@
           rowMode: 'object'
         });
 
+        // Load all relations
+        allRelations = db.exec({
+          sql: `SELECT source_id, target_id, relation FROM name_relations`,
+          returnValue: 'resultRows',
+          rowMode: 'object'
+        });
+
         // Initialize Fuse.js for fuzzy search
         fuse = new Fuse(allNames, {
           keys: [
@@ -211,7 +270,7 @@
         search.disabled = false;
         search.focus();
 
-        render(allNames.slice(0, 50));
+        render(allNames);
       } catch (err) {
         status.textContent = `Error: ${err.message}`;
         console.error(err);
@@ -225,6 +284,7 @@
         return `
           <tr onclick="showDetail('${item.id}')">
             <td>${item.name}</td>
+            <td>${item.transliteration || ''}</td>
             <td>${item.region}</td>
             <td><em>${item.scientific_name}</em></td>
           </tr>
@@ -232,12 +292,58 @@
       }).join('');
     }
 
+    // Build chain from relations of a specific type
+    function buildChain(nameId, relationType) {
+      const relations = allRelations.filter(r => r.relation === relationType);
+
+      // Find all names in the same chain
+      const inChain = new Set();
+      const toCheck = [nameId];
+
+      // Traverse both directions to find all connected names
+      while (toCheck.length > 0) {
+        const current = toCheck.pop();
+        if (inChain.has(current)) continue;
+        inChain.add(current);
+
+        // Find relations where this name is source or target
+        for (const rel of relations) {
+          if (rel.source_id === current && !inChain.has(rel.target_id)) {
+            toCheck.push(rel.target_id);
+          }
+          if (rel.target_id === current && !inChain.has(rel.source_id)) {
+            toCheck.push(rel.source_id);
+          }
+        }
+      }
+
+      if (inChain.size <= 1) return [];
+
+      // For directional relations (smaller_than), find start and order
+      if (relationType === 'smaller_than') {
+        const hasIncoming = new Set(relations.filter(r => inChain.has(r.target_id)).map(r => r.target_id));
+        let smallest = [...inChain].find(id => !hasIncoming.has(id));
+
+        const chain = [];
+        let current = smallest;
+        while (current) {
+          chain.push(current);
+          const next = relations.find(r => r.source_id === current);
+          current = next ? next.target_id : null;
+        }
+        return chain;
+      }
+
+      // For bidirectional relations, just return the set
+      return [...inChain];
+    }
+
     function doSearch(term) {
       if (!term) {
-        render(allNames.slice(0, 50));
+        render(allNames);
         return;
       }
-      const results = fuse.search(term, { limit: 50 });
+      const results = fuse.search(term);
       render(results);
     }
 
@@ -287,6 +393,47 @@
         notesEl.style.display = 'none';
       }
 
+      // Relations section
+      const evolutionEl = document.getElementById('detail-evolution');
+      let evolutionHtml = '';
+
+      // Size progression chain
+      const sizeChain = buildChain(id, 'smaller_than');
+      if (sizeChain.length > 1) {
+        evolutionHtml += '<h3>Progression</h3><div class="evolution-chain">';
+        sizeChain.forEach((nameId, i) => {
+          const n = allNames.find(x => x.id === nameId);
+          if (!n) return;
+          const sizeText = n.measurement_unit
+            ? `${n.measurement_min}–${n.measurement_max || '∞'} ${n.measurement_unit}`
+            : '';
+          evolutionHtml += `
+            <div class="evolution-item ${n.id === id ? 'current' : ''}" onclick="showDetail('${n.id}')">
+              <span class="name">${n.name}</span>
+              <span class="size">${sizeText}</span>
+            </div>
+          `;
+          if (i < sizeChain.length - 1) {
+            evolutionHtml += '<span class="evolution-arrow">→</span>';
+          }
+        });
+        evolutionHtml += '</div>';
+      }
+
+      // Alternate spellings
+      const alternates = buildChain(id, 'alternate_of');
+      if (alternates.length > 1) {
+        const others = alternates.filter(nid => nid !== id);
+        const otherNames = others.map(nid => {
+          const n = allNames.find(x => x.id === nid);
+          return n ? `<span class="alt-link" onclick="showDetail('${n.id}')">${n.name}</span>` : '';
+        }).join(', ');
+        evolutionHtml += `<div class="alternates">Also spelled: ${otherNames}</div>`;
+      }
+
+      evolutionEl.innerHTML = evolutionHtml;
+      evolutionEl.style.display = evolutionHtml ? 'block' : 'none';
+
       // Related names (same species)
       const related = allNames.filter(n => n.species_id === item.species_id);
       const relatedEl = document.getElementById('detail-related');
@@ -298,10 +445,24 @@
       `).join('');
 
       document.getElementById('detail').showModal();
+      history.pushState(null, '', `#name/${id}`);
     }
 
     window.closeDetail = function() {
       document.getElementById('detail').close();
+    }
+
+    window.copyLink = function() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.querySelector('#detail .share');
+        btn.classList.add('copied');
+        btn.textContent = '✓';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.textContent = '🔗';
+        }, 1500);
+      });
     }
 
     // Close on backdrop click
@@ -309,11 +470,36 @@
       if (e.target === e.currentTarget) closeDetail();
     });
 
+    // Clear hash when dialog closes (ESC key, etc.)
+    document.getElementById('detail').addEventListener('close', () => {
+      if (location.hash) history.pushState(null, '', location.pathname);
+    });
+
+    // Handle hash routing
+    function handleHash() {
+      const hash = location.hash.slice(1); // remove #
+      if (!hash) return;
+
+      const [type, id] = hash.split('/');
+      if (type === 'name' && id) {
+        // Wait for data to load if needed
+        if (allNames.length > 0) {
+          showDetail(id);
+        } else {
+          // Retry after init
+          setTimeout(() => handleHash(), 100);
+        }
+      }
+      // Future: handle species, region, lang
+    }
+
+    window.addEventListener('hashchange', handleHash);
+
     document.getElementById('search').addEventListener('input', (e) => {
       doSearch(e.target.value);
     });
 
-    init();
+    init().then(() => handleHash());
   </script>
 </body>
 </html>

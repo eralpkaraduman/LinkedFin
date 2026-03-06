@@ -71,6 +71,13 @@ export interface Region {
   notes: string | null;
 }
 
+export interface NameRelation {
+  source_id: string;
+  target_id: string;
+  relation: string; // smaller_than, borrowed_from, alternate_of, confused_with
+  notes: string | null;
+}
+
 // Convenience queries
 export const queries = {
   allSpecies: () => query<Species>("SELECT * FROM species ORDER BY scientific_name"),
