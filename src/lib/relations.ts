@@ -58,6 +58,10 @@ export function getRelationsForName(
   borrowedFrom: Relation[]
   lentTo: Relation[]
   confusedWith: Relation[]
+  maleOf: Relation[]
+  femaleOf: Relation[]
+  hasMale: Relation[]
+  hasFemale: Relation[]
 } {
   return {
     borrowedFrom: allRelations.filter(
@@ -70,6 +74,22 @@ export function getRelationsForName(
       (r) =>
         r.relation === "confused_with" &&
         (r.source_id === nameId || r.target_id === nameId)
+    ),
+    // This name is male of another (στειράδια → κέφαλος)
+    maleOf: allRelations.filter(
+      (r) => r.relation === "male_of" && r.source_id === nameId
+    ),
+    // This name is female of another (μπάφες → κέφαλος)
+    femaleOf: allRelations.filter(
+      (r) => r.relation === "female_of" && r.source_id === nameId
+    ),
+    // This name has a male variant (κέφαλος ← στειράδια)
+    hasMale: allRelations.filter(
+      (r) => r.relation === "male_of" && r.target_id === nameId
+    ),
+    // This name has a female variant (κέφαλος ← μπάφες)
+    hasFemale: allRelations.filter(
+      (r) => r.relation === "female_of" && r.target_id === nameId
     ),
   }
 }

@@ -13,7 +13,7 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
 
   const sizeChain = buildChain(name.id, "smaller_than", relations)
   const alternates = buildChain(name.id, "alternate_of", relations)
-  const { borrowedFrom, lentTo, confusedWith } = getRelationsForName(
+  const { borrowedFrom, lentTo, confusedWith, maleOf, femaleOf, hasMale, hasFemale } = getRelationsForName(
     name.id,
     relations
   )
@@ -242,6 +242,76 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
                 </NameLink>
                 <span> ({n.scientific_name})</span>
                 {i < confusedWith.length - 1 && ", "}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Male of */}
+      {maleOf.length > 0 && (
+        <div className="text-sm">
+          <span className="text-muted-foreground">Male of: </span>
+          {maleOf.map((rel, i) => {
+            const n = getNameById(rel.target_id)
+            if (!n) return null
+            return (
+              <span key={rel.target_id}>
+                <NameLink id={rel.target_id} className="text-primary hover:underline">
+                  {n.name}
+                </NameLink>
+                {i < maleOf.length - 1 && ", "}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Female of */}
+      {femaleOf.length > 0 && (
+        <div className="text-sm">
+          <span className="text-muted-foreground">Female of: </span>
+          {femaleOf.map((rel, i) => {
+            const n = getNameById(rel.target_id)
+            if (!n) return null
+            return (
+              <span key={rel.target_id}>
+                <NameLink id={rel.target_id} className="text-primary hover:underline">
+                  {n.name}
+                </NameLink>
+                {i < femaleOf.length - 1 && ", "}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Has male/female variants */}
+      {(hasMale.length > 0 || hasFemale.length > 0) && (
+        <div className="text-sm">
+          <span className="text-muted-foreground">Sex variants: </span>
+          {hasMale.map((rel) => {
+            const n = getNameById(rel.source_id)
+            if (!n) return null
+            return (
+              <span key={rel.source_id}>
+                <NameLink id={rel.source_id} className="text-primary hover:underline">
+                  {n.name}
+                </NameLink>
+                <span className="text-muted-foreground"> (male)</span>
+                {hasFemale.length > 0 && ", "}
+              </span>
+            )
+          })}
+          {hasFemale.map((rel) => {
+            const n = getNameById(rel.source_id)
+            if (!n) return null
+            return (
+              <span key={rel.source_id}>
+                <NameLink id={rel.source_id} className="text-primary hover:underline">
+                  {n.name}
+                </NameLink>
+                <span className="text-muted-foreground"> (female)</span>
               </span>
             )
           })}

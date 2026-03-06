@@ -20,6 +20,8 @@ export type RelationType =
   | "alternate_of"
   | "confused_with"
   | "smaller_than"
+  | "male_of"
+  | "female_of"
 
 export interface Relation {
   source_id: string
