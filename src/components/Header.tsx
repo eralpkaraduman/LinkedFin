@@ -55,7 +55,7 @@ export default function Header() {
 				</h1>
 
 				<div
-					className={`relative flex-1 transition-all ${hasModal ? "opacity-40 blur-[2px]" : ""}`}
+					className={`relative flex-1 transition-all ${hasModal ? "pointer-events-none opacity-40 blur-[2px]" : ""}`}
 				>
 					<Input
 						value={localQuery}
