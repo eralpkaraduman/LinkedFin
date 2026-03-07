@@ -8,6 +8,10 @@ import {
   validateSpeciesRequiredFields,
   validateRegionsRequiredFields,
   validateRelationsRequiredFields,
+  validateLangFormat,
+  validateTransliteration,
+  validatePhonetic,
+  validateEtymology,
   validateNamesToSpeciesFK,
   validateNamesToRegionsFK,
   validateRegionsParentFK,
@@ -33,10 +37,10 @@ const validName = (overrides: Partial<Names> = {}): Names => ({
   name: "Test Fish",
   species_id: "sp_001",
   region_id: "test-region",
-  lang: "en",
-  transliteration: null,
-  phonetic: null,
-  etymology: null,
+  lang: "eng",
+  transliteration: "test fish",
+  phonetic: "test fish",
+  etymology: "Test etymology",
   measurement_unit: null,
   measurement_min: null,
   measurement_max: null,
@@ -239,6 +243,161 @@ describe("validateRelationsRequiredFields", () => {
     const result = validateRelationsRequiredFields(relations)
     expect(result.passed).toBe(false)
     expect(result.errors).toContainEqual(expect.stringContaining("missing 'relation'"))
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LANG, TRANSLITERATION, PHONETIC, ETYMOLOGY TESTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("validateLangFormat", () => {
+  it("passes for valid ISO 639-3 codes", () => {
+    const names = [
+      validName({ lang: "eng" }),
+      validName({ id: "nm_0002", lang: "ell" }),
+      validName({ id: "nm_0003", lang: "tur" }),
+    ]
+    const result = validateLangFormat(names)
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("fails for missing lang", () => {
+    const names = [validName({ lang: null })]
+    const result = validateLangFormat(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("missing 'lang'"))
+  })
+
+  it("fails for 2-letter codes", () => {
+    const names = [validName({ lang: "en" })]
+    const result = validateLangFormat(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("expected 3-letter ISO 639-3"))
+  })
+
+  it("fails for uppercase codes", () => {
+    const names = [validName({ lang: "ENG" })]
+    const result = validateLangFormat(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("expected 3-letter ISO 639-3"))
+  })
+
+  it("fails for 4+ letter codes", () => {
+    const names = [validName({ lang: "engl" })]
+    const result = validateLangFormat(names)
+    expect(result.passed).toBe(false)
+  })
+})
+
+describe("validateTransliteration", () => {
+  it("passes when transliteration has value", () => {
+    const names = [validName({ transliteration: "kefal" })]
+    const result = validateTransliteration(names)
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("passes without warning when transliteration is null for Latin-script languages", () => {
+    const names = [
+      validName({ transliteration: null, lang: "eng" }),
+      validName({ id: "nm_0002", transliteration: null, lang: "tur" }),
+      validName({ id: "nm_0003", transliteration: null, lang: "fin" }),
+    ]
+    const result = validateTransliteration(names)
+    expect(result.passed).toBe(true)
+    expect(result.warnings).toHaveLength(0)
+  })
+
+  it("passes with warning when transliteration is null for non-Latin script languages", () => {
+    const names = [validName({ transliteration: null, lang: "ell" })] // Greek
+    const result = validateTransliteration(names)
+    expect(result.passed).toBe(true)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toContain("missing transliteration")
+    expect(result.warnings[0]).toContain("ell")
+  })
+
+  it("fails when transliteration is empty string", () => {
+    const names = [validName({ transliteration: "" })]
+    const result = validateTransliteration(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("empty string"))
+  })
+})
+
+describe("validatePhonetic", () => {
+  it("passes for lowercase Latin phonetic", () => {
+    const names = [
+      validName({ phonetic: "ke-fal" }),
+      validName({ id: "nm_0002", phonetic: "sar-dee-na" }),
+    ]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("passes for IPA notation", () => {
+    const names = [
+      validName({ phonetic: "/ˈpatlakɡœz meɾdʒan/" }),
+      validName({ id: "nm_0002", phonetic: "/sinaɣrˈiða/" }),
+    ]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("passes for bracketed notation", () => {
+    const names = [validName({ phonetic: "[large-eye dentex]" })]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("passes with warning when phonetic is null", () => {
+    const names = [validName({ phonetic: null })]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(true)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toContain("missing phonetic")
+  })
+
+  it("fails when phonetic is empty string", () => {
+    const names = [validName({ phonetic: "" })]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("empty string"))
+  })
+
+  it("fails for uppercase letters outside brackets", () => {
+    const names = [validName({ phonetic: "Ke-Fal" })]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("uppercase"))
+  })
+})
+
+describe("validateEtymology", () => {
+  it("passes when etymology has value", () => {
+    const names = [validName({ etymology: "From Greek kephalos meaning head" })]
+    const result = validateEtymology(names)
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("passes with warning when etymology is null", () => {
+    const names = [validName({ etymology: null })]
+    const result = validateEtymology(names)
+    expect(result.passed).toBe(true)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toContain("missing etymology")
+  })
+
+  it("fails when etymology is empty string", () => {
+    const names = [validName({ etymology: "" })]
+    const result = validateEtymology(names)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("empty string"))
   })
 })
 
@@ -550,7 +709,7 @@ describe("validateNoSelfReferences", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("runAllValidations", () => {
-  it("runs all 19 validation checks", () => {
+  it("runs all 23 validation checks", () => {
     const ctx = createValidationContext({
       names: [validName()],
       species: [validSpecies()],
@@ -558,7 +717,7 @@ describe("runAllValidations", () => {
       relations: [],
     })
     const results = runAllValidations(ctx)
-    expect(results).toHaveLength(19)
+    expect(results).toHaveLength(23)
   })
 
   it("all pass for valid minimal data", () => {

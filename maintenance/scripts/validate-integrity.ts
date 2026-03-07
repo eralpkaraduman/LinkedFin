@@ -270,6 +270,69 @@ export function validateNoSelfReferences(relations: NameRelations[]): Validation
   return { check: "Relations: no self-references", passed: errors.length === 0, errors, warnings: [] }
 }
 
+export function validateLangFormat(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  const iso639_3Pattern = /^[a-z]{3}$/
+  for (const n of names) {
+    if (!n.lang) {
+      errors.push(`${n.id} (${n.name}): missing 'lang'`)
+    } else if (!iso639_3Pattern.test(n.lang)) {
+      errors.push(`${n.id} (${n.name}): invalid lang '${n.lang}' (expected 3-letter ISO 639-3 code)`)
+    }
+  }
+  return { check: "Names: lang format (ISO 639-3)", passed: errors.length === 0, errors, warnings: [] }
+}
+
+// Languages that use Latin script and don't need transliteration
+const LATIN_SCRIPT_LANGS = new Set(["eng", "tur", "fin", "swe", "est", "sme"])
+
+export function validateTransliteration(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+  for (const n of names) {
+    if (n.transliteration === "") {
+      errors.push(`${n.id} (${n.name}): transliteration is empty string (should be null or have value)`)
+    } else if (n.transliteration === null && n.lang && !LATIN_SCRIPT_LANGS.has(n.lang)) {
+      // Only warn about missing transliteration for non-Latin script languages
+      warnings.push(`${n.id} (${n.name}): missing transliteration for non-Latin script language '${n.lang}'`)
+    }
+  }
+  return { check: "Names: transliteration completeness", passed: errors.length === 0, errors, warnings }
+}
+
+export function validatePhonetic(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+  // Allow IPA characters: Latin lowercase, IPA symbols, common diacritics, slashes/brackets for notation
+  // Reject: uppercase letters (except within brackets like [Large-eye]), numbers, most punctuation
+  const hasUppercase = /[A-Z]/
+  const validPhoneticPattern = /^[\[\]\/a-zɑɐəɛɪɔʊʌæœøɒʏðθʃʒŋɲɹɾɽʁχɣʁħʕʔˈˌːˑ̃̈̄ʷʲˤ̪̺̻̯̬̥̊̃̚' \-.,()]+$/i
+  for (const n of names) {
+    if (n.phonetic === "") {
+      errors.push(`${n.id} (${n.name}): phonetic is empty string (should be null or have value)`)
+    } else if (n.phonetic === null) {
+      warnings.push(`${n.id} (${n.name}): missing phonetic`)
+    } else if (hasUppercase.test(n.phonetic.replace(/\[.*?\]/g, ""))) {
+      // Check for uppercase outside of bracketed notation like [Large-eye dentex]
+      errors.push(`${n.id} (${n.name}): phonetic contains uppercase letters outside brackets`)
+    }
+  }
+  return { check: "Names: phonetic completeness", passed: errors.length === 0, errors, warnings }
+}
+
+export function validateEtymology(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+  for (const n of names) {
+    if (n.etymology === "") {
+      errors.push(`${n.id} (${n.name}): etymology is empty string (should be null or have value)`)
+    } else if (n.etymology === null) {
+      warnings.push(`${n.id} (${n.name}): missing etymology`)
+    }
+  }
+  return { check: "Names: etymology completeness", passed: errors.length === 0, errors, warnings }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RUN ALL VALIDATIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -283,6 +346,10 @@ export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
     validateSpeciesRequiredFields(ctx.species),
     validateRegionsRequiredFields(ctx.regions),
     validateRelationsRequiredFields(ctx.relations),
+    validateLangFormat(ctx.names),
+    validateTransliteration(ctx.names),
+    validatePhonetic(ctx.names),
+    validateEtymology(ctx.names),
     validateNamesToSpeciesFK(ctx.names, ctx.speciesIds),
     validateNamesToRegionsFK(ctx.names, ctx.regionIds),
     validateRegionsParentFK(ctx.regions, ctx.regionIds),
