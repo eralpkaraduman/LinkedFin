@@ -283,54 +283,49 @@ export function validateLangFormat(names: Names[]): ValidationResult {
   return { check: "Names: lang format (ISO 639-3)", passed: errors.length === 0, errors, warnings: [] }
 }
 
-// Languages that use Latin script and don't need transliteration
-const LATIN_SCRIPT_LANGS = new Set(["eng", "tur", "fin", "swe", "est", "sme"])
-
 export function validateTransliteration(names: Names[]): ValidationResult {
   const errors: string[] = []
-  const warnings: string[] = []
   for (const n of names) {
-    if (n.transliteration === "") {
-      errors.push(`${n.id} (${n.name}): transliteration is empty string (should be null or have value)`)
-    } else if (n.transliteration === null && n.lang && !LATIN_SCRIPT_LANGS.has(n.lang)) {
-      // Only warn about missing transliteration for non-Latin script languages
-      warnings.push(`${n.id} (${n.name}): missing transliteration for non-Latin script language '${n.lang}'`)
+    if (n.transliteration === null) {
+      errors.push(`${n.id} (${n.name}): missing transliteration`)
+    } else if (n.transliteration === "") {
+      errors.push(`${n.id} (${n.name}): transliteration is empty string`)
     }
   }
-  return { check: "Names: transliteration completeness", passed: errors.length === 0, errors, warnings }
+  return { check: "Names: transliteration required", passed: errors.length === 0, errors, warnings: [] }
 }
 
 export function validatePhonetic(names: Names[]): ValidationResult {
   const errors: string[] = []
-  const warnings: string[] = []
-  // Allow IPA characters: Latin lowercase, IPA symbols, common diacritics, slashes/brackets for notation
-  // Reject: uppercase letters (except within brackets like [Large-eye]), numbers, most punctuation
-  const hasUppercase = /[A-Z]/
-  const validPhoneticPattern = /^[\[\]\/a-zɑɐəɛɪɔʊʌæœøɒʏðθʃʒŋɲɹɾɽʁχɣʁħʕʔˈˌːˑ̃̈̄ʷʲˤ̪̺̻̯̬̥̊̃̚' \-.,()]+$/i
+  // IPA must be enclosed in slashes /.../ (phonemic) or brackets [...] (phonetic)
+  const ipaPattern = /^(\/[^\/]+\/|\[[^\]]+\])$/
+  // Valid IPA: basic Latin, IPA extensions (U+0250-02AF), spacing modifiers (U+02B0-02FF),
+  // combining diacritics (U+0300-036F), plus common punctuation
+  const validIpaChars = /^[\[\]\/a-z\u00C0-\u03FF\u1D00-\u1DBF \-'.,()]+$/
   for (const n of names) {
-    if (n.phonetic === "") {
-      errors.push(`${n.id} (${n.name}): phonetic is empty string (should be null or have value)`)
-    } else if (n.phonetic === null) {
-      warnings.push(`${n.id} (${n.name}): missing phonetic`)
-    } else if (hasUppercase.test(n.phonetic.replace(/\[.*?\]/g, ""))) {
-      // Check for uppercase outside of bracketed notation like [Large-eye dentex]
-      errors.push(`${n.id} (${n.name}): phonetic contains uppercase letters outside brackets`)
+    if (n.phonetic === null) {
+      errors.push(`${n.id} (${n.name}): missing phonetic`)
+    } else if (n.phonetic === "") {
+      errors.push(`${n.id} (${n.name}): phonetic is empty string`)
+    } else if (!ipaPattern.test(n.phonetic)) {
+      errors.push(`${n.id} (${n.name}): phonetic '${n.phonetic}' must be enclosed in /slashes/ or [brackets]`)
+    } else if (!validIpaChars.test(n.phonetic)) {
+      errors.push(`${n.id} (${n.name}): phonetic '${n.phonetic}' contains invalid IPA characters`)
     }
   }
-  return { check: "Names: phonetic completeness", passed: errors.length === 0, errors, warnings }
+  return { check: "Names: phonetic format (IPA)", passed: errors.length === 0, errors, warnings: [] }
 }
 
 export function validateEtymology(names: Names[]): ValidationResult {
   const errors: string[] = []
-  const warnings: string[] = []
   for (const n of names) {
-    if (n.etymology === "") {
-      errors.push(`${n.id} (${n.name}): etymology is empty string (should be null or have value)`)
-    } else if (n.etymology === null) {
-      warnings.push(`${n.id} (${n.name}): missing etymology`)
+    if (n.etymology === null) {
+      errors.push(`${n.id} (${n.name}): missing etymology`)
+    } else if (n.etymology === "") {
+      errors.push(`${n.id} (${n.name}): etymology is empty string`)
     }
   }
-  return { check: "Names: etymology completeness", passed: errors.length === 0, errors, warnings }
+  return { check: "Names: etymology required", passed: errors.length === 0, errors, warnings: [] }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

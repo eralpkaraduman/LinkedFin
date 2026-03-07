@@ -39,7 +39,7 @@ const validName = (overrides: Partial<Names> = {}): Names => ({
   region_id: "test-region",
   lang: "eng",
   transliteration: "test fish",
-  phonetic: "test fish",
+  phonetic: "/tɛst fɪʃ/",
   etymology: "Test etymology",
   measurement_unit: null,
   measurement_min: null,
@@ -298,24 +298,11 @@ describe("validateTransliteration", () => {
     expect(result.errors).toHaveLength(0)
   })
 
-  it("passes without warning when transliteration is null for Latin-script languages", () => {
-    const names = [
-      validName({ transliteration: null, lang: "eng" }),
-      validName({ id: "nm_0002", transliteration: null, lang: "tur" }),
-      validName({ id: "nm_0003", transliteration: null, lang: "fin" }),
-    ]
+  it("fails when transliteration is null", () => {
+    const names = [validName({ transliteration: null })]
     const result = validateTransliteration(names)
-    expect(result.passed).toBe(true)
-    expect(result.warnings).toHaveLength(0)
-  })
-
-  it("passes with warning when transliteration is null for non-Latin script languages", () => {
-    const names = [validName({ transliteration: null, lang: "ell" })] // Greek
-    const result = validateTransliteration(names)
-    expect(result.passed).toBe(true)
-    expect(result.warnings).toHaveLength(1)
-    expect(result.warnings[0]).toContain("missing transliteration")
-    expect(result.warnings[0]).toContain("ell")
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("missing transliteration"))
   })
 
   it("fails when transliteration is empty string", () => {
@@ -327,17 +314,7 @@ describe("validateTransliteration", () => {
 })
 
 describe("validatePhonetic", () => {
-  it("passes for lowercase Latin phonetic", () => {
-    const names = [
-      validName({ phonetic: "ke-fal" }),
-      validName({ id: "nm_0002", phonetic: "sar-dee-na" }),
-    ]
-    const result = validatePhonetic(names)
-    expect(result.passed).toBe(true)
-    expect(result.errors).toHaveLength(0)
-  })
-
-  it("passes for IPA notation", () => {
+  it("passes for IPA in slashes", () => {
     const names = [
       validName({ phonetic: "/ˈpatlakɡœz meɾdʒan/" }),
       validName({ id: "nm_0002", phonetic: "/sinaɣrˈiða/" }),
@@ -347,19 +324,18 @@ describe("validatePhonetic", () => {
     expect(result.errors).toHaveLength(0)
   })
 
-  it("passes for bracketed notation", () => {
-    const names = [validName({ phonetic: "[large-eye dentex]" })]
+  it("passes for IPA in brackets", () => {
+    const names = [validName({ phonetic: "[ˈkeːfal]" })]
     const result = validatePhonetic(names)
     expect(result.passed).toBe(true)
     expect(result.errors).toHaveLength(0)
   })
 
-  it("passes with warning when phonetic is null", () => {
+  it("fails when phonetic is null", () => {
     const names = [validName({ phonetic: null })]
     const result = validatePhonetic(names)
-    expect(result.passed).toBe(true)
-    expect(result.warnings).toHaveLength(1)
-    expect(result.warnings[0]).toContain("missing phonetic")
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("missing phonetic"))
   })
 
   it("fails when phonetic is empty string", () => {
@@ -369,11 +345,17 @@ describe("validatePhonetic", () => {
     expect(result.errors).toContainEqual(expect.stringContaining("empty string"))
   })
 
-  it("fails for uppercase letters outside brackets", () => {
-    const names = [validName({ phonetic: "Ke-Fal" })]
+  it("fails when not enclosed in slashes or brackets", () => {
+    const names = [validName({ phonetic: "ke-fal" })]
     const result = validatePhonetic(names)
     expect(result.passed).toBe(false)
-    expect(result.errors).toContainEqual(expect.stringContaining("uppercase"))
+    expect(result.errors).toContainEqual(expect.stringContaining("enclosed in /slashes/ or [brackets]"))
+  })
+
+  it("fails for plain text without IPA notation", () => {
+    const names = [validName({ phonetic: "kefal" })]
+    const result = validatePhonetic(names)
+    expect(result.passed).toBe(false)
   })
 })
 
@@ -385,12 +367,11 @@ describe("validateEtymology", () => {
     expect(result.errors).toHaveLength(0)
   })
 
-  it("passes with warning when etymology is null", () => {
+  it("fails when etymology is null", () => {
     const names = [validName({ etymology: null })]
     const result = validateEtymology(names)
-    expect(result.passed).toBe(true)
-    expect(result.warnings).toHaveLength(1)
-    expect(result.warnings[0]).toContain("missing etymology")
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("missing etymology"))
   })
 
   it("fails when etymology is empty string", () => {
