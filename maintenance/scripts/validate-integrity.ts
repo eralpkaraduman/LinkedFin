@@ -97,6 +97,16 @@ export function validateSpeciesRequiredFields(species: Species[]): ValidationRes
   return { check: "Species: required fields", passed: errors.length === 0, errors, warnings: [] }
 }
 
+export function validateSpeciesNotes(species: Species[]): ValidationResult {
+  const errors: string[] = []
+  for (const s of species) {
+    if (s.notes !== null && s.notes === "") {
+      errors.push(`${s.id} (${s.scientific_name}): notes is empty string (should be null or non-empty)`)
+    }
+  }
+  return { check: "Species: notes non-empty if present", passed: errors.length === 0, errors, warnings: [] }
+}
+
 export function validateRegionsRequiredFields(regions: Regions[]): ValidationResult {
   const errors: string[] = []
   for (const r of regions) {
@@ -339,6 +349,7 @@ export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
     validateRegionIdFormat(ctx.regions),
     validateNamesRequiredFields(ctx.names),
     validateSpeciesRequiredFields(ctx.species),
+    validateSpeciesNotes(ctx.species),
     validateRegionsRequiredFields(ctx.regions),
     validateRelationsRequiredFields(ctx.relations),
     validateLangFormat(ctx.names),

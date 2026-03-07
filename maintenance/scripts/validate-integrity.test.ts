@@ -6,6 +6,7 @@ import {
   validateRegionIdFormat,
   validateNamesRequiredFields,
   validateSpeciesRequiredFields,
+  validateSpeciesNotes,
   validateRegionsRequiredFields,
   validateRelationsRequiredFields,
   validateLangFormat,
@@ -192,6 +193,27 @@ describe("validateSpeciesRequiredFields", () => {
     const result = validateSpeciesRequiredFields(species)
     expect(result.passed).toBe(false)
     expect(result.errors).toContainEqual(expect.stringContaining("missing 'scientific_name'"))
+  })
+})
+
+describe("validateSpeciesNotes", () => {
+  it("passes when notes is null", () => {
+    const species = [validSpecies({ notes: null })]
+    const result = validateSpeciesNotes(species)
+    expect(result.passed).toBe(true)
+  })
+
+  it("passes when notes has value", () => {
+    const species = [validSpecies({ notes: "Some notes about the species" })]
+    const result = validateSpeciesNotes(species)
+    expect(result.passed).toBe(true)
+  })
+
+  it("fails when notes is empty string", () => {
+    const species = [validSpecies({ notes: "" })]
+    const result = validateSpeciesNotes(species)
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("notes is empty string"))
   })
 })
 
@@ -698,7 +720,7 @@ describe("runAllValidations", () => {
       relations: [],
     })
     const results = runAllValidations(ctx)
-    expect(results).toHaveLength(23)
+    expect(results).toHaveLength(24)
   })
 
   it("all pass for valid minimal data", () => {
