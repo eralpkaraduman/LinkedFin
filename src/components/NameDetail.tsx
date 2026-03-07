@@ -253,7 +253,7 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
 							<span key={otherId}>
 								<NameLink
 									id={otherId}
-									className="text-amber-600 hover:underline dark:text-amber-400"
+									className="text-amber-600 underline dark:text-amber-400"
 								>
 									{n.name}
 								</NameLink>
