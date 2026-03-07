@@ -32,6 +32,7 @@ jobs:
       - run: pnpm install
       - run: pnpm tsc --noEmit
       - run: pnpm test
+      - run: pnpm db:validate
 
   build:
     needs: test

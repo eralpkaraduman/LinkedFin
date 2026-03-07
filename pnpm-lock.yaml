@@ -116,18 +116,21 @@ devDependencies:
   kysely-codegen:
     specifier: ^0.20.0
     version: 0.20.0(better-sqlite3@12.6.2)(kysely@0.28.11)(typescript@5.7.2)
+  tsx:
+    specifier: ^4.21.0
+    version: 4.21.0
   typescript:
     specifier: ^5.7.2
     version: 5.7.2
   vite:
     specifier: ^7.3.1
-    version: 7.3.1(@types/node@22.10.2)
+    version: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
   vite-tsconfig-paths:
     specifier: ^5.1.4
     version: 5.1.4(typescript@5.7.2)(vite@7.3.1)
   vitest:
     specifier: ^3.0.5
-    version: 3.0.5(@types/node@22.10.2)(jsdom@28.1.0)
+    version: 3.0.5(@types/node@22.10.2)(jsdom@28.1.0)(tsx@4.21.0)
 
 packages:
 
@@ -1981,7 +1984,7 @@ packages:
       '@tailwindcss/node': 4.1.18
       '@tailwindcss/oxide': 4.1.18
       tailwindcss: 4.1.18
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
     dev: false
 
   /@tanstack/devtools-client@0.0.6:
@@ -2033,7 +2036,7 @@ packages:
       chalk: 5.6.2
       launch-editor: 2.13.1
       picomatch: 4.0.3
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -2215,7 +2218,7 @@ packages:
       pathe: 2.0.3
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
     transitivePeerDependencies:
       - '@rsbuild/core'
       - crossws
@@ -2346,7 +2349,7 @@ packages:
       babel-dead-code-elimination: 1.0.12
       chokidar: 3.6.0
       unplugin: 2.3.11
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
@@ -2386,7 +2389,7 @@ packages:
       '@tanstack/virtual-file-routes': 1.161.4
       chokidar: 3.6.0
       unplugin: 2.3.11
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
@@ -2477,7 +2480,7 @@ packages:
       srvx: 0.11.8
       tinyglobby: 0.2.15
       ufo: 1.6.3
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
       vitefu: 1.1.2(vite@7.3.1)
       xmlbuilder2: 4.0.3
       zod: 3.25.76
@@ -2648,7 +2651,7 @@ packages:
       '@rolldown/pluginutils': 1.0.0-rc.3
       '@types/babel__core': 7.20.5
       react-refresh: 0.18.0
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -2676,7 +2679,7 @@ packages:
       '@vitest/spy': 3.0.5
       estree-walker: 3.0.3
       magic-string: 0.30.21
-      vite: 6.4.1(@types/node@22.10.2)
+      vite: 6.4.1(@types/node@22.10.2)(tsx@4.21.0)
     dev: true
 
   /@vitest/pretty-format@3.0.5:
@@ -3859,7 +3862,6 @@ packages:
     resolution: {integrity: sha512-shZT/QMiSHc/YBLxxOkMtgSid5HFoauqCE3/exfsEcwg1WkeqjG+V40yBbBrsD+jW2HDXcs28xOfcbm2jI8Ddw==}
     dependencies:
       resolve-pkg-maps: 1.0.0
-    dev: false
 
   /github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
@@ -5101,7 +5103,6 @@ packages:
 
   /resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
-    dev: false
 
   /restore-cursor@5.1.0:
     resolution: {integrity: sha512-oMA2dcrw6u0YfxJQXm342bFKX/E4sG9rbTzO9ptUcR/e8A33cHuvStiYOwH7fszkZlZ1z/ta9AAoPk2F4qIOHA==}
@@ -5679,7 +5680,6 @@ packages:
       get-tsconfig: 4.13.6
     optionalDependencies:
       fsevents: 2.3.3
-    dev: false
 
   /tunnel-agent@0.6.0:
     resolution: {integrity: sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==}
@@ -5828,7 +5828,7 @@ packages:
       - '@types/react-dom'
     dev: false
 
-  /vite-node@3.0.5(@types/node@22.10.2):
+  /vite-node@3.0.5(@types/node@22.10.2)(tsx@4.21.0):
     resolution: {integrity: sha512-02JEJl7SbtwSDJdYS537nU6l+ktdvcREfLksk/NDAqtdKWGqHl+joXzEubHROmS3E6pip+Xgu2tFezMu75jH7A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
@@ -5837,7 +5837,7 @@ packages:
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 6.4.1(@types/node@22.10.2)
+      vite: 6.4.1(@types/node@22.10.2)(tsx@4.21.0)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -5864,13 +5864,13 @@ packages:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.7.2)
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
     dev: true
 
-  /vite@6.4.1(@types/node@22.10.2):
+  /vite@6.4.1(@types/node@22.10.2)(tsx@4.21.0):
     resolution: {integrity: sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
@@ -5917,11 +5917,12 @@ packages:
       postcss: 8.5.8
       rollup: 4.59.0
       tinyglobby: 0.2.15
+      tsx: 4.21.0
     optionalDependencies:
       fsevents: 2.3.3
     dev: true
 
-  /vite@7.3.1(@types/node@22.10.2):
+  /vite@7.3.1(@types/node@22.10.2)(tsx@4.21.0):
     resolution: {integrity: sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
@@ -5968,6 +5969,7 @@ packages:
       postcss: 8.5.8
       rollup: 4.59.0
       tinyglobby: 0.2.15
+      tsx: 4.21.0
     optionalDependencies:
       fsevents: 2.3.3
 
@@ -5979,10 +5981,10 @@ packages:
       vite:
         optional: true
     dependencies:
-      vite: 7.3.1(@types/node@22.10.2)
+      vite: 7.3.1(@types/node@22.10.2)(tsx@4.21.0)
     dev: false
 
-  /vitest@3.0.5(@types/node@22.10.2)(jsdom@28.1.0):
+  /vitest@3.0.5(@types/node@22.10.2)(jsdom@28.1.0)(tsx@4.21.0):
     resolution: {integrity: sha512-4dof+HvqONw9bvsYxtkfUp2uHsTN9bV2CZIi1pWgoFpL1Lld8LA1ka9q/ONSsoScAKG7NVGf2stJTI7XRkXb2Q==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
@@ -6029,8 +6031,8 @@ packages:
       tinyexec: 0.3.2
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
-      vite: 6.4.1(@types/node@22.10.2)
-      vite-node: 3.0.5(@types/node@22.10.2)
+      vite: 6.4.1(@types/node@22.10.2)(tsx@4.21.0)
+      vite-node: 3.0.5(@types/node@22.10.2)(tsx@4.21.0)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - jiti
