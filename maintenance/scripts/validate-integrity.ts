@@ -14,37 +14,312 @@
 
 import Database from "better-sqlite3"
 import { Kysely, SqliteDialect } from "kysely"
-import type { DB } from "../../src/db/types"
+import type { DB, Names, Species, Regions, NameRelations } from "../../src/db/types"
 import { NameRelationType, isValidRelationType, requiresSameSpecies } from "../../src/db/relations"
 
-// Validation result tracking
-interface ValidationResult {
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ValidationResult {
   check: string
   passed: boolean
   errors: string[]
   warnings: string[]
 }
 
-const results: ValidationResult[] = []
-
-function check(name: string, fn: () => { errors: string[]; warnings?: string[] }) {
-  const { errors, warnings = [] } = fn()
-  results.push({
-    check: name,
-    passed: errors.length === 0,
-    errors,
-    warnings,
-  })
+export interface ValidationData {
+  names: Names[]
+  species: Species[]
+  regions: Regions[]
+  relations: NameRelations[]
 }
 
-// Initialize Kysely with better-sqlite3
-const sqliteDb = new Database("fish.db", { readonly: true })
-const db = new Kysely<DB>({
-  dialect: new SqliteDialect({ database: sqliteDb }),
-})
+export interface ValidationContext extends ValidationData {
+  nameIds: Set<string>
+  speciesIds: Set<string>
+  regionIds: Set<string>
+  nameToSpecies: Map<string, string>
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VALIDATION FUNCTIONS (exported for testing)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function validateNameIdFormat(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  const idPattern = /^nm_\d{4}$/
+  for (const name of names) {
+    if (!idPattern.test(name.id)) {
+      errors.push(`Invalid ID format: ${name.id} (expected nm_XXXX)`)
+    }
+  }
+  return { check: "Names: ID format (nm_XXXX)", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateSpeciesIdFormat(species: Species[]): ValidationResult {
+  const errors: string[] = []
+  const idPattern = /^sp_\d{3}$/
+  for (const s of species) {
+    if (!idPattern.test(s.id)) {
+      errors.push(`Invalid ID format: ${s.id} (expected sp_XXX)`)
+    }
+  }
+  return { check: "Species: ID format (sp_XXX)", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRegionIdFormat(regions: Regions[]): ValidationResult {
+  const errors: string[] = []
+  const idPattern = /^[a-z][a-z0-9-]*$/
+  for (const r of regions) {
+    if (!idPattern.test(r.id)) {
+      errors.push(`Invalid ID format: ${r.id} (expected lowercase kebab-case)`)
+    }
+  }
+  return { check: "Regions: ID format (kebab-case)", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateNamesRequiredFields(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  for (const n of names) {
+    if (!n.name) errors.push(`${n.id}: missing 'name'`)
+    if (!n.species_id) errors.push(`${n.id}: missing 'species_id'`)
+    if (!n.region_id) errors.push(`${n.id}: missing 'region_id'`)
+  }
+  return { check: "Names: required fields", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateSpeciesRequiredFields(species: Species[]): ValidationResult {
+  const errors: string[] = []
+  for (const s of species) {
+    if (!s.scientific_name) errors.push(`${s.id}: missing 'scientific_name'`)
+  }
+  return { check: "Species: required fields", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRegionsRequiredFields(regions: Regions[]): ValidationResult {
+  const errors: string[] = []
+  for (const r of regions) {
+    if (!r.name) errors.push(`${r.id}: missing 'name'`)
+    if (!r.language) errors.push(`${r.id}: missing 'language'`)
+  }
+  return { check: "Regions: required fields", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRelationsRequiredFields(relations: NameRelations[]): ValidationResult {
+  const errors: string[] = []
+  for (const rel of relations) {
+    if (!rel.source_id) errors.push(`Relation missing 'source_id'`)
+    if (!rel.target_id) errors.push(`Relation missing 'target_id'`)
+    if (!rel.relation) errors.push(`Relation missing 'relation' type`)
+  }
+  return { check: "Relations: required fields", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateNamesToSpeciesFK(names: Names[], speciesIds: Set<string>): ValidationResult {
+  const errors: string[] = []
+  for (const n of names) {
+    if (!speciesIds.has(n.species_id)) {
+      errors.push(`${n.id} (${n.name}): references non-existent species '${n.species_id}'`)
+    }
+  }
+  return { check: "Names → Species foreign key", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateNamesToRegionsFK(names: Names[], regionIds: Set<string>): ValidationResult {
+  const errors: string[] = []
+  for (const n of names) {
+    if (!regionIds.has(n.region_id)) {
+      errors.push(`${n.id} (${n.name}): references non-existent region '${n.region_id}'`)
+    }
+  }
+  return { check: "Names → Regions foreign key", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRegionsParentFK(regions: Regions[], regionIds: Set<string>): ValidationResult {
+  const errors: string[] = []
+  for (const r of regions) {
+    if (r.parent_region && !regionIds.has(r.parent_region)) {
+      errors.push(`${r.id} (${r.name}): references non-existent parent region '${r.parent_region}'`)
+    }
+  }
+  return { check: "Regions: parent_region foreign key", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRelationsSourceFK(relations: NameRelations[], nameIds: Set<string>): ValidationResult {
+  const errors: string[] = []
+  for (const rel of relations) {
+    if (!nameIds.has(rel.source_id)) {
+      errors.push(`Relation references non-existent source name '${rel.source_id}'`)
+    }
+  }
+  return { check: "Relations: source_id foreign key", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRelationsTargetFK(relations: NameRelations[], nameIds: Set<string>): ValidationResult {
+  const errors: string[] = []
+  for (const rel of relations) {
+    if (!nameIds.has(rel.target_id)) {
+      errors.push(`Relation references non-existent target name '${rel.target_id}'`)
+    }
+  }
+  return { check: "Relations: target_id foreign key", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateRelationTypes(relations: NameRelations[]): ValidationResult {
+  const errors: string[] = []
+  const validTypes = Object.values(NameRelationType)
+  for (const rel of relations) {
+    if (!isValidRelationType(rel.relation)) {
+      errors.push(
+        `Invalid relation type '${rel.relation}' (${rel.source_id} → ${rel.target_id}). ` +
+        `Valid types: ${validTypes.join(", ")}`
+      )
+    }
+  }
+  return { check: "Relations: valid relation types", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateSameSpeciesConstraint(
+  relations: NameRelations[],
+  nameToSpecies: Map<string, string>
+): ValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+  for (const rel of relations) {
+    if (!isValidRelationType(rel.relation)) continue
+
+    const sourceSpecies = nameToSpecies.get(rel.source_id)
+    const targetSpecies = nameToSpecies.get(rel.target_id)
+
+    if (!sourceSpecies || !targetSpecies) continue
+
+    if (requiresSameSpecies(rel.relation) && sourceSpecies !== targetSpecies) {
+      errors.push(
+        `Relation '${rel.relation}' requires same species, but ${rel.source_id} (${sourceSpecies}) → ` +
+        `${rel.target_id} (${targetSpecies}) are different species`
+      )
+    }
+
+    if (rel.relation === "confused_with" && sourceSpecies === targetSpecies) {
+      warnings.push(
+        `'confused_with' relation between same species: ${rel.source_id} ↔ ${rel.target_id} (${sourceSpecies})`
+      )
+    }
+  }
+  return { check: "Relations: same-species constraint", passed: errors.length === 0, errors, warnings }
+}
+
+export function validateNoOrphanedSpecies(names: Names[], species: Species[]): ValidationResult {
+  const warnings: string[] = []
+  const usedSpecies = new Set(names.map((n) => n.species_id))
+  for (const s of species) {
+    if (!usedSpecies.has(s.id)) {
+      warnings.push(`Species ${s.id} (${s.scientific_name}) has no associated names`)
+    }
+  }
+  return { check: "Species: no orphaned records", passed: true, errors: [], warnings }
+}
+
+export function validateNoOrphanedRegions(names: Names[], regions: Regions[]): ValidationResult {
+  const warnings: string[] = []
+  const usedRegions = new Set(names.map((n) => n.region_id))
+  for (const r of regions) {
+    if (!usedRegions.has(r.id)) {
+      warnings.push(`Region ${r.id} (${r.name}) has no associated names`)
+    }
+  }
+  return { check: "Regions: no orphaned records", passed: true, errors: [], warnings }
+}
+
+export function validateNoDuplicateNames(names: Names[]): ValidationResult {
+  const errors: string[] = []
+  const seen = new Map<string, string>()
+  for (const n of names) {
+    const key = `${n.name}|${n.species_id}|${n.region_id}`
+    if (seen.has(key)) {
+      errors.push(`Duplicate: ${n.id} and ${seen.get(key)} both have name='${n.name}' for same species/region`)
+    } else {
+      seen.set(key, n.id)
+    }
+  }
+  return { check: "Names: no exact duplicates (same name + species + region)", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateNoDuplicateRelations(relations: NameRelations[]): ValidationResult {
+  const errors: string[] = []
+  const seen = new Set<string>()
+  for (const rel of relations) {
+    const key = `${rel.source_id}|${rel.target_id}|${rel.relation}`
+    if (seen.has(key)) {
+      errors.push(`Duplicate relation: ${rel.source_id} → ${rel.target_id} (${rel.relation})`)
+    } else {
+      seen.add(key)
+    }
+  }
+  return { check: "Relations: no duplicate relations", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateNoSelfReferences(relations: NameRelations[]): ValidationResult {
+  const errors: string[] = []
+  for (const rel of relations) {
+    if (rel.source_id === rel.target_id) {
+      errors.push(`Self-reference: ${rel.source_id} → ${rel.target_id} (${rel.relation})`)
+    }
+  }
+  return { check: "Relations: no self-references", passed: errors.length === 0, errors, warnings: [] }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RUN ALL VALIDATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
+  return [
+    validateNameIdFormat(ctx.names),
+    validateSpeciesIdFormat(ctx.species),
+    validateRegionIdFormat(ctx.regions),
+    validateNamesRequiredFields(ctx.names),
+    validateSpeciesRequiredFields(ctx.species),
+    validateRegionsRequiredFields(ctx.regions),
+    validateRelationsRequiredFields(ctx.relations),
+    validateNamesToSpeciesFK(ctx.names, ctx.speciesIds),
+    validateNamesToRegionsFK(ctx.names, ctx.regionIds),
+    validateRegionsParentFK(ctx.regions, ctx.regionIds),
+    validateRelationsSourceFK(ctx.relations, ctx.nameIds),
+    validateRelationsTargetFK(ctx.relations, ctx.nameIds),
+    validateRelationTypes(ctx.relations),
+    validateSameSpeciesConstraint(ctx.relations, ctx.nameToSpecies),
+    validateNoOrphanedSpecies(ctx.names, ctx.species),
+    validateNoOrphanedRegions(ctx.names, ctx.regions),
+    validateNoDuplicateNames(ctx.names),
+    validateNoDuplicateRelations(ctx.relations),
+    validateNoSelfReferences(ctx.relations),
+  ]
+}
+
+export function createValidationContext(data: ValidationData): ValidationContext {
+  return {
+    ...data,
+    nameIds: new Set(data.names.map((n) => n.id)),
+    speciesIds: new Set(data.species.map((s) => s.id)),
+    regionIds: new Set(data.regions.map((r) => r.id)),
+    nameToSpecies: new Map(data.names.map((n) => [n.id, n.species_id])),
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN (CLI entry point)
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function main() {
   console.log("🔍 Validating database integrity...\n")
+
+  // Initialize Kysely with better-sqlite3
+  const sqliteDb = new Database("fish.db", { readonly: true })
+  const db = new Kysely<DB>({
+    dialect: new SqliteDialect({ database: sqliteDb }),
+  })
 
   // Load all data
   const names = await db.selectFrom("names").selectAll().execute()
@@ -52,264 +327,10 @@ async function main() {
   const regions = await db.selectFrom("regions").selectAll().execute()
   const relations = await db.selectFrom("name_relations").selectAll().execute()
 
-  // Build lookup maps for efficient validation
-  const nameIds = new Set(names.map((n) => n.id))
-  const speciesIds = new Set(species.map((s) => s.id))
-  const regionIds = new Set(regions.map((r) => r.id))
-  const nameToSpecies = new Map(names.map((n) => [n.id, n.species_id]))
+  const ctx = createValidationContext({ names, species, regions, relations })
+  const results = runAllValidations(ctx)
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 1. PRIMARY KEY / ID VALIDATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  check("Names: ID format (nm_XXXX)", () => {
-    const errors: string[] = []
-    const idPattern = /^nm_\d{4}$/
-    for (const name of names) {
-      if (!idPattern.test(name.id)) {
-        errors.push(`Invalid ID format: ${name.id} (expected nm_XXXX)`)
-      }
-    }
-    return { errors }
-  })
-
-  check("Species: ID format (sp_XXX)", () => {
-    const errors: string[] = []
-    const idPattern = /^sp_\d{3}$/
-    for (const s of species) {
-      if (!idPattern.test(s.id)) {
-        errors.push(`Invalid ID format: ${s.id} (expected sp_XXX)`)
-      }
-    }
-    return { errors }
-  })
-
-  check("Regions: ID format (kebab-case)", () => {
-    const errors: string[] = []
-    const idPattern = /^[a-z][a-z0-9-]*$/
-    for (const r of regions) {
-      if (!idPattern.test(r.id)) {
-        errors.push(`Invalid ID format: ${r.id} (expected lowercase kebab-case)`)
-      }
-    }
-    return { errors }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 2. REQUIRED FIELD VALIDATION (NOT NULL)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  check("Names: required fields", () => {
-    const errors: string[] = []
-    for (const n of names) {
-      if (!n.name) errors.push(`${n.id}: missing 'name'`)
-      if (!n.species_id) errors.push(`${n.id}: missing 'species_id'`)
-      if (!n.region_id) errors.push(`${n.id}: missing 'region_id'`)
-    }
-    return { errors }
-  })
-
-  check("Species: required fields", () => {
-    const errors: string[] = []
-    for (const s of species) {
-      if (!s.scientific_name) errors.push(`${s.id}: missing 'scientific_name'`)
-    }
-    return { errors }
-  })
-
-  check("Regions: required fields", () => {
-    const errors: string[] = []
-    for (const r of regions) {
-      if (!r.name) errors.push(`${r.id}: missing 'name'`)
-      if (!r.language) errors.push(`${r.id}: missing 'language'`)
-    }
-    return { errors }
-  })
-
-  check("Relations: required fields", () => {
-    const errors: string[] = []
-    for (const rel of relations) {
-      if (!rel.source_id) errors.push(`Relation missing 'source_id'`)
-      if (!rel.target_id) errors.push(`Relation missing 'target_id'`)
-      if (!rel.relation) errors.push(`Relation missing 'relation' type`)
-    }
-    return { errors }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 3. FOREIGN KEY VALIDATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  check("Names → Species foreign key", () => {
-    const errors: string[] = []
-    for (const n of names) {
-      if (!speciesIds.has(n.species_id)) {
-        errors.push(`${n.id} (${n.name}): references non-existent species '${n.species_id}'`)
-      }
-    }
-    return { errors }
-  })
-
-  check("Names → Regions foreign key", () => {
-    const errors: string[] = []
-    for (const n of names) {
-      if (!regionIds.has(n.region_id)) {
-        errors.push(`${n.id} (${n.name}): references non-existent region '${n.region_id}'`)
-      }
-    }
-    return { errors }
-  })
-
-  check("Regions: parent_region foreign key", () => {
-    const errors: string[] = []
-    for (const r of regions) {
-      if (r.parent_region && !regionIds.has(r.parent_region)) {
-        errors.push(`${r.id} (${r.name}): references non-existent parent region '${r.parent_region}'`)
-      }
-    }
-    return { errors }
-  })
-
-  check("Relations: source_id foreign key", () => {
-    const errors: string[] = []
-    for (const rel of relations) {
-      if (!nameIds.has(rel.source_id)) {
-        errors.push(`Relation references non-existent source name '${rel.source_id}'`)
-      }
-    }
-    return { errors }
-  })
-
-  check("Relations: target_id foreign key", () => {
-    const errors: string[] = []
-    for (const rel of relations) {
-      if (!nameIds.has(rel.target_id)) {
-        errors.push(`Relation references non-existent target name '${rel.target_id}'`)
-      }
-    }
-    return { errors }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. RELATION TYPE VALIDATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  check("Relations: valid relation types", () => {
-    const errors: string[] = []
-    const validTypes = Object.values(NameRelationType)
-    for (const rel of relations) {
-      if (!isValidRelationType(rel.relation)) {
-        errors.push(
-          `Invalid relation type '${rel.relation}' (${rel.source_id} → ${rel.target_id}). ` +
-          `Valid types: ${validTypes.join(", ")}`
-        )
-      }
-    }
-    return { errors }
-  })
-
-  check("Relations: same-species constraint", () => {
-    const errors: string[] = []
-    const warnings: string[] = []
-    for (const rel of relations) {
-      if (!isValidRelationType(rel.relation)) continue
-
-      const sourceSpecies = nameToSpecies.get(rel.source_id)
-      const targetSpecies = nameToSpecies.get(rel.target_id)
-
-      if (!sourceSpecies || !targetSpecies) continue
-
-      if (requiresSameSpecies(rel.relation) && sourceSpecies !== targetSpecies) {
-        errors.push(
-          `Relation '${rel.relation}' requires same species, but ${rel.source_id} (${sourceSpecies}) → ` +
-          `${rel.target_id} (${targetSpecies}) are different species`
-        )
-      }
-
-      // Warning for confused_with on same species (unusual but not invalid)
-      if (rel.relation === "confused_with" && sourceSpecies === targetSpecies) {
-        warnings.push(
-          `'confused_with' relation between same species: ${rel.source_id} ↔ ${rel.target_id} (${sourceSpecies})`
-        )
-      }
-    }
-    return { errors, warnings }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 5. ORPHAN DETECTION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  check("Species: no orphaned records", () => {
-    const errors: string[] = []
-    const warnings: string[] = []
-    const usedSpecies = new Set(names.map((n) => n.species_id))
-    for (const s of species) {
-      if (!usedSpecies.has(s.id)) {
-        warnings.push(`Species ${s.id} (${s.scientific_name}) has no associated names`)
-      }
-    }
-    return { errors, warnings }
-  })
-
-  check("Regions: no orphaned records", () => {
-    const errors: string[] = []
-    const warnings: string[] = []
-    const usedRegions = new Set(names.map((n) => n.region_id))
-    for (const r of regions) {
-      if (!usedRegions.has(r.id)) {
-        warnings.push(`Region ${r.id} (${r.name}) has no associated names`)
-      }
-    }
-    return { errors, warnings }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 6. DUPLICATE DETECTION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  check("Names: no exact duplicates (same name + species + region)", () => {
-    const errors: string[] = []
-    const seen = new Map<string, string>()
-    for (const n of names) {
-      const key = `${n.name}|${n.species_id}|${n.region_id}`
-      if (seen.has(key)) {
-        errors.push(`Duplicate: ${n.id} and ${seen.get(key)} both have name='${n.name}' for same species/region`)
-      } else {
-        seen.set(key, n.id)
-      }
-    }
-    return { errors }
-  })
-
-  check("Relations: no duplicate relations", () => {
-    const errors: string[] = []
-    const seen = new Set<string>()
-    for (const rel of relations) {
-      const key = `${rel.source_id}|${rel.target_id}|${rel.relation}`
-      if (seen.has(key)) {
-        errors.push(`Duplicate relation: ${rel.source_id} → ${rel.target_id} (${rel.relation})`)
-      } else {
-        seen.add(key)
-      }
-    }
-    return { errors }
-  })
-
-  check("Relations: no self-references", () => {
-    const errors: string[] = []
-    for (const rel of relations) {
-      if (rel.source_id === rel.target_id) {
-        errors.push(`Self-reference: ${rel.source_id} → ${rel.target_id} (${rel.relation})`)
-      }
-    }
-    return { errors }
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SUMMARY
-  // ═══════════════════════════════════════════════════════════════════════════
-
+  // Print results
   console.log("═".repeat(70))
   console.log("VALIDATION RESULTS")
   console.log("═".repeat(70))
@@ -370,7 +391,10 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err)
-  process.exit(1)
-})
+// Only run main if this is the entry point
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error("Fatal error:", err)
+    process.exit(1)
+  })
+}
