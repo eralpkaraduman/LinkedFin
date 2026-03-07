@@ -1,344 +1,373 @@
-import { Link } from "@tanstack/react-router"
-import { useDatabase } from "#/lib/DatabaseContext"
-import { buildChain, getRelationsForName } from "#/lib/relations"
-import type { FishName } from "#/lib/types"
+import { Link } from "@tanstack/react-router";
+import { useDatabase } from "#/lib/DatabaseContext";
+import { buildChain, getRelationsForName } from "#/lib/relations";
+import type { FishName } from "#/lib/types";
 
 interface NameDetailProps {
-  name: FishName
-  onNavigate?: (id: string) => void
+	name: FishName;
+	onNavigate?: (id: string) => void;
 }
 
 export function NameDetail({ name, onNavigate }: NameDetailProps) {
-  const { relations, getNameById, getNamesBySpecies } = useDatabase()
+	const { relations, getNameById, getNamesBySpecies } = useDatabase();
 
-  const sizeChain = buildChain(name.id, "smaller_than", relations)
-  const alternates = buildChain(name.id, "alternate_of", relations)
-  const { borrowedFrom, lentTo, confusedWith, maleOf, femaleOf, hasMale, hasFemale } = getRelationsForName(
-    name.id,
-    relations
-  )
-  const sameSpecies = getNamesBySpecies(name.species_id)
+	const sizeChain = buildChain(name.id, "smaller_than", relations);
+	const alternates = buildChain(name.id, "alternate_of", relations);
+	const {
+		borrowedFrom,
+		lentTo,
+		confusedWith,
+		maleOf,
+		femaleOf,
+		hasMale,
+		hasFemale,
+	} = getRelationsForName(name.id, relations);
+	const sameSpecies = getNamesBySpecies(name.species_id);
 
-  const NameLink = ({
-    id,
-    children,
-    className = "",
-  }: {
-    id: string
-    children: React.ReactNode
-    className?: string
-  }) => {
-    if (onNavigate) {
-      return (
-        <button
-          type="button"
-          onClick={() => onNavigate(id)}
-          className={`cursor-pointer ${className}`}
-        >
-          {children}
-        </button>
-      )
-    }
-    return (
-      <Link to="/name/$id" params={{ id }} className={className}>
-        {children}
-      </Link>
-    )
-  }
+	const NameLink = ({
+		id,
+		children,
+		className = "",
+	}: {
+		id: string;
+		children: React.ReactNode;
+		className?: string;
+	}) => {
+		if (onNavigate) {
+			return (
+				<button
+					type="button"
+					onClick={() => onNavigate(id)}
+					className={`cursor-pointer ${className}`}
+				>
+					{children}
+				</button>
+			);
+		}
+		return (
+			<Link to="/name/$id" params={{ id }} className={className}>
+				{children}
+			</Link>
+		);
+	};
 
-  const NameCard = ({
-    item,
-    isCurrent,
-    subtitle,
-  }: {
-    item: FishName
-    isCurrent: boolean
-    subtitle: string
-  }) => {
-    const card = (
-      <div
-        className={`flex min-w-[100px] flex-col rounded-lg px-3 py-2 text-center ${
-          isCurrent
-            ? "border-2 border-foreground/50 bg-muted"
-            : "bg-muted/50 hover:bg-muted"
-        }`}
-      >
-        <span className="text-sm font-medium">{item.name}</span>
-        <span className="text-xs text-muted-foreground">{subtitle}</span>
-      </div>
-    )
+	const NameCard = ({
+		item,
+		isCurrent,
+		subtitle,
+	}: {
+		item: FishName;
+		isCurrent: boolean;
+		subtitle: string;
+	}) => {
+		const card = (
+			<div
+				className={`flex min-w-[100px] flex-col rounded-lg px-3 py-2 text-center ${
+					isCurrent
+						? "border-2 border-foreground/50 bg-muted"
+						: "bg-muted/50 hover:bg-muted"
+				}`}
+			>
+				<span className="text-sm font-medium">{item.name}</span>
+				<span className="text-xs text-muted-foreground">{subtitle}</span>
+			</div>
+		);
 
-    if (isCurrent) return card
-    return (
-      <NameLink id={item.id} className="cursor-pointer">
-        {card}
-      </NameLink>
-    )
-  }
+		if (isCurrent) return card;
+		return (
+			<NameLink id={item.id} className="cursor-pointer">
+				{card}
+			</NameLink>
+		);
+	};
 
-  return (
-    <div className="space-y-4">
-      {/* Meta info */}
-      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-        <span>#{name.id}</span>
-        <span>📍 {name.region}</span>
-      </div>
+	return (
+		<div className="space-y-4">
+			{/* Meta info */}
+			<div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+				<span>#{name.id}</span>
+				<span>📍 {name.region}</span>
+			</div>
 
-      {/* Fields grid */}
-      {(name.language ||
-        name.measurement_unit ||
-        name.transliteration ||
-        name.phonetic) && (
-        <div className="rounded-lg bg-muted/50 p-4 text-sm">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
-            {name.language && (
-              <>
-                <dt className="text-muted-foreground">Language</dt>
-                <dd className="font-medium">{name.language}</dd>
-              </>
-            )}
-            {name.measurement_unit && (
-              <>
-                <dt className="text-muted-foreground">Measurement</dt>
-                <dd className="font-medium">
-                  {name.measurement_min} — {name.measurement_max || "∞"}{" "}
-                  {name.measurement_unit}
-                </dd>
-              </>
-            )}
-            {name.transliteration && (
-              <>
-                <dt className="text-muted-foreground">Transliteration</dt>
-                <dd className="font-mono font-medium">{name.transliteration}</dd>
-              </>
-            )}
-            {name.phonetic && !name.phonetic.startsWith("[") && (
-              <>
-                <dt className="text-muted-foreground">IPA</dt>
-                <dd className="font-serif">{name.phonetic}</dd>
-              </>
-            )}
-          </dl>
-        </div>
-      )}
+			{/* Fields grid */}
+			{(name.language ||
+				name.measurement_unit ||
+				name.transliteration ||
+				name.phonetic) && (
+				<div className="rounded-lg bg-muted/50 p-4 text-sm">
+					<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
+						{name.language && (
+							<>
+								<dt className="text-muted-foreground">Language</dt>
+								<dd className="font-medium">{name.language}</dd>
+							</>
+						)}
+						{name.measurement_unit && (
+							<>
+								<dt className="text-muted-foreground">Measurement</dt>
+								<dd className="font-medium">
+									{name.measurement_min} — {name.measurement_max || "∞"}{" "}
+									{name.measurement_unit}
+								</dd>
+							</>
+						)}
+						{name.transliteration && (
+							<>
+								<dt className="text-muted-foreground">Transliteration</dt>
+								<dd className="font-mono font-medium">
+									{name.transliteration}
+								</dd>
+							</>
+						)}
+						{name.phonetic && !name.phonetic.startsWith("[") && (
+							<>
+								<dt className="text-muted-foreground">IPA</dt>
+								<dd className="font-serif">{name.phonetic}</dd>
+							</>
+						)}
+					</dl>
+				</div>
+			)}
 
-      {/* Etymology */}
-      <div className="rounded-lg bg-muted/50 p-4">
-        <p className="whitespace-pre-line text-sm">
-          {name.etymology || "Origin uncertain"}
-        </p>
-      </div>
+			{/* Etymology */}
+			<div className="rounded-lg bg-muted/50 p-4">
+				<p className="whitespace-pre-line text-sm">
+					{name.etymology || "Origin uncertain"}
+				</p>
+			</div>
 
-      {/* Species notes */}
-      {name.species_notes && (
-        <p className="border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
-          {name.species_notes}
-        </p>
-      )}
+			{/* Species notes */}
+			{name.species_notes && (
+				<p className="border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
+					{name.species_notes}
+				</p>
+			)}
 
-      {/* Size progression chain */}
-      {sizeChain.length > 1 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Progression
-          </h3>
-          <div className="flex flex-wrap items-center gap-2">
-            {sizeChain.map((id, i) => {
-              const n = getNameById(id)
-              if (!n) return null
-              const isCurrent = id === name.id
-              const sizeText = n.measurement_unit
-                ? `${n.measurement_min}–${n.measurement_max || "∞"} ${n.measurement_unit}`
-                : ""
-              return (
-                <div key={id} className="flex items-center gap-2">
-                  <NameCard item={n} isCurrent={isCurrent} subtitle={sizeText} />
-                  {i < sizeChain.length - 1 && (
-                    <span className="text-muted-foreground">→</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+			{/* Size progression chain */}
+			{sizeChain.length > 1 && (
+				<div className="space-y-3">
+					<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Progression
+					</h3>
+					<div className="flex flex-wrap items-center gap-2">
+						{sizeChain.map((id, i) => {
+							const n = getNameById(id);
+							if (!n) return null;
+							const isCurrent = id === name.id;
+							const sizeText = n.measurement_unit
+								? `${n.measurement_min}–${n.measurement_max || "∞"} ${n.measurement_unit}`
+								: "";
+							return (
+								<div key={id} className="flex items-center gap-2">
+									<NameCard
+										item={n}
+										isCurrent={isCurrent}
+										subtitle={sizeText}
+									/>
+									{i < sizeChain.length - 1 && (
+										<span className="text-muted-foreground">→</span>
+									)}
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
 
-      {/* Alternates */}
-      {alternates.length > 1 && (
-        <div className="text-sm">
-          <span className="text-muted-foreground">Alternates: </span>
-          {alternates
-            .filter((id) => id !== name.id)
-            .map((id, i, arr) => {
-              const n = getNameById(id)
-              if (!n) return null
-              return (
-                <span key={id}>
-                  <NameLink id={id} className="text-primary hover:underline">
-                    {n.name}
-                  </NameLink>
-                  <span className="text-muted-foreground"> ({n.region})</span>
-                  {i < arr.length - 1 && ", "}
-                </span>
-              )
-            })}
-        </div>
-      )}
+			{/* Alternates */}
+			{alternates.length > 1 && (
+				<div className="text-sm">
+					<span className="text-muted-foreground">Alternates: </span>
+					{alternates
+						.filter((id) => id !== name.id)
+						.map((id, i, arr) => {
+							const n = getNameById(id);
+							if (!n) return null;
+							return (
+								<span key={id}>
+									<NameLink id={id} className="text-primary hover:underline">
+										{n.name}
+									</NameLink>
+									<span className="text-muted-foreground"> ({n.region})</span>
+									{i < arr.length - 1 && ", "}
+								</span>
+							);
+						})}
+				</div>
+			)}
 
-      {/* Borrowed from */}
-      {borrowedFrom.length > 0 && (
-        <div className="text-sm">
-          <span className="text-muted-foreground">Borrowed from: </span>
-          {borrowedFrom.map((rel, i) => {
-            const n = getNameById(rel.target_id)
-            if (!n) return null
-            return (
-              <span key={rel.target_id}>
-                <NameLink id={rel.target_id} className="text-primary hover:underline">
-                  {n.name}
-                </NameLink>
-                {i < borrowedFrom.length - 1 && ", "}
-              </span>
-            )
-          })}
-        </div>
-      )}
+			{/* Borrowed from */}
+			{borrowedFrom.length > 0 && (
+				<div className="text-sm">
+					<span className="text-muted-foreground">Borrowed from: </span>
+					{borrowedFrom.map((rel, i) => {
+						const n = getNameById(rel.target_id);
+						if (!n) return null;
+						return (
+							<span key={rel.target_id}>
+								<NameLink
+									id={rel.target_id}
+									className="text-primary hover:underline"
+								>
+									{n.name}
+								</NameLink>
+								{i < borrowedFrom.length - 1 && ", "}
+							</span>
+						);
+					})}
+				</div>
+			)}
 
-      {/* Lent to */}
-      {lentTo.length > 0 && (
-        <div className="text-sm">
-          <span className="text-muted-foreground">Lent to: </span>
-          {lentTo.map((rel, i) => {
-            const n = getNameById(rel.source_id)
-            if (!n) return null
-            return (
-              <span key={rel.source_id}>
-                <NameLink id={rel.source_id} className="text-primary hover:underline">
-                  {n.name}
-                </NameLink>
-                {i < lentTo.length - 1 && ", "}
-              </span>
-            )
-          })}
-        </div>
-      )}
+			{/* Lent to */}
+			{lentTo.length > 0 && (
+				<div className="text-sm">
+					<span className="text-muted-foreground">Lent to: </span>
+					{lentTo.map((rel, i) => {
+						const n = getNameById(rel.source_id);
+						if (!n) return null;
+						return (
+							<span key={rel.source_id}>
+								<NameLink
+									id={rel.source_id}
+									className="text-primary hover:underline"
+								>
+									{n.name}
+								</NameLink>
+								{i < lentTo.length - 1 && ", "}
+							</span>
+						);
+					})}
+				</div>
+			)}
 
-      {/* Confused with */}
-      {confusedWith.length > 0 && (
-        <div className="text-sm text-amber-600 dark:text-amber-400">
-          <span>⚠️ Often confused with: </span>
-          {confusedWith.map((rel, i) => {
-            const otherId =
-              rel.source_id === name.id ? rel.target_id : rel.source_id
-            const n = getNameById(otherId)
-            if (!n) return null
-            return (
-              <span key={otherId}>
-                <NameLink
-                  id={otherId}
-                  className="text-amber-600 hover:underline dark:text-amber-400"
-                >
-                  {n.name}
-                </NameLink>
-                <span> ({n.scientific_name})</span>
-                {i < confusedWith.length - 1 && ", "}
-              </span>
-            )
-          })}
-        </div>
-      )}
+			{/* Confused with */}
+			{confusedWith.length > 0 && (
+				<div className="text-sm text-amber-600 dark:text-amber-400">
+					<span>⚠️ Often confused with: </span>
+					{confusedWith.map((rel, i) => {
+						const otherId =
+							rel.source_id === name.id ? rel.target_id : rel.source_id;
+						const n = getNameById(otherId);
+						if (!n) return null;
+						return (
+							<span key={otherId}>
+								<NameLink
+									id={otherId}
+									className="text-amber-600 hover:underline dark:text-amber-400"
+								>
+									{n.name}
+								</NameLink>
+								<span> ({n.scientific_name})</span>
+								{i < confusedWith.length - 1 && ", "}
+							</span>
+						);
+					})}
+				</div>
+			)}
 
-      {/* Male of */}
-      {maleOf.length > 0 && (
-        <div className="text-sm">
-          <span className="text-muted-foreground">Male of: </span>
-          {maleOf.map((rel, i) => {
-            const n = getNameById(rel.target_id)
-            if (!n) return null
-            return (
-              <span key={rel.target_id}>
-                <NameLink id={rel.target_id} className="text-primary hover:underline">
-                  {n.name}
-                </NameLink>
-                {i < maleOf.length - 1 && ", "}
-              </span>
-            )
-          })}
-        </div>
-      )}
+			{/* Male of */}
+			{maleOf.length > 0 && (
+				<div className="text-sm">
+					<span className="text-muted-foreground">Male of: </span>
+					{maleOf.map((rel, i) => {
+						const n = getNameById(rel.target_id);
+						if (!n) return null;
+						return (
+							<span key={rel.target_id}>
+								<NameLink
+									id={rel.target_id}
+									className="text-primary hover:underline"
+								>
+									{n.name}
+								</NameLink>
+								{i < maleOf.length - 1 && ", "}
+							</span>
+						);
+					})}
+				</div>
+			)}
 
-      {/* Female of */}
-      {femaleOf.length > 0 && (
-        <div className="text-sm">
-          <span className="text-muted-foreground">Female of: </span>
-          {femaleOf.map((rel, i) => {
-            const n = getNameById(rel.target_id)
-            if (!n) return null
-            return (
-              <span key={rel.target_id}>
-                <NameLink id={rel.target_id} className="text-primary hover:underline">
-                  {n.name}
-                </NameLink>
-                {i < femaleOf.length - 1 && ", "}
-              </span>
-            )
-          })}
-        </div>
-      )}
+			{/* Female of */}
+			{femaleOf.length > 0 && (
+				<div className="text-sm">
+					<span className="text-muted-foreground">Female of: </span>
+					{femaleOf.map((rel, i) => {
+						const n = getNameById(rel.target_id);
+						if (!n) return null;
+						return (
+							<span key={rel.target_id}>
+								<NameLink
+									id={rel.target_id}
+									className="text-primary hover:underline"
+								>
+									{n.name}
+								</NameLink>
+								{i < femaleOf.length - 1 && ", "}
+							</span>
+						);
+					})}
+				</div>
+			)}
 
-      {/* Has male/female variants */}
-      {(hasMale.length > 0 || hasFemale.length > 0) && (
-        <div className="text-sm">
-          <span className="text-muted-foreground">Sex variants: </span>
-          {hasMale.map((rel) => {
-            const n = getNameById(rel.source_id)
-            if (!n) return null
-            return (
-              <span key={rel.source_id}>
-                <NameLink id={rel.source_id} className="text-primary hover:underline">
-                  {n.name}
-                </NameLink>
-                <span className="text-muted-foreground"> (male)</span>
-                {hasFemale.length > 0 && ", "}
-              </span>
-            )
-          })}
-          {hasFemale.map((rel) => {
-            const n = getNameById(rel.source_id)
-            if (!n) return null
-            return (
-              <span key={rel.source_id}>
-                <NameLink id={rel.source_id} className="text-primary hover:underline">
-                  {n.name}
-                </NameLink>
-                <span className="text-muted-foreground"> (female)</span>
-              </span>
-            )
-          })}
-        </div>
-      )}
+			{/* Has male/female variants */}
+			{(hasMale.length > 0 || hasFemale.length > 0) && (
+				<div className="text-sm">
+					<span className="text-muted-foreground">Sex variants: </span>
+					{hasMale.map((rel) => {
+						const n = getNameById(rel.source_id);
+						if (!n) return null;
+						return (
+							<span key={rel.source_id}>
+								<NameLink
+									id={rel.source_id}
+									className="text-primary hover:underline"
+								>
+									{n.name}
+								</NameLink>
+								<span className="text-muted-foreground"> (male)</span>
+								{hasFemale.length > 0 && ", "}
+							</span>
+						);
+					})}
+					{hasFemale.map((rel) => {
+						const n = getNameById(rel.source_id);
+						if (!n) return null;
+						return (
+							<span key={rel.source_id}>
+								<NameLink
+									id={rel.source_id}
+									className="text-primary hover:underline"
+								>
+									{n.name}
+								</NameLink>
+								<span className="text-muted-foreground"> (female)</span>
+							</span>
+						);
+					})}
+				</div>
+			)}
 
-      {/* Same species, different names */}
-      {sameSpecies.length > 1 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Same species, different names
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {sameSpecies.map((n) => (
-              <NameCard
-                key={n.id}
-                item={n}
-                isCurrent={n.id === name.id}
-                subtitle={n.region}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+			{/* Same species, different names */}
+			{sameSpecies.length > 1 && (
+				<div className="space-y-3">
+					<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Same species, different names
+					</h3>
+					<div className="flex flex-wrap gap-2">
+						{sameSpecies.map((n) => (
+							<NameCard
+								key={n.id}
+								item={n}
+								isCurrent={n.id === name.id}
+								subtitle={n.region}
+							/>
+						))}
+					</div>
+				</div>
+			)}
 
-      {/* Bottom spacer with safe area */}
-      <div className="min-h-[calc(1rem+env(safe-area-inset-bottom,0px))]" />
-    </div>
-  )
+			{/* Bottom spacer with safe area */}
+			<div className="min-h-[calc(1rem+env(safe-area-inset-bottom,0px))]" />
+		</div>
+	);
 }

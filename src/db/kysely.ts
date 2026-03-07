@@ -4,14 +4,13 @@
  */
 
 // Re-export all generated types
-export type {
-  DB,
-  Names,
-  Species,
-  Regions,
-  NameRelations,
-  Generated,
-} from "./types"
-
 // Type alias for the database interface (Kysely convention)
-export type { DB as Database } from "./types"
+export type {
+	DB,
+	DB as Database,
+	Generated,
+	NameRelations,
+	Names,
+	Regions,
+	Species,
+} from "./types";

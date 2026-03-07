@@ -5,53 +5,54 @@
 
 import type { ColumnType } from "kysely";
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-  ? ColumnType<S, I | undefined, U>
-  : ColumnType<T, T | undefined, T>;
+export type Generated<T> =
+	T extends ColumnType<infer S, infer I, infer U>
+		? ColumnType<S, I | undefined, U>
+		: ColumnType<T, T | undefined, T>;
 
 export interface NameRelations {
-  notes: string | null;
-  relation: string;
-  source_id: string;
-  target_id: string;
+	notes: string | null;
+	relation: string;
+	source_id: string;
+	target_id: string;
 }
 
 export interface Names {
-  etymology: string | null;
-  id: string;
-  lang: string | null;
-  measurement_max: number | null;
-  measurement_min: number | null;
-  measurement_unit: string | null;
-  name: string;
-  notes: string | null;
-  phonetic: string | null;
-  region_id: string;
-  species_id: string;
-  transliteration: string | null;
+	etymology: string;
+	id: string;
+	lang: string;
+	measurement_max: number | null;
+	measurement_min: number | null;
+	measurement_unit: string | null;
+	name: string;
+	notes: string | null;
+	phonetic: string;
+	region_id: string;
+	species_id: string;
+	transliteration: string;
 }
 
 export interface Regions {
-  id: string;
-  language: string;
-  name: string;
-  name_local: string | null;
-  notes: string | null;
-  parent_region: string | null;
-  polygon: string | null;
+	id: string;
+	language: string;
+	name: string;
+	name_local: string | null;
+	notes: string | null;
+	parent_region: string | null;
+	polygon: string | null;
 }
 
 export interface Species {
-  family: string | null;
-  habitat: Generated<string | null>;
-  id: string;
-  notes: string | null;
-  scientific_name: string;
+	family: string | null;
+	habitat: Generated<string | null>;
+	id: string;
+	notes: string | null;
+	scientific_name: string;
 }
 
 export interface DB {
-  name_relations: NameRelations;
-  names: Names;
-  regions: Regions;
-  species: Species;
+	name_relations: NameRelations;
+	names: Names;
+	regions: Regions;
+	species: Species;
 }
