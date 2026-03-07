@@ -28,11 +28,13 @@ export const Route = createFileRoute("/")({
 	component: HomePage,
 });
 
-function CopyLinkButton() {
+function CopyLinkButton({ id }: { id: string }) {
 	const [copied, setCopied] = useState(false);
 
 	const copyLink = async () => {
-		await navigator.clipboard.writeText(window.location.href);
+		const url = new URL(window.location.origin + window.location.pathname);
+		url.searchParams.set("id", id);
+		await navigator.clipboard.writeText(url.toString());
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -128,7 +130,7 @@ function HomePage() {
 						</a>
 					)
 				}
-				action={<CopyLinkButton />}
+				action={selectedName && <CopyLinkButton id={selectedName.id} />}
 			>
 				{selectedName && (
 					<NameDetail name={selectedName} onNavigate={openDetail} />
