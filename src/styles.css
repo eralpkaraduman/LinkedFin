@@ -11,6 +11,9 @@
 }
 
 :root {
+  /* Header height for dialog positioning - responsive */
+  --header-height: 3.1875rem; /* 51px on mobile */
+
   /* Neutral theme - light */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -95,6 +98,13 @@ body,
 .safe-x {
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Desktop header height override */
+@media (min-width: 640px) {
+  :root {
+    --header-height: 4.1875rem; /* 67px on sm+ */
+  }
 }
 
 body {

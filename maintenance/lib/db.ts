@@ -1,5 +1,13 @@
 import sqlite3InitModule, { Database } from "@sqlite.org/sqlite-wasm";
 
+// Re-export types from generated schema for use in maintenance scripts
+export type { Species, Names, Regions, NameRelations } from "../../src/db/types";
+
+// Type aliases for backwards compatibility
+export type Name = import("../../src/db/types").Names;
+export type Region = import("../../src/db/types").Regions;
+export type NameRelation = import("../../src/db/types").NameRelations;
+
 let db: Database | null = null;
 
 export async function initDb(): Promise<Database> {
@@ -35,47 +43,6 @@ export async function initDb(): Promise<Database> {
 export function query<T>(sql: string, params: unknown[] = []): T[] {
   if (!db) throw new Error("Database not initialized");
   return db.exec({ sql, bind: params, returnValue: "resultRows", rowMode: "object" }) as T[];
-}
-
-// Type definitions for our schema
-export interface Species {
-  id: string;
-  scientific_name: string;
-  family: string | null;
-  habitat: string;
-  notes: string | null;
-}
-
-export interface Name {
-  id: string;
-  name: string;
-  species_id: string;
-  region_id: string;
-  lang: string; // ISO 639-3 language code (tur, ell, ara, eng, lat)
-  etymology: string | null;
-  transliteration: string | null;
-  phonetic: string | null;
-  measurement_unit: string | null;
-  measurement_min: number | null;
-  measurement_max: number | null;
-  notes: string | null;
-}
-
-export interface Region {
-  id: string;
-  name: string;
-  name_local: string | null;
-  language: string;
-  parent_region: string | null;
-  polygon: string | null;
-  notes: string | null;
-}
-
-export interface NameRelation {
-  source_id: string;
-  target_id: string;
-  relation: string; // smaller_than, borrowed_from, alternate_of, confused_with
-  notes: string | null;
 }
 
 // Convenience queries

@@ -1,31 +1,26 @@
-export interface FishName {
-  id: string
-  name: string
-  lang: string
-  transliteration?: string
-  phonetic?: string
-  etymology?: string
-  measurement_unit?: string
-  measurement_min?: number
-  measurement_max?: number
-  species_id: string
-  region: string
-  scientific_name: string
-  species_notes?: string
-  language: string // Computed from lang code
+import type { Names, NameRelations } from "../db/types"
+
+/**
+ * FishName extends the generated Names type with computed/joined fields.
+ * - Omits region_id (replaced by region name from JOIN)
+ * - Adds fields from species JOIN
+ * - Adds computed language display name
+ */
+export interface FishName extends Omit<Names, "region_id" | "notes"> {
+  region: string // from regions.name (JOIN)
+  scientific_name: string // from species.scientific_name (JOIN)
+  species_notes?: string | null // from species.notes (JOIN)
+  language: string // computed from lang code via Intl.DisplayNames
 }
 
-export type RelationType =
-  | "borrowed_from"
-  | "alternate_of"
-  | "confused_with"
-  | "smaller_than"
-  | "male_of"
-  | "female_of"
+// Re-export relation type from db/relations
+import type { NameRelationTypeValue } from "../db/relations"
+export type RelationType = NameRelationTypeValue
 
-export interface Relation {
-  source_id: string
-  target_id: string
+/**
+ * Relation extends NameRelations with typed relation field
+ */
+export interface Relation extends Omit<NameRelations, "relation" | "notes"> {
   relation: RelationType
 }
 

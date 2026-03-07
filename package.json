@@ -12,7 +12,9 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "db:types": "kysely-codegen --dialect sqlite --url ./fish.db --out-file src/db/types.ts",
+    "db:copy": "cp fish.db public/fish.db"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -28,6 +30,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fuse.js": "^7.1.0",
+    "kysely": "^0.28.11",
+    "kysely-generic-sqlite": "^1.2.1",
     "lucide-react": "^0.577.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -47,7 +51,9 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.4",
+    "better-sqlite3": "^12.6.2",
     "jsdom": "^28.1.0",
+    "kysely-codegen": "^0.20.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",

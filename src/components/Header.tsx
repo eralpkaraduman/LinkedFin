@@ -24,7 +24,7 @@ export default function Header() {
             search={{}}
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1 text-sm text-foreground no-underline transition hover:bg-muted sm:gap-2 sm:px-3 sm:py-1.5"
           >
-            <span className="text-base sm:text-lg">🐟</span>
+            <span className="translate-y-px text-base sm:text-lg" aria-hidden="true">🐟</span>
             LinkedFin
           </Link>
         </h1>

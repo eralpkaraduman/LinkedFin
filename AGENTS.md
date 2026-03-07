@@ -1,5 +1,34 @@
 # LinkedFin Agent Guidelines
 
+## Database Commands
+
+Run these from the project root:
+
+| Command | Purpose |
+|---------|---------|
+| `pnpm db:types` | Regenerate TypeScript types from database schema |
+| `pnpm db:verify` | Verify database integrity |
+| `pnpm db:copy` | Copy database to public folder for deployment |
+
+### Schema Change Workflow
+
+When modifying the database schema or adding data via scripts:
+
+```bash
+# 1. Run your migration/data script
+bun maintenance/scripts/your-migration.ts
+
+# 2. Regenerate types to match new schema
+pnpm db:types
+
+# 3. Copy updated database to public folder
+pnpm db:copy
+```
+
+**Important:** Always regenerate types after schema changes to keep TypeScript in sync with the database.
+
+---
+
 ## Adding New Data
 
 ### Workflow for Adding a New Country/Region
