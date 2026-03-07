@@ -1,18 +1,38 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
 import { Input } from "#/components/ui/input";
+import { useDebouncedCallback } from "#/hooks/useDebouncedCallback";
 
 export default function Header() {
 	const search = useSearch({ strict: false }) as { q?: string; id?: string };
 	const navigate = useNavigate();
-	const q = search.q || "";
+	const urlQuery = search.q || "";
 	const hasModal = !!search.id;
 
+	// Local state for immediate input feedback
+	const [localQuery, setLocalQuery] = useState(urlQuery);
+
+	// Sync local state when URL changes externally (e.g., back button)
+	useEffect(() => {
+		setLocalQuery(urlQuery);
+	}, [urlQuery]);
+
+	// Debounced URL sync (300ms) - prevents URL thrashing
+	const syncToUrl = useCallback(
+		(value: string) => {
+			navigate({
+				to: "/",
+				search: (prev) => ({ ...prev, q: value || undefined }),
+				replace: true,
+			});
+		},
+		[navigate],
+	);
+	const debouncedSyncToUrl = useDebouncedCallback(syncToUrl, 300);
+
 	const handleSearch = (value: string) => {
-		navigate({
-			to: "/",
-			search: (prev) => ({ ...prev, q: value || undefined }),
-			replace: true,
-		});
+		setLocalQuery(value); // Immediate local update
+		debouncedSyncToUrl(value); // Debounced URL sync
 	};
 
 	return (
@@ -38,12 +58,12 @@ export default function Header() {
 					className={`relative flex-1 transition-all ${hasModal ? "opacity-40 blur-[2px]" : ""}`}
 				>
 					<Input
-						value={q}
+						value={localQuery}
 						onChange={(e) => handleSearch(e.target.value)}
 						placeholder="Search..."
 						className="h-8 text-sm sm:h-9"
 					/>
-					{q && (
+					{localQuery && (
 						<button
 							type="button"
 							onClick={() => handleSearch("")}

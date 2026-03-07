@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckIcon, LinkIcon } from "lucide-react";
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { DetailModal } from "#/components/DetailModal";
 import { NameDetail } from "#/components/NameDetail";
 import { Button } from "#/components/ui/button";
@@ -58,7 +58,10 @@ function HomePage() {
 	const { q = "", id } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
 	const { names, getNameById } = useDatabase();
-	const results = useSearch(q);
+
+	// Defer the search query so expensive Fuse.js search doesn't block UI
+	const deferredQuery = useDeferredValue(q);
+	const results = useSearch(deferredQuery);
 
 	const selectedName = id ? getNameById(id) : null;
 

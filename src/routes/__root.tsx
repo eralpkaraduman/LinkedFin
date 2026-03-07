@@ -6,7 +6,7 @@ import { DatabaseProvider } from "../lib/DatabaseContext";
 
 import appCss from "../styles.css?url";
 
-const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme:dark)').matches;d.classList.add(m?'dark':'light');d.style.colorScheme=m?'dark':'light';})();`;
+const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement,mq=window.matchMedia('(prefers-color-scheme:dark)');function apply(dark){d.classList.remove('light','dark');d.classList.add(dark?'dark':'light');d.style.colorScheme=dark?'dark':'light';}apply(mq.matches);mq.addEventListener('change',function(e){apply(e.matches);});})();`;
 
 export const Route = createRootRoute({
 	head: () => ({
