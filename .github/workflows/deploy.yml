@@ -30,6 +30,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install
+      - run: pnpm rebuild better-sqlite3
       - run: pnpm check
       - run: pnpm tsc --noEmit
       - run: pnpm test
