@@ -115,6 +115,16 @@ export const Route = createRootRoute({
 				rel: "canonical",
 				href: "https://eralpkaraduman.github.io/LinkedFin/",
 			},
+			{
+				rel: "icon",
+				type: "image/x-icon",
+				href: "/favicon.ico",
+			},
+			{
+				rel: "apple-touch-icon",
+				sizes: "180x180",
+				href: "/apple-touch-icon.png",
+			},
 		],
 	}),
 	shellComponent: RootDocument,
