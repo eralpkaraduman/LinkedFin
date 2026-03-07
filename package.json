@@ -14,7 +14,8 @@
     "lint": "biome lint",
     "check": "biome check",
     "db:types": "kysely-codegen --dialect sqlite --url ./fish.db --out-file src/db/types.ts",
-    "db:copy": "cp fish.db public/fish.db"
+    "db:copy": "cp fish.db public/fish.db",
+    "db:validate": "npx tsx maintenance/scripts/validate-integrity.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
