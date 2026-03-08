@@ -138,7 +138,7 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
 
 			{/* Species notes */}
 			{name.species_notes && (
-				<p className="border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
+				<p className="cursor-text select-text border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
 					{name.species_notes}
 				</p>
 			)}
