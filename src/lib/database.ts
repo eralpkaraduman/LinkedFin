@@ -102,6 +102,17 @@ export function isInitialized(): boolean {
 	return initialized;
 }
 
+export function getSpeciesInfo(
+	speciesId: string,
+): { scientific_name: string; notes?: string } | undefined {
+	const name = allNames.find((n) => n.species_id === speciesId);
+	if (!name) return undefined;
+	return {
+		scientific_name: name.scientific_name,
+		notes: name.species_notes ?? undefined,
+	};
+}
+
 /**
  * Get the Kysely database instance for advanced queries
  */
