@@ -139,29 +139,17 @@ function WelcomeHero({
 					onClick={onClick}
 					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3 transition hover:bg-muted/50"
 				>
-					<div className="relative h-28 w-28">
-						{/* Blurred backdrop extending beyond circle */}
-						{data?.imageUrl && (
-							<img
-								src={data.imageUrl}
-								alt=""
-								aria-hidden="true"
-								className="absolute -inset-4 h-[calc(100%+2rem)] w-[calc(100%+2rem)] scale-110 rounded-full object-cover opacity-40 blur-2xl"
+					<div className="h-28 w-28 ring-2 ring-border transition group-hover:ring-primary rounded-full">
+						{isLoading ? (
+							<div className="h-full w-full animate-pulse rounded-full bg-muted-foreground/20" />
+						) : (
+							<SpeciesImage
+								imageUrl={data?.imageUrl}
+								alt={scientificName}
+								circular={true}
+								className="h-full w-full"
 							/>
 						)}
-						{/* Main circular image */}
-						<div className="relative h-full w-full overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
-							{isLoading ? (
-								<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
-							) : (
-								<SpeciesImage
-									imageUrl={data?.imageUrl}
-									alt={scientificName}
-									large={true}
-									className="h-full w-full"
-								/>
-							)}
-						</div>
 					</div>
 					<div className="text-xs">
 						<span className="font-medium">{name}</span>
