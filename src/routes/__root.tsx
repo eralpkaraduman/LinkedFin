@@ -46,11 +46,11 @@ export const Route = createRootRoute({
 			},
 			{
 				property: "og:url",
-				content: "https://eralpkaraduman.github.io/LinkedFin/",
+				content: "https://linkedfin.net/",
 			},
 			{
 				property: "og:image",
-				content: "https://eralpkaraduman.github.io/LinkedFin/og-image.png",
+				content: "https://linkedfin.net/og-image.png",
 			},
 			{
 				property: "og:image:width",
@@ -80,7 +80,7 @@ export const Route = createRootRoute({
 			},
 			{
 				name: "twitter:image",
-				content: "https://eralpkaraduman.github.io/LinkedFin/og-image.png",
+				content: "https://linkedfin.net/og-image.png",
 			},
 			// PWA / Mobile
 			{
@@ -113,7 +113,7 @@ export const Route = createRootRoute({
 			},
 			{
 				rel: "canonical",
-				href: "https://eralpkaraduman.github.io/LinkedFin/",
+				href: "https://linkedfin.net/",
 			},
 			{
 				rel: "icon",

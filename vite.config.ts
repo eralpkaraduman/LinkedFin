@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const config = defineConfig({
-	base: process.env.CI ? "/LinkedFin/" : "/",
+	base: "/",
 	server: {
 		port: 4141,
 		strictPort: true,
