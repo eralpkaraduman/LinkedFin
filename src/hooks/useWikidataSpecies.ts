@@ -144,7 +144,8 @@ async function fetchWikidataSpecies(
 export function useWikidataSpecies(scientificName: string | null) {
 	return useQuery({
 		queryKey: ["wikidata", scientificName],
-		queryFn: () => fetchWikidataSpecies(scientificName!),
+		queryFn: () =>
+			scientificName ? fetchWikidataSpecies(scientificName) : null,
 		enabled: !!scientificName,
 	});
 }

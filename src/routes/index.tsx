@@ -143,16 +143,6 @@ function HomePage() {
 	const selectedSpecies = speciesId ? getSpeciesInfo(speciesId) : null;
 
 	// Track navigation history for back buttons (persisted in sessionStorage)
-	// Memoize to avoid sessionStorage reads on every render
-	const hasPreviousSpecies = useMemo(
-		() => !!getStoredNavId("previousSpecies"),
-		[nameId], // Re-check when viewing a name (came from species)
-	);
-	const hasPreviousName = useMemo(
-		() => !!getStoredNavId("previousName"),
-		[speciesId], // Re-check when viewing a species (came from name)
-	);
-
 	useEffect(() => {
 		if (nameId) {
 			setStoredNavId("previousName", nameId);
@@ -250,7 +240,7 @@ function HomePage() {
 			<DetailModal
 				open={!!selectedName && !speciesId}
 				onOpenChange={(open) => !open && closeDetail()}
-				onBack={hasPreviousSpecies ? backToSpecies : undefined}
+				onBack={getStoredNavId("previousSpecies") ? backToSpecies : undefined}
 				title={selectedName?.name || ""}
 				action={selectedName && <CopyLinkButton nameId={selectedName.id} />}
 			>
@@ -269,7 +259,7 @@ function HomePage() {
 			<DetailModal
 				open={!!selectedSpecies}
 				onOpenChange={(open) => !open && closeDetail()}
-				onBack={hasPreviousName ? backToName : undefined}
+				onBack={getStoredNavId("previousName") ? backToName : undefined}
 				title={
 					<span className="italic">
 						{selectedSpecies?.scientific_name || ""}

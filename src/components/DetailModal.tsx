@@ -60,7 +60,6 @@ export function DetailModal({
 							<button
 								type="button"
 								onClick={() => onOpenChange(false)}
-								autoFocus
 								className="shrink-0 cursor-pointer rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
 							>
 								<XIcon className="h-4 w-4" />
@@ -96,7 +95,6 @@ export function DetailModal({
 							</div>
 						</div>
 						<DrawerClose
-							autoFocus
 							className="cursor-pointer rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
 						>
 							<XIcon className="h-5 w-5" />
