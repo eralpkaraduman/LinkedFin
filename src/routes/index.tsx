@@ -27,26 +27,32 @@ interface SearchParams {
 	species?: string; // Selected species ID for profile
 }
 
-// Session storage keys for navigation history (persists across deep links/refreshes)
-const NAV_STORAGE_KEYS = {
+// Session storage keys (persists across HMR/deep links)
+const STORAGE_KEYS = {
 	previousName: "linkedfin_prev_name",
 	previousSpecies: "linkedfin_prev_species",
+	shuffleKey: "linkedfin_shuffle_key",
 } as const;
 
-function getStoredNavId(key: keyof typeof NAV_STORAGE_KEYS): string | null {
+function getStoredValue(key: keyof typeof STORAGE_KEYS): string | null {
 	try {
-		return sessionStorage.getItem(NAV_STORAGE_KEYS[key]);
+		return sessionStorage.getItem(STORAGE_KEYS[key]);
 	} catch {
 		return null;
 	}
 }
 
-function setStoredNavId(key: keyof typeof NAV_STORAGE_KEYS, value: string) {
+function setStoredValue(key: keyof typeof STORAGE_KEYS, value: string) {
 	try {
-		sessionStorage.setItem(NAV_STORAGE_KEYS[key], value);
+		sessionStorage.setItem(STORAGE_KEYS[key], value);
 	} catch {
 		// Ignore storage errors
 	}
+}
+
+function getInitialShuffleKey(): number {
+	const stored = getStoredValue("shuffleKey");
+	return stored ? Number.parseInt(stored, 10) || 0 : 0;
 }
 
 const RANDOM_SAMPLE_SIZE = 10;
@@ -177,8 +183,16 @@ function HomePage() {
 	const deferredQuery = useDeferredValue(q);
 	const searchResults = useSearch(deferredQuery);
 
-	// Shuffle key to force re-randomization
-	const [shuffleKey, setShuffleKey] = useState(0);
+	// Shuffle key to force re-randomization (persisted across HMR)
+	const [shuffleKey, setShuffleKey] = useState(getInitialShuffleKey);
+
+	const shuffle = () => {
+		setShuffleKey((k) => {
+			const next = k + 1;
+			setStoredValue("shuffleKey", String(next));
+			return next;
+		});
+	};
 
 	// Random sample for empty query (stable until shuffle or page refresh)
 	// biome-ignore lint/correctness/useExhaustiveDependencies: shuffleKey triggers reshuffle intentionally
@@ -217,13 +231,13 @@ function HomePage() {
 	// Track navigation history for back buttons (persisted in sessionStorage)
 	useEffect(() => {
 		if (nameId) {
-			setStoredNavId("previousName", nameId);
+			setStoredValue("previousName", nameId);
 		}
 	}, [nameId]);
 
 	useEffect(() => {
 		if (speciesId) {
-			setStoredNavId("previousSpecies", speciesId);
+			setStoredValue("previousSpecies", speciesId);
 		}
 	}, [speciesId]);
 
@@ -250,7 +264,7 @@ function HomePage() {
 	};
 
 	const backToSpecies = () => {
-		const previousId = getStoredNavId("previousSpecies");
+		const previousId = getStoredValue("previousSpecies");
 		if (previousId) {
 			navigate({
 				search: (prev) => ({ q: prev.q, species: previousId }),
@@ -261,7 +275,7 @@ function HomePage() {
 	};
 
 	const backToName = () => {
-		const previousId = getStoredNavId("previousName");
+		const previousId = getStoredValue("previousName");
 		if (previousId) {
 			navigate({
 				search: (prev) => ({ q: prev.q, name: previousId }),
@@ -282,7 +296,7 @@ function HomePage() {
 					name={featuredItem.name}
 					scientificName={featuredItem.scientific_name}
 					onClick={() => openDetail(featuredItem.id)}
-					onShuffle={() => setShuffleKey((k) => k + 1)}
+					onShuffle={shuffle}
 				/>
 			)}
 
@@ -295,7 +309,7 @@ function HomePage() {
 				{!isValidSearch && (
 					<button
 						type="button"
-						onClick={() => setShuffleKey((k) => k + 1)}
+						onClick={shuffle}
 						className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground"
 						title="Shuffle"
 					>
@@ -336,7 +350,7 @@ function HomePage() {
 			<DetailModal
 				open={!!selectedName && !speciesId}
 				onOpenChange={(open) => !open && closeDetail()}
-				onBack={getStoredNavId("previousSpecies") ? backToSpecies : undefined}
+				onBack={getStoredValue("previousSpecies") ? backToSpecies : undefined}
 				title={selectedName?.name || ""}
 				action={selectedName && <CopyLinkButton nameId={selectedName.id} />}
 			>
@@ -355,7 +369,7 @@ function HomePage() {
 			<DetailModal
 				open={!!selectedSpecies}
 				onOpenChange={(open) => !open && closeDetail()}
-				onBack={getStoredNavId("previousName") ? backToName : undefined}
+				onBack={getStoredValue("previousName") ? backToName : undefined}
 				title={
 					<span className="italic">
 						{selectedSpecies?.scientific_name || ""}
