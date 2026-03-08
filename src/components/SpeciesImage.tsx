@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 interface SpeciesImageProps {
 	imageUrl: string | null | undefined;
 	alt: string;
@@ -19,8 +21,10 @@ function setImageWidth(url: string, width: number): string {
 /**
  * Species image with 3 layers:
  * 1. Blur layer - small image, covers entire area, blurred backdrop
- * 2. Small image - contained/clipped, blur shows through edges
+ * 2. Small image - contained, blur shows through edges
  * 3. Large image - same as small, only rendered if large=true
+ *
+ * Images fade in when loaded. Cached images appear instantly.
  */
 export function SpeciesImage({
 	imageUrl,
@@ -28,6 +32,16 @@ export function SpeciesImage({
 	large = false,
 	className = "",
 }: SpeciesImageProps) {
+	const [smallLoaded, setSmallLoaded] = useState(false);
+	const [largeLoaded, setLargeLoaded] = useState(false);
+
+	// Reset loaded states when image URL changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: imageUrl triggers reset intentionally
+	useEffect(() => {
+		setSmallLoaded(false);
+		setLargeLoaded(false);
+	}, [imageUrl]);
+
 	if (!imageUrl) {
 		return (
 			<div
@@ -50,14 +64,15 @@ export function SpeciesImage({
 				src={smallUrl}
 				alt=""
 				aria-hidden="true"
-				className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-xl"
+				onLoad={() => setSmallLoaded(true)}
+				className={`absolute inset-0 h-full w-full scale-125 object-cover blur-lg transition-opacity duration-300 will-change-[opacity] ${smallLoaded ? "opacity-100" : "opacity-0"}`}
 			/>
 
 			{/* Layer 2: Small image */}
 			<img
 				src={smallUrl}
 				alt={alt}
-				className="relative max-h-full max-w-full object-contain"
+				className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 will-change-[opacity] ${smallLoaded ? "opacity-100" : "opacity-0"}`}
 			/>
 
 			{/* Layer 3: Large image (only if large=true) */}
@@ -65,7 +80,8 @@ export function SpeciesImage({
 				<img
 					src={largeUrl}
 					alt={alt}
-					className="absolute inset-0 h-full w-full object-contain"
+					onLoad={() => setLargeLoaded(true)}
+					className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 will-change-[opacity] ${largeLoaded ? "opacity-100" : "opacity-0"}`}
 				/>
 			)}
 		</div>

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CheckIcon, LinkIcon, ShuffleIcon } from "lucide-react";
+import { CheckIcon, LinkIcon, ShuffleIcon, XIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { DetailModal } from "#/components/DetailModal";
 import { ErrorBoundary } from "#/components/ErrorBoundary";
@@ -32,6 +32,7 @@ const STORAGE_KEYS = {
 	previousName: "linkedfin_prev_name",
 	previousSpecies: "linkedfin_prev_species",
 	shuffleKey: "linkedfin_shuffle_key",
+	heroShuffleKey: "linkedfin_hero_shuffle_key",
 } as const;
 
 function getStoredValue(key: keyof typeof STORAGE_KEYS): string | null {
@@ -125,10 +126,17 @@ function WelcomeHero({
 	return (
 		<div className="flex flex-col items-center gap-4 py-6 text-center">
 			{/* Welcome text */}
-			<div className="space-y-0.5">
-				<h2 className="text-lg font-semibold">Welcome to LinkedFin</h2>
+			<div className="space-y-1">
+				<h2 className="text-lg font-semibold">
+					<span className="font-normal text-muted-foreground">Welcome to</span>{" "}
+					<span className="text-foreground">Linked</span>
+					<span className="rounded bg-[#0A66C2] px-1 text-white">Fin</span>
+				</h2>
 				<p className="text-sm text-muted-foreground">
 					Fish name etymology database
+				</p>
+				<p className="text-xs text-muted-foreground/70">
+					It's like LinkedIn but for fish
 				</p>
 			</div>
 
@@ -137,19 +145,33 @@ function WelcomeHero({
 				<button
 					type="button"
 					onClick={onClick}
-					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3 transition hover:bg-muted/50"
+					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3"
 				>
-					<div className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
-						{isLoading ? (
-							<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
-						) : (
-							<SpeciesImage
-								imageUrl={data?.imageUrl}
-								alt={scientificName}
-								large
-								className="h-full w-full"
-							/>
-						)}
+					<div className="relative h-28 w-28">
+						<div className="h-full w-full overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
+							{isLoading ? (
+								<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+							) : (
+								<SpeciesImage
+									imageUrl={data?.imageUrl}
+									alt={scientificName}
+									large
+									className="h-full w-full"
+								/>
+							)}
+						</div>
+						{/* Shuffle button - centered on circumference at ~45° */}
+						<button
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								onShuffle();
+							}}
+							className="absolute top-[15%] right-[15%] translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-muted hover:text-foreground"
+							title="Shuffle"
+						>
+							<ShuffleIcon className="h-3.5 w-3.5" />
+						</button>
 					</div>
 					<div className="text-xs">
 						<span className="font-medium">{name}</span>
@@ -158,16 +180,6 @@ function WelcomeHero({
 							{scientificName}
 						</span>
 					</div>
-				</button>
-
-				{/* Shuffle button */}
-				<button
-					type="button"
-					onClick={onShuffle}
-					className="absolute -right-1 top-2 cursor-pointer rounded-full bg-background p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-muted hover:text-foreground"
-					title="Shuffle"
-				>
-					<ShuffleIcon className="h-3.5 w-3.5" />
 				</button>
 			</div>
 		</div>
@@ -183,10 +195,14 @@ function HomePage() {
 	const deferredQuery = useDeferredValue(q);
 	const searchResults = useSearch(deferredQuery);
 
-	// Shuffle key to force re-randomization (persisted across HMR)
+	// Shuffle keys to force re-randomization (persisted across HMR)
 	const [shuffleKey, setShuffleKey] = useState(getInitialShuffleKey);
+	const [heroShuffleKey, setHeroShuffleKey] = useState(() => {
+		const stored = getStoredValue("heroShuffleKey");
+		return stored ? Number.parseInt(stored, 10) || 0 : 0;
+	});
 
-	const shuffle = () => {
+	const shuffleTable = () => {
 		setShuffleKey((k) => {
 			const next = k + 1;
 			setStoredValue("shuffleKey", String(next));
@@ -194,12 +210,27 @@ function HomePage() {
 		});
 	};
 
-	// Random sample for empty query (stable until shuffle or page refresh)
+	const shuffleHero = () => {
+		setHeroShuffleKey((k) => {
+			const next = k + 1;
+			setStoredValue("heroShuffleKey", String(next));
+			return next;
+		});
+	};
+
+	// Random sample for table (stable until shuffle or page refresh)
 	// biome-ignore lint/correctness/useExhaustiveDependencies: shuffleKey triggers reshuffle intentionally
 	const randomSample = useMemo(
 		() => getRandomSample(names, RANDOM_SAMPLE_SIZE),
 		[names, shuffleKey],
 	);
+
+	// Independent hero item (separate from table)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: heroShuffleKey triggers reshuffle intentionally
+	const heroItem = useMemo(() => {
+		if (names.length === 0) return null;
+		return getItem(names[Math.floor(Math.random() * names.length)]);
+	}, [names, heroShuffleKey]);
 
 	// Use search results if query is 2+ chars, otherwise show random sample
 	const isValidSearch = deferredQuery.trim().length >= 2;
@@ -286,17 +317,16 @@ function HomePage() {
 	};
 
 	const displayResults = results.map(getItem);
-	const featuredItem = displayResults[0];
 
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
 			{/* Welcome hero when in random mode */}
-			{!isValidSearch && featuredItem && (
+			{!isValidSearch && heroItem && (
 				<WelcomeHero
-					name={featuredItem.name}
-					scientificName={featuredItem.scientific_name}
-					onClick={() => openDetail(featuredItem.id)}
-					onShuffle={shuffle}
+					name={heroItem.name}
+					scientificName={heroItem.scientific_name}
+					onClick={() => openDetail(heroItem.id)}
+					onShuffle={shuffleHero}
 				/>
 			)}
 
@@ -306,10 +336,21 @@ function HomePage() {
 						? `${displayResults.length} results`
 						: `${RANDOM_SAMPLE_SIZE} random from ${names.length} names`}
 				</span>
+				{isValidSearch && (
+					<button
+						type="button"
+						onClick={() => navigate({ search: { q: undefined } })}
+						className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground"
+						title="Clear search"
+					>
+						<XIcon className="h-3 w-3" />
+						<span>Clear</span>
+					</button>
+				)}
 				{!isValidSearch && (
 					<button
 						type="button"
-						onClick={shuffle}
+						onClick={shuffleTable}
 						className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground"
 						title="Shuffle"
 					>
