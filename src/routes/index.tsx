@@ -116,41 +116,37 @@ function WelcomeHero({
 
 	return (
 		<div className="flex flex-col items-center gap-4 py-6 text-center">
-			{/* Circular species image */}
-			<button
-				type="button"
-				onClick={onClick}
-				className="group h-32 w-32 cursor-pointer overflow-hidden rounded-full ring-2 ring-border transition hover:ring-primary"
-			>
-				{isLoading ? (
-					<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
-				) : (
-					<SpeciesImage
-						imageUrl={data?.imageUrl}
-						alt={scientificName}
-						large={true}
-						className="h-full w-full"
-					/>
-				)}
-			</button>
-
 			{/* Welcome text */}
-			<div className="space-y-1">
+			<div className="space-y-0.5">
 				<h2 className="text-lg font-semibold">Welcome to LinkedFin</h2>
-				<p className="max-w-sm text-sm text-muted-foreground">
-					Explore the origins and meanings of fish names across languages
+				<p className="text-sm text-muted-foreground">
+					Fish name etymology database
 				</p>
 			</div>
 
-			{/* Featured name */}
+			{/* Image + name/species as a connected unit */}
 			<button
 				type="button"
 				onClick={onClick}
-				className="cursor-pointer rounded-lg px-3 py-1.5 transition hover:bg-muted"
+				className="group flex cursor-pointer flex-col items-center gap-2 rounded-xl p-3 transition hover:bg-muted/50"
 			>
-				<span className="font-medium">{name}</span>
-				<span className="text-muted-foreground"> · </span>
-				<span className="italic text-muted-foreground">{scientificName}</span>
+				<div className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
+					{isLoading ? (
+						<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+					) : (
+						<SpeciesImage
+							imageUrl={data?.imageUrl}
+							alt={scientificName}
+							large={true}
+							className="h-full w-full"
+						/>
+					)}
+				</div>
+				<div>
+					<span className="font-medium">{name}</span>
+					<span className="text-muted-foreground"> · </span>
+					<span className="italic text-muted-foreground">{scientificName}</span>
+				</div>
 			</button>
 		</div>
 	);
