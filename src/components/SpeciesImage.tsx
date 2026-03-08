@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from "react";
 interface SpeciesImageProps {
 	imageUrl: string | null | undefined;
 	alt: string;
-	large?: boolean;
-	circular?: boolean; // Circular with extended blur backdrop
+	large?: boolean; // Load high-res image with loading states
 	className?: string;
 }
 
@@ -62,7 +61,6 @@ export function SpeciesImage({
 	imageUrl,
 	alt,
 	large = false,
-	circular = false,
 	className = "",
 }: SpeciesImageProps) {
 	const smallUrl = setImageWidth(imageUrl, 80);
@@ -101,49 +99,15 @@ export function SpeciesImage({
 		setBlurLoaded(true);
 	};
 
-	// Animation decision (used by large and circular modes)
+	// Animation decision (used by large mode)
 	const shouldAnimate = !wasCachedOnMount.current;
 
 	if (!imageUrl) {
 		return (
 			<div
-				className={`flex items-center justify-center bg-muted ${circular ? "rounded-full text-4xl" : large ? "aspect-[3/2] text-6xl" : "h-full w-full text-lg"} ${className}`}
+				className={`flex items-center justify-center bg-muted ${large ? "aspect-[3/2] text-6xl" : "h-full w-full text-lg"} ${className}`}
 			>
 				🐟
-			</div>
-		);
-	}
-
-	// Circular mode: extended blur backdrop outside the circle
-	if (circular) {
-		return (
-			<div className={`relative ${className}`}>
-				{/* Extended blur backdrop */}
-				{blurUrl && (
-					<img
-						src={blurUrl}
-						alt=""
-						aria-hidden="true"
-						onLoad={handleBlurLoad}
-						className={`absolute -inset-4 h-[calc(100%+2rem)] w-[calc(100%+2rem)] scale-110 rounded-full object-cover blur-2xl ${shouldAnimate ? "transition-opacity duration-200" : ""} ${blurLoaded ? "opacity-50" : "opacity-0"}`}
-					/>
-				)}
-				{/* Circular container */}
-				<div className="relative h-full w-full overflow-hidden rounded-full bg-muted">
-					{/* Skeleton */}
-					{!mainLoaded && (
-						<div className="absolute inset-0 animate-pulse bg-muted-foreground/20" />
-					)}
-					{/* Main image */}
-					{mainUrl && (
-						<img
-							src={mainUrl}
-							alt={alt}
-							onLoad={handleMainLoad}
-							className={`h-full w-full object-cover ${shouldAnimate ? "transition-opacity duration-200" : ""} ${mainLoaded ? "opacity-100" : "opacity-0"}`}
-						/>
-					)}
-				</div>
 			</div>
 		);
 	}

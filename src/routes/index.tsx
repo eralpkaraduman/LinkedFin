@@ -139,14 +139,14 @@ function WelcomeHero({
 					onClick={onClick}
 					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3 transition hover:bg-muted/50"
 				>
-					<div className="h-28 w-28 ring-2 ring-border transition group-hover:ring-primary rounded-full">
+					<div className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
 						{isLoading ? (
-							<div className="h-full w-full animate-pulse rounded-full bg-muted-foreground/20" />
+							<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
 						) : (
 							<SpeciesImage
 								imageUrl={data?.imageUrl}
 								alt={scientificName}
-								circular={true}
+								large
 								className="h-full w-full"
 							/>
 						)}
