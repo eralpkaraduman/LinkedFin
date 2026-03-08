@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CheckIcon, LinkIcon } from "lucide-react";
+import { CheckIcon, LinkIcon, ShuffleIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { DetailModal } from "#/components/DetailModal";
 import { ErrorBoundary } from "#/components/ErrorBoundary";
@@ -110,10 +110,14 @@ function HomePage() {
 	const deferredQuery = useDeferredValue(q);
 	const searchResults = useSearch(deferredQuery);
 
-	// Random sample for empty query (stable until page refresh)
+	// Shuffle key to force re-randomization
+	const [shuffleKey, setShuffleKey] = useState(0);
+
+	// Random sample for empty query (stable until shuffle or page refresh)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: shuffleKey triggers reshuffle intentionally
 	const randomSample = useMemo(
 		() => getRandomSample(names, RANDOM_SAMPLE_SIZE),
-		[names],
+		[names, shuffleKey],
 	);
 
 	// Use search results if query is 2+ chars, otherwise show random sample
@@ -204,11 +208,24 @@ function HomePage() {
 
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
-			<p className="my-3 text-xs text-muted-foreground">
-				{isValidSearch
-					? `${displayResults.length} results`
-					: `${RANDOM_SAMPLE_SIZE} random from ${names.length} names`}
-			</p>
+			<div className="my-3 flex items-center gap-2 text-xs text-muted-foreground">
+				<span>
+					{isValidSearch
+						? `${displayResults.length} results`
+						: `${RANDOM_SAMPLE_SIZE} random from ${names.length} names`}
+				</span>
+				{!isValidSearch && (
+					<button
+						type="button"
+						onClick={() => setShuffleKey((k) => k + 1)}
+						className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground"
+						title="Shuffle"
+					>
+						<ShuffleIcon className="h-3 w-3" />
+						<span>Shuffle</span>
+					</button>
+				)}
+			</div>
 
 			<div className="-mx-4 overflow-x-auto px-4">
 				<Table>
