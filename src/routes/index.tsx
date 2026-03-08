@@ -107,10 +107,12 @@ function WelcomeHero({
 	name,
 	scientificName,
 	onClick,
+	onShuffle,
 }: {
 	name: string;
 	scientificName: string;
 	onClick: () => void;
+	onShuffle: () => void;
 }) {
 	const { data, isLoading } = useWikidataSpecies(scientificName);
 
@@ -125,29 +127,43 @@ function WelcomeHero({
 			</div>
 
 			{/* Image + name/species as a connected unit */}
-			<button
-				type="button"
-				onClick={onClick}
-				className="group flex cursor-pointer flex-col items-center gap-2 rounded-xl p-3 transition hover:bg-muted/50"
-			>
-				<div className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
-					{isLoading ? (
-						<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
-					) : (
-						<SpeciesImage
-							imageUrl={data?.imageUrl}
-							alt={scientificName}
-							large={true}
-							className="h-full w-full"
-						/>
-					)}
-				</div>
-				<div>
-					<span className="font-medium">{name}</span>
-					<span className="text-muted-foreground"> · </span>
-					<span className="italic text-muted-foreground">{scientificName}</span>
-				</div>
-			</button>
+			<div className="relative">
+				<button
+					type="button"
+					onClick={onClick}
+					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3 transition hover:bg-muted/50"
+				>
+					<div className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
+						{isLoading ? (
+							<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+						) : (
+							<SpeciesImage
+								imageUrl={data?.imageUrl}
+								alt={scientificName}
+								large={true}
+								className="h-full w-full"
+							/>
+						)}
+					</div>
+					<div className="text-xs">
+						<span className="font-medium">{name}</span>
+						<span className="text-muted-foreground"> · </span>
+						<span className="italic text-muted-foreground">
+							{scientificName}
+						</span>
+					</div>
+				</button>
+
+				{/* Shuffle button */}
+				<button
+					type="button"
+					onClick={onShuffle}
+					className="absolute -right-1 top-2 cursor-pointer rounded-full bg-background p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-muted hover:text-foreground"
+					title="Shuffle"
+				>
+					<ShuffleIcon className="h-3.5 w-3.5" />
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -266,6 +282,7 @@ function HomePage() {
 					name={featuredItem.name}
 					scientificName={featuredItem.scientific_name}
 					onClick={() => openDetail(featuredItem.id)}
+					onShuffle={() => setShuffleKey((k) => k + 1)}
 				/>
 			)}
 
