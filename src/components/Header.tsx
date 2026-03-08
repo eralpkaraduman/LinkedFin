@@ -4,10 +4,14 @@ import { Input } from "#/components/ui/input";
 import { useDebouncedCallback } from "#/hooks/useDebouncedCallback";
 
 export default function Header() {
-	const search = useSearch({ strict: false }) as { q?: string; id?: string };
+	const search = useSearch({ strict: false }) as {
+		q?: string;
+		name?: string;
+		species?: string;
+	};
 	const navigate = useNavigate();
 	const urlQuery = search.q || "";
-	const hasModal = !!search.id;
+	const hasModal = !!search.name || !!search.species;
 
 	// Local state for immediate input feedback
 	const [localQuery, setLocalQuery] = useState(urlQuery);

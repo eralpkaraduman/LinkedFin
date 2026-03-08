@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 onlyBuiltDependencies:
+  - better-sqlite3
   - esbuild
   - lightningcss
 
@@ -24,6 +25,9 @@ dependencies:
   '@tanstack/react-devtools':
     specifier: latest
     version: 0.9.10(@types/react-dom@19.2.0)(@types/react@19.2.0)(csstype@3.2.3)(react-dom@19.2.0)(react@19.2.0)(solid-js@1.9.11)
+  '@tanstack/react-query':
+    specifier: ^5.90.21
+    version: 5.90.21(react@19.2.0)
   '@tanstack/react-router':
     specifier: latest
     version: 1.166.2(react-dom@19.2.0)(react@19.2.0)
@@ -2850,6 +2854,7 @@ packages:
   /better-sqlite3@12.6.2:
     resolution: {integrity: sha512-8VYKM3MjCa9WcaSAI3hzwhmyHVlH8tiGFwf0RlTsZPWJ1I5MkzjiudCo4KC4DxOaL/53A5B1sI/IbldNFDbsKA==}
     engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x}
+    requiresBuild: true
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3

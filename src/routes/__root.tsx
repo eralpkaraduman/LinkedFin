@@ -1,8 +1,10 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import Header from "../components/Header";
 import { DatabaseProvider } from "../lib/DatabaseContext";
+import { queryClient } from "../lib/queryClient";
 
 import appCss from "../styles.css?url";
 
@@ -146,10 +148,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
-				<DatabaseProvider>
-					<Header />
-					{children}
-				</DatabaseProvider>
+				<QueryClientProvider client={queryClient}>
+					<DatabaseProvider>
+						<Header />
+						{children}
+					</DatabaseProvider>
+				</QueryClientProvider>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

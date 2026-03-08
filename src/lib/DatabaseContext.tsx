@@ -10,6 +10,7 @@ import {
 	getNames,
 	getNamesBySpecies,
 	getRelations,
+	getSpeciesInfo,
 	initDatabase,
 	isInitialized,
 } from "./database";
@@ -18,6 +19,9 @@ import type { DatabaseState, FishName } from "./types";
 interface DatabaseContextValue extends DatabaseState {
 	getNameById: (id: string) => FishName | undefined;
 	getNamesBySpecies: (speciesId: string) => FishName[];
+	getSpeciesInfo: (
+		speciesId: string,
+	) => { scientific_name: string; notes?: string } | undefined;
 }
 
 const DatabaseContext = createContext<DatabaseContextValue | null>(null);
@@ -65,6 +69,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 		...state,
 		getNameById,
 		getNamesBySpecies,
+		getSpeciesInfo,
 	};
 
 	if (state.isLoading) {

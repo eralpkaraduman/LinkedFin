@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckIcon, LinkIcon } from "lucide-react";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { DetailModal } from "#/components/DetailModal";
+import { ErrorBoundary } from "#/components/ErrorBoundary";
 import { NameDetail } from "#/components/NameDetail";
+import { SpeciesCard } from "#/components/SpeciesCard";
+import { SpeciesProfile } from "#/components/SpeciesProfile";
 import { Button } from "#/components/ui/button";
 import {
 	Table,
@@ -18,25 +21,65 @@ import { useDatabase } from "#/lib/DatabaseContext";
 
 interface SearchParams {
 	q?: string;
-	id?: string; // Selected name ID for modal
+	name?: string; // Selected name ID for modal
+	species?: string; // Selected species ID for profile
+}
+
+// Session storage keys for navigation history (persists across deep links/refreshes)
+const NAV_STORAGE_KEYS = {
+	previousName: "linkedfin_prev_name",
+	previousSpecies: "linkedfin_prev_species",
+} as const;
+
+function getStoredNavId(key: keyof typeof NAV_STORAGE_KEYS): string | null {
+	try {
+		return sessionStorage.getItem(NAV_STORAGE_KEYS[key]);
+	} catch {
+		return null;
+	}
+}
+
+function setStoredNavId(key: keyof typeof NAV_STORAGE_KEYS, value: string) {
+	try {
+		sessionStorage.setItem(NAV_STORAGE_KEYS[key], value);
+	} catch {
+		// Ignore storage errors
+	}
+}
+
+const RANDOM_SAMPLE_SIZE = 10;
+
+/**
+ * Fisher-Yates shuffle to get random sample.
+ * Returns a new array with `count` random elements.
+ */
+function getRandomSample<T>(array: T[], count: number): T[] {
+	if (array.length <= count) return array;
+	const shuffled = [...array];
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+	}
+	return shuffled.slice(0, count);
 }
 
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>): SearchParams => ({
 		q: typeof search.q === "string" ? search.q : undefined,
-		id: typeof search.id === "string" ? search.id : undefined,
+		name: typeof search.name === "string" ? search.name : undefined,
+		species: typeof search.species === "string" ? search.species : undefined,
 	}),
 	component: HomePage,
 });
 
-function CopyLinkButton({ id }: { id: string }) {
+function CopyLinkButton({ nameId }: { nameId: string }) {
 	const [copied, setCopied] = useState(false);
 
 	const copyLink = async () => {
 		const url = new URL(window.location.origin + window.location.pathname);
-		url.searchParams.set("id", id);
+		url.searchParams.set("name", nameId);
 		await navigator.clipboard.writeText(url.toString());
-		trackCopyLink(id);
+		trackCopyLink(nameId);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -59,13 +102,22 @@ function CopyLinkButton({ id }: { id: string }) {
 }
 
 function HomePage() {
-	const { q = "", id } = Route.useSearch();
+	const { q = "", name: nameId, species: speciesId } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
-	const { names, getNameById } = useDatabase();
+	const { names, getNameById, getSpeciesInfo } = useDatabase();
 
 	// Defer the search query so expensive Fuse.js search doesn't block UI
 	const deferredQuery = useDeferredValue(q);
-	const results = useSearch(deferredQuery);
+	const searchResults = useSearch(deferredQuery);
+
+	// Random sample for empty query (stable until page refresh)
+	const randomSample = useMemo(
+		() => getRandomSample(names, RANDOM_SAMPLE_SIZE),
+		[names],
+	);
+
+	// Use search results if query exists, otherwise show random sample
+	const results = deferredQuery ? searchResults : randomSample;
 
 	// Track searches (debounced 1s to avoid spam)
 	const searchTrackingTimeout = useRef<ReturnType<typeof setTimeout> | null>(
@@ -77,7 +129,7 @@ function HomePage() {
 		}
 		if (deferredQuery.trim().length >= 2) {
 			searchTrackingTimeout.current = setTimeout(() => {
-				trackSearch(deferredQuery, results.length);
+				trackSearch(deferredQuery, searchResults.length);
 			}, 1000);
 		}
 		return () => {
@@ -85,24 +137,76 @@ function HomePage() {
 				clearTimeout(searchTrackingTimeout.current);
 			}
 		};
-	}, [deferredQuery, results.length]);
+	}, [deferredQuery, searchResults.length]);
 
-	const selectedName = id ? getNameById(id) : null;
+	const selectedName = nameId ? getNameById(nameId) : null;
+	const selectedSpecies = speciesId ? getSpeciesInfo(speciesId) : null;
 
-	const openDetail = (nameId: string) => {
-		const name = getNameById(nameId);
+	// Track navigation history for back buttons (persisted in sessionStorage)
+	// Memoize to avoid sessionStorage reads on every render
+	const hasPreviousSpecies = useMemo(
+		() => !!getStoredNavId("previousSpecies"),
+		[nameId], // Re-check when viewing a name (came from species)
+	);
+	const hasPreviousName = useMemo(
+		() => !!getStoredNavId("previousName"),
+		[speciesId], // Re-check when viewing a species (came from name)
+	);
+
+	useEffect(() => {
+		if (nameId) {
+			setStoredNavId("previousName", nameId);
+		}
+	}, [nameId]);
+
+	useEffect(() => {
+		if (speciesId) {
+			setStoredNavId("previousSpecies", speciesId);
+		}
+	}, [speciesId]);
+
+	const openDetail = (id: string) => {
+		const name = getNameById(id);
 		if (name) {
-			trackDetailView(nameId, name.name);
+			trackDetailView(id, name.name);
 		}
 		navigate({
-			search: (prev) => ({ ...prev, id: nameId }),
+			search: (prev) => ({ q: prev.q, name: id }),
+		});
+	};
+
+	const openSpecies = (id: string) => {
+		navigate({
+			search: (prev) => ({ q: prev.q, species: id }),
 		});
 	};
 
 	const closeDetail = () => {
 		navigate({
-			search: (prev) => ({ q: prev.q }), // Remove id, keep q
+			search: (prev) => ({ q: prev.q }), // Remove name/species, keep q
 		});
+	};
+
+	const backToSpecies = () => {
+		const previousId = getStoredNavId("previousSpecies");
+		if (previousId) {
+			navigate({
+				search: (prev) => ({ q: prev.q, species: previousId }),
+			});
+		} else {
+			closeDetail();
+		}
+	};
+
+	const backToName = () => {
+		const previousId = getStoredNavId("previousName");
+		if (previousId) {
+			navigate({
+				search: (prev) => ({ q: prev.q, name: previousId }),
+			});
+		} else {
+			closeDetail();
+		}
 	};
 
 	const displayResults = results.map(getItem);
@@ -110,7 +214,9 @@ function HomePage() {
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
 			<p className="my-3 text-xs text-muted-foreground">
-				{q ? `${displayResults.length} results` : `${names.length} names`}
+				{q
+					? `${displayResults.length} results`
+					: `${RANDOM_SAMPLE_SIZE} random from ${names.length} names`}
 			</p>
 
 			<div className="-mx-4 overflow-x-auto px-4">
@@ -140,26 +246,53 @@ function HomePage() {
 				</Table>
 			</div>
 
+			{/* Name Detail Modal */}
 			<DetailModal
-				open={!!selectedName}
+				open={!!selectedName && !speciesId}
 				onOpenChange={(open) => !open && closeDetail()}
+				onBack={hasPreviousSpecies ? backToSpecies : undefined}
 				title={selectedName?.name || ""}
-				description={
-					selectedName?.scientific_name && (
-						<a
-							href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(selectedName.scientific_name)}`}
-							target="_blank"
-							rel="noreferrer"
-							className="underline underline-offset-2"
-						>
-							{selectedName.scientific_name}
-						</a>
-					)
-				}
-				action={selectedName && <CopyLinkButton id={selectedName.id} />}
+				action={selectedName && <CopyLinkButton nameId={selectedName.id} />}
 			>
 				{selectedName && (
-					<NameDetail name={selectedName} onNavigate={openDetail} />
+					<div className="space-y-4">
+						<SpeciesCard
+							scientificName={selectedName.scientific_name}
+							onClick={() => openSpecies(selectedName.species_id)}
+						/>
+						<NameDetail name={selectedName} onNavigate={openDetail} />
+					</div>
+				)}
+			</DetailModal>
+
+			{/* Species Profile Modal */}
+			<DetailModal
+				open={!!selectedSpecies}
+				onOpenChange={(open) => !open && closeDetail()}
+				onBack={hasPreviousName ? backToName : undefined}
+				title={
+					<span className="italic">
+						{selectedSpecies?.scientific_name || ""}
+					</span>
+				}
+			>
+				{selectedSpecies && speciesId && (
+					<ErrorBoundary
+						fallback={
+							<div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
+								<p className="text-sm text-muted-foreground">
+									Failed to load species profile.
+								</p>
+							</div>
+						}
+					>
+						<SpeciesProfile
+							speciesId={speciesId}
+							scientificName={selectedSpecies.scientific_name}
+							speciesNotes={selectedSpecies.notes}
+							onNameClick={openDetail}
+						/>
+					</ErrorBoundary>
 				)}
 			</DetailModal>
 		</main>
