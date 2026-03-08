@@ -5,6 +5,7 @@ import { DetailModal } from "#/components/DetailModal";
 import { ErrorBoundary } from "#/components/ErrorBoundary";
 import { NameDetail } from "#/components/NameDetail";
 import { SpeciesCard } from "#/components/SpeciesCard";
+import { SpeciesImage } from "#/components/SpeciesImage";
 import { SpeciesProfile } from "#/components/SpeciesProfile";
 import { Button } from "#/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { getItem, useSearch } from "#/hooks/useSearch";
+import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { trackCopyLink, trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
 
@@ -98,6 +100,59 @@ function CopyLinkButton({ nameId }: { nameId: string }) {
 				<LinkIcon className="h-4 w-4" />
 			)}
 		</Button>
+	);
+}
+
+function WelcomeHero({
+	name,
+	scientificName,
+	onClick,
+}: {
+	name: string;
+	scientificName: string;
+	onClick: () => void;
+}) {
+	const { data, isLoading } = useWikidataSpecies(scientificName);
+
+	return (
+		<div className="flex flex-col items-center gap-4 py-6 text-center">
+			{/* Circular species image */}
+			<button
+				type="button"
+				onClick={onClick}
+				className="group h-32 w-32 cursor-pointer overflow-hidden rounded-full ring-2 ring-border transition hover:ring-primary"
+			>
+				{isLoading ? (
+					<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+				) : (
+					<SpeciesImage
+						imageUrl={data?.imageUrl}
+						alt={scientificName}
+						large={true}
+						className="h-full w-full"
+					/>
+				)}
+			</button>
+
+			{/* Welcome text */}
+			<div className="space-y-1">
+				<h2 className="text-lg font-semibold">Welcome to LinkedFin</h2>
+				<p className="max-w-sm text-sm text-muted-foreground">
+					Explore the origins and meanings of fish names across languages
+				</p>
+			</div>
+
+			{/* Featured name */}
+			<button
+				type="button"
+				onClick={onClick}
+				className="cursor-pointer rounded-lg px-3 py-1.5 transition hover:bg-muted"
+			>
+				<span className="font-medium">{name}</span>
+				<span className="text-muted-foreground"> · </span>
+				<span className="italic text-muted-foreground">{scientificName}</span>
+			</button>
+		</div>
 	);
 }
 
@@ -205,9 +260,19 @@ function HomePage() {
 	};
 
 	const displayResults = results.map(getItem);
+	const featuredItem = displayResults[0];
 
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
+			{/* Welcome hero when in random mode */}
+			{!isValidSearch && featuredItem && (
+				<WelcomeHero
+					name={featuredItem.name}
+					scientificName={featuredItem.scientific_name}
+					onClick={() => openDetail(featuredItem.id)}
+				/>
+			)}
+
 			<div className="my-3 flex items-center gap-2 text-xs text-muted-foreground">
 				<span>
 					{isValidSearch
