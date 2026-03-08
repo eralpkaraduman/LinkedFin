@@ -57,7 +57,7 @@ export function SpeciesImage({
 
 	return (
 		<div
-			className={`relative flex items-center justify-center overflow-hidden bg-muted ${className}`}
+			className={`pointer-events-none relative flex items-center justify-center overflow-hidden bg-muted ${className}`}
 		>
 			{/* Layer 1: Blur backdrop */}
 			<img

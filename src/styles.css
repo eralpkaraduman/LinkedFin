@@ -84,6 +84,7 @@ html,
 body,
 #app {
   min-height: 100%;
+  min-height: 100dvh; /* Ensure full height including safe areas on iOS */
 }
 
 /* Safe area support for iOS notch/home indicator */
