@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface SpeciesImageProps {
 	imageUrl: string | null | undefined;
@@ -68,21 +68,13 @@ export function SpeciesImage({
 	const blurUrl = setImageWidth(imageUrl, 100);
 	const mainUrl = large ? largeUrl : smallUrl;
 
-	// Check if this URL was loaded before (persists across remounts)
+	// Track if main image is loaded (for skeleton display)
 	const wasLoadedBefore = mainUrl ? isUrlLoaded(mainUrl) : false;
-
 	const [mainLoaded, setMainLoaded] = useState(wasLoadedBefore);
-	const [blurLoaded, setBlurLoaded] = useState(false);
-
-	// Track if it was loaded on mount (for animation decision)
-	const wasCachedOnMount = useRef(wasLoadedBefore);
 
 	// Reset state when URL changes
 	useEffect(() => {
-		const cached = mainUrl ? isUrlLoaded(mainUrl) : false;
-		wasCachedOnMount.current = cached;
-		setMainLoaded(cached);
-		setBlurLoaded(false);
+		setMainLoaded(mainUrl ? isUrlLoaded(mainUrl) : false);
 	}, [mainUrl]);
 
 	const handleMainLoad = () => {
@@ -92,82 +84,42 @@ export function SpeciesImage({
 		setMainLoaded(true);
 	};
 
-	const handleBlurLoad = () => {
-		if (blurUrl) {
-			markUrlLoaded(blurUrl);
-		}
-		setBlurLoaded(true);
-	};
-
-	// Animation decision (used by large mode)
-	const shouldAnimate = !wasCachedOnMount.current;
-
 	if (!imageUrl) {
 		return (
 			<div
-				className={`flex items-center justify-center bg-muted ${large ? "aspect-[3/2] text-6xl" : "h-full w-full text-lg"} ${className}`}
+				className={`flex items-center justify-center bg-muted text-4xl ${className}`}
 			>
 				🐟
 			</div>
 		);
 	}
 
-	// Small images: no loading states, no animations - just show directly
-	if (!large) {
-		return (
-			<div
-				className={`relative flex items-center justify-center overflow-hidden bg-muted ${className}`}
-			>
-				{/* Blurred background */}
-				{blurUrl && (
-					<img
-						src={blurUrl}
-						alt=""
-						aria-hidden="true"
-						className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-2xl"
-					/>
-				)}
-				{/* Main image */}
-				{mainUrl && (
-					<img
-						src={mainUrl}
-						alt={alt}
-						onLoad={handleMainLoad}
-						className="relative max-h-full max-w-full object-contain"
-					/>
-				)}
-			</div>
-		);
-	}
-
-	// Large images: skeleton while loading, animations (unless was cached on mount)
 	return (
 		<div
 			className={`relative flex items-center justify-center overflow-hidden bg-muted ${className}`}
 		>
-			{/* Skeleton */}
-			{!mainLoaded && (
-				<div className="absolute inset-0 animate-pulse bg-muted-foreground/20" />
+			{/* Skeleton overlay - only for large images while loading */}
+			{large && !mainLoaded && (
+				<div className="absolute inset-0 z-10 animate-pulse bg-muted-foreground/20" />
 			)}
 
-			{/* Blurred background for letterbox effect */}
+			{/* Blurred background */}
 			{blurUrl && (
 				<img
 					src={blurUrl}
 					alt=""
 					aria-hidden="true"
-					onLoad={handleBlurLoad}
-					className={`absolute inset-0 h-full w-full scale-125 object-cover blur-2xl ${shouldAnimate ? "transition-opacity duration-200" : ""} ${blurLoaded ? "opacity-60" : "opacity-0"}`}
+					className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-2xl"
 				/>
 			)}
 
-			{/* Main image - contained and centered */}
+			{/* Main image */}
 			{mainUrl && (
 				<img
 					src={mainUrl}
 					alt={alt}
 					onLoad={handleMainLoad}
-					className={`relative max-h-full max-w-full object-contain ${shouldAnimate ? "transition-opacity duration-200" : ""} ${mainLoaded ? "opacity-100" : "opacity-0"}`}
+					className="relative max-h-full max-w-full object-contain"
 				/>
 			)}
 		</div>
