@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckIcon, LinkIcon } from "lucide-react";
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { DetailModal } from "#/components/DetailModal";
 import { NameDetail } from "#/components/NameDetail";
 import { Button } from "#/components/ui/button";
@@ -13,6 +13,7 @@ import {
 	TableRow,
 } from "#/components/ui/table";
 import { getItem, useSearch } from "#/hooks/useSearch";
+import { trackCopyLink, trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
 
 interface SearchParams {
@@ -35,6 +36,7 @@ function CopyLinkButton({ id }: { id: string }) {
 		const url = new URL(window.location.origin + window.location.pathname);
 		url.searchParams.set("id", id);
 		await navigator.clipboard.writeText(url.toString());
+		trackCopyLink(id);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -65,9 +67,33 @@ function HomePage() {
 	const deferredQuery = useDeferredValue(q);
 	const results = useSearch(deferredQuery);
 
+	// Track searches (debounced 1s to avoid spam)
+	const searchTrackingTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
+	useEffect(() => {
+		if (searchTrackingTimeout.current) {
+			clearTimeout(searchTrackingTimeout.current);
+		}
+		if (deferredQuery.trim().length >= 2) {
+			searchTrackingTimeout.current = setTimeout(() => {
+				trackSearch(deferredQuery, results.length);
+			}, 1000);
+		}
+		return () => {
+			if (searchTrackingTimeout.current) {
+				clearTimeout(searchTrackingTimeout.current);
+			}
+		};
+	}, [deferredQuery, results.length]);
+
 	const selectedName = id ? getNameById(id) : null;
 
 	const openDetail = (nameId: string) => {
+		const name = getNameById(nameId);
+		if (name) {
+			trackDetailView(nameId, name.name);
+		}
 		navigate({
 			search: (prev) => ({ ...prev, id: nameId }),
 		});

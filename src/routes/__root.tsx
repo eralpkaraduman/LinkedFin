@@ -106,6 +106,13 @@ export const Route = createRootRoute({
 				media: "(prefers-color-scheme: dark)",
 			},
 		],
+		scripts: [
+			{
+				src: "https://umami.cicex.cloud/script.js",
+				defer: true,
+				"data-website-id": "4d1a7783-1d30-4f9d-a057-aec92bade968",
+			},
+		],
 		links: [
 			{
 				rel: "stylesheet",
