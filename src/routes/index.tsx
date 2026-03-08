@@ -116,8 +116,9 @@ function HomePage() {
 		[names],
 	);
 
-	// Use search results if query exists, otherwise show random sample
-	const results = deferredQuery ? searchResults : randomSample;
+	// Use search results if query is 2+ chars, otherwise show random sample
+	const isValidSearch = deferredQuery.trim().length >= 2;
+	const results = isValidSearch ? searchResults : randomSample;
 
 	// Track searches (debounced 1s to avoid spam)
 	const searchTrackingTimeout = useRef<ReturnType<typeof setTimeout> | null>(
@@ -204,7 +205,7 @@ function HomePage() {
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
 			<p className="my-3 text-xs text-muted-foreground">
-				{q
+				{isValidSearch
 					? `${displayResults.length} results`
 					: `${RANDOM_SAMPLE_SIZE} random from ${names.length} names`}
 			</p>
