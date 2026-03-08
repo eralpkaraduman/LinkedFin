@@ -11,7 +11,10 @@ interface SpeciesProfileProps {
 	onNameClick: (nameId: string) => void;
 }
 
-function buildGitHubIssueUrl(speciesId: string, scientificName: string): string {
+function buildGitHubIssueUrl(
+	speciesId: string,
+	scientificName: string,
+): string {
 	const title = encodeURIComponent(`[${speciesId}] ${scientificName}: `);
 	const body = encodeURIComponent(
 		`**Species ID:** ${speciesId}\n**Scientific name:** ${scientificName}\n\n**Request:**\n`,

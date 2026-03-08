@@ -30,7 +30,9 @@ export class ErrorBoundary extends Component<Props, State> {
 						</p>
 						<button
 							type="button"
-							onClick={() => this.setState({ hasError: false, error: undefined })}
+							onClick={() =>
+								this.setState({ hasError: false, error: undefined })
+							}
 							className="text-sm text-primary hover:underline"
 						>
 							Try again

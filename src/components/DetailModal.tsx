@@ -94,9 +94,7 @@ export function DetailModal({
 								{action}
 							</div>
 						</div>
-						<DrawerClose
-							className="cursor-pointer rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-						>
+						<DrawerClose className="cursor-pointer rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
 							<XIcon className="h-5 w-5" />
 							<span className="sr-only">Close</span>
 						</DrawerClose>
