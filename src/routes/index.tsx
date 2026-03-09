@@ -223,10 +223,15 @@ function HomePage() {
 	);
 
 	// Independent hero item (separate from table)
+	// Use state + effect to avoid SSR hydration mismatch from Math.random()
+	const [heroItem, setHeroItem] = useState<ReturnType<typeof getItem> | null>(
+		null,
+	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: heroShuffleKey triggers reshuffle intentionally
-	const heroItem = useMemo(() => {
-		if (names.length === 0) return null;
-		return getItem(names[Math.floor(Math.random() * names.length)]);
+	useEffect(() => {
+		if (names.length > 0) {
+			setHeroItem(getItem(names[Math.floor(Math.random() * names.length)]));
+		}
 	}, [names, heroShuffleKey]);
 
 	// Use search results if query is 2+ chars, otherwise show random sample
@@ -364,7 +369,7 @@ function HomePage() {
 							<TableHead>Name</TableHead>
 							<TableHead>Transliteration</TableHead>
 							<TableHead>Region</TableHead>
-							<TableHead>Species</TableHead>
+							<TableHead className="text-right">Species</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -377,7 +382,7 @@ function HomePage() {
 								<TableCell className="font-medium">{item.name}</TableCell>
 								<TableCell>{item.transliteration || ""}</TableCell>
 								<TableCell>{item.region}</TableCell>
-								<TableCell className="italic">{item.scientific_name}</TableCell>
+								<TableCell className="text-right italic">{item.scientific_name}</TableCell>
 							</TableRow>
 						))}
 					</TableBody>

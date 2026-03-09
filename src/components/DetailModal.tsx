@@ -40,6 +40,7 @@ export function DetailModal({
 				<DialogContent
 					className="flex max-h-[85vh] flex-col gap-0 overflow-hidden sm:max-w-lg"
 					showCloseButton={false}
+					aria-describedby={undefined}
 				>
 					<DialogHeader className="mb-4 shrink-0">
 						<div className="flex items-center justify-between gap-2">
