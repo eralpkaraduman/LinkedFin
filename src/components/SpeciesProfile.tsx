@@ -1,4 +1,13 @@
 import { ExternalLinkIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	CarouselNext,
+	CarouselPrevious,
+	type CarouselApi,
+} from "#/components/ui/carousel";
 import { SpeciesImage } from "#/components/SpeciesImage";
 import { SpeciesProfileSkeleton } from "#/components/SpeciesProfileSkeleton";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
@@ -32,22 +41,80 @@ export function SpeciesProfile({
 	const { getNamesBySpecies } = useDatabase();
 	const names = getNamesBySpecies(speciesId);
 
+	// Carousel state for image counter (must be before early return)
+	const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+	const [currentSlide, setCurrentSlide] = useState(0);
+
+	useEffect(() => {
+		if (!carouselApi) return;
+		setCurrentSlide(carouselApi.selectedScrollSnap());
+		carouselApi.on("select", () => {
+			setCurrentSlide(carouselApi.selectedScrollSnap());
+		});
+	}, [carouselApi]);
+
 	// Show full skeleton while loading Wikidata
 	if (isLoading) {
 		return <SpeciesProfileSkeleton />;
 	}
 
+	const imageUrls = data?.imageUrls ?? [];
+	const hasMultipleImages = imageUrls.length > 1;
+
 	return (
 		<div className="space-y-4">
-			{/* Image with letterbox effect */}
-			<div className="overflow-hidden rounded-lg">
-				<SpeciesImage
-					imageUrl={data?.imageUrl}
-					alt={scientificName}
-					large={true}
-					className="aspect-[3/2] w-full"
-				/>
-			</div>
+			{/* Image gallery */}
+			{hasMultipleImages ? (
+				<div className="space-y-2">
+					<Carousel
+						className="mx-auto w-full"
+						opts={{ loop: true }}
+						setApi={setCarouselApi}
+					>
+						<CarouselContent>
+							{imageUrls.map((url, index) => (
+								<CarouselItem key={url}>
+									<div className="overflow-hidden rounded-lg">
+										<SpeciesImage
+											imageUrl={url}
+											alt={`${scientificName} - Image ${index + 1}`}
+											large={true}
+											className="aspect-[3/2] w-full"
+										/>
+									</div>
+								</CarouselItem>
+							))}
+						</CarouselContent>
+						<CarouselPrevious className="left-2 bg-background/80 backdrop-blur-sm" />
+						<CarouselNext className="right-2 bg-background/80 backdrop-blur-sm" />
+					</Carousel>
+					{/* Image counter dots */}
+					<div className="flex justify-center gap-1.5">
+						{imageUrls.map((url, index) => (
+							<button
+								key={url}
+								type="button"
+								onClick={() => carouselApi?.scrollTo(index)}
+								className={`h-1.5 rounded-full transition-all ${
+									index === currentSlide
+										? "w-4 bg-primary"
+										: "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+								}`}
+								aria-label={`Go to image ${index + 1}`}
+							/>
+						))}
+					</div>
+				</div>
+			) : (
+				<div className="overflow-hidden rounded-lg">
+					<SpeciesImage
+						imageUrl={data?.imageUrl}
+						alt={scientificName}
+						large={true}
+						className="aspect-[3/2] w-full"
+					/>
+				</div>
+			)}
 
 			{/* Wikipedia link */}
 			{data?.wikipediaUrl && (

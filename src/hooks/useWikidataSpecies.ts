@@ -5,6 +5,7 @@ export interface WikidataSpecies {
 	description: string;
 	descriptionLang: string;
 	imageUrl?: string;
+	imageUrls: string[];
 	wikipediaUrl?: string;
 }
 
@@ -113,12 +114,16 @@ async function fetchWikidataSpecies(
 		}
 	}
 
-	// Extract image from P18 (image property)
-	let imageUrl: string | undefined;
-	const imageFilename = entity.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
-	if (imageFilename) {
-		imageUrl = getCommonsImageUrl(imageFilename);
+	// Extract all images from P18 (image property)
+	const imageUrls: string[] = [];
+	const p18Claims = entity.claims?.P18 ?? [];
+	for (const claim of p18Claims) {
+		const filename = claim.mainsnak?.datavalue?.value;
+		if (filename) {
+			imageUrls.push(getCommonsImageUrl(filename));
+		}
 	}
+	const imageUrl = imageUrls[0];
 
 	// Get Wikipedia URL (prefer English, fall back to Turkish)
 	let wikipediaUrl: string | undefined;
@@ -137,6 +142,7 @@ async function fetchWikidataSpecies(
 		description,
 		descriptionLang,
 		imageUrl,
+		imageUrls,
 		wikipediaUrl,
 	};
 }

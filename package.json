@@ -31,6 +31,7 @@
     "@tanstack/router-plugin": "^1.132.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
     "fuse.js": "^7.1.0",
     "kysely": "^0.28.11",
     "kysely-generic-sqlite": "^1.2.1",

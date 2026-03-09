@@ -157,18 +157,6 @@ function WelcomeHero({
 								/>
 							)}
 						</div>
-						{/* Shuffle button - inside top right */}
-						<button
-							type="button"
-							onClick={(e) => {
-								e.stopPropagation();
-								onShuffle();
-							}}
-							className="absolute bottom-1.5 right-1.5 z-10 cursor-pointer rounded-full bg-background/80 p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-background hover:text-foreground"
-							title="Shuffle"
-						>
-							<ShuffleIcon className="h-3.5 w-3.5" />
-						</button>
 					</div>
 					<div className="text-xs">
 						<span className="font-medium">{name}</span>
@@ -177,6 +165,17 @@ function WelcomeHero({
 							{scientificName}
 						</span>
 					</div>
+				</button>
+				{/* Shuffle button - positioned over image bottom-right
+				     Bottom offset: text line (~20px) + parent padding (12px) + image inset (6px) = 38px
+				     Right offset: parent padding (12px) + image inset (6px) = 18px */}
+				<button
+					type="button"
+					onClick={onShuffle}
+					className="absolute bottom-[38px] right-[18px] z-10 cursor-pointer rounded-full bg-background/80 p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-background hover:text-foreground"
+					title="Shuffle"
+				>
+					<ShuffleIcon className="h-3.5 w-3.5" />
 				</button>
 			</div>
 		</div>
