@@ -381,7 +381,9 @@ function HomePage() {
 								<TableCell className="font-medium">{item.name}</TableCell>
 								<TableCell>{item.transliteration || ""}</TableCell>
 								<TableCell>{item.region}</TableCell>
-								<TableCell className="text-right italic">{item.scientific_name}</TableCell>
+								<TableCell className="text-right italic">
+									{item.scientific_name}
+								</TableCell>
 							</TableRow>
 						))}
 					</TableBody>

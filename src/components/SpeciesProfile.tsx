@@ -1,15 +1,15 @@
 import { ExternalLinkIcon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { SpeciesImage } from "#/components/SpeciesImage";
+import { SpeciesProfileSkeleton } from "#/components/SpeciesProfileSkeleton";
 import {
 	Carousel,
+	type CarouselApi,
 	CarouselContent,
 	CarouselItem,
 	CarouselNext,
 	CarouselPrevious,
-	type CarouselApi,
 } from "#/components/ui/carousel";
-import { SpeciesImage } from "#/components/SpeciesImage";
-import { SpeciesProfileSkeleton } from "#/components/SpeciesProfileSkeleton";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { useDatabase } from "#/lib/DatabaseContext";
 
