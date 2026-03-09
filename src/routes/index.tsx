@@ -144,7 +144,7 @@ function WelcomeHero({
 					onClick={onClick}
 					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3"
 				>
-					<div className="relative h-28 w-28">
+					<div className="relative w-36 aspect-[4/3]">
 						<div className="h-full w-full overflow-hidden rounded-xl ring-2 ring-border transition group-hover:ring-primary">
 							{isLoading ? (
 								<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
