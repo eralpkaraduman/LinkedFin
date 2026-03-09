@@ -1,0 +1,7 @@
+pre-commit:
+  parallel: false
+  commands:
+    lint:
+      run: pnpm lint
+    db-integrity:
+      run: pnpm db:validate
