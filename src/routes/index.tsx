@@ -145,7 +145,7 @@ function WelcomeHero({
 					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3"
 				>
 					<div className="relative h-28 w-28">
-						<div className="h-full w-full overflow-hidden rounded-full ring-2 ring-border transition group-hover:ring-primary">
+						<div className="h-full w-full overflow-hidden rounded-xl ring-2 ring-border transition group-hover:ring-primary">
 							{isLoading ? (
 								<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
 							) : (
@@ -157,14 +157,14 @@ function WelcomeHero({
 								/>
 							)}
 						</div>
-						{/* Shuffle button - centered on circumference at ~45° */}
+						{/* Shuffle button - inside top right */}
 						<button
 							type="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								onShuffle();
 							}}
-							className="absolute top-[15%] right-[15%] translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-muted hover:text-foreground"
+							className="absolute bottom-1.5 right-1.5 z-10 cursor-pointer rounded-full bg-background/80 p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-background hover:text-foreground"
 							title="Shuffle"
 						>
 							<ShuffleIcon className="h-3.5 w-3.5" />
