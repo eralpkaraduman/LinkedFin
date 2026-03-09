@@ -46,15 +46,10 @@ export default function Header() {
 					<Link
 						to="/"
 						search={{}}
-						className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1 text-sm text-foreground no-underline transition hover:bg-muted sm:gap-2 sm:px-3 sm:py-1.5"
+						className="inline-flex items-center gap-0.5 rounded-full bg-card px-2 py-1 text-sm text-foreground no-underline transition sm:px-3 sm:py-1.5"
 					>
-						<span
-							className="translate-y-px text-base sm:text-lg"
-							aria-hidden="true"
-						>
-							🐟
-						</span>
-						LinkedFin
+						<span className="text-foreground">Linked</span>
+						<span className="rounded bg-[#0A66C2] px-1 text-white">Fin</span>
 					</Link>
 				</h1>
 

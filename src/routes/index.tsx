@@ -135,9 +135,6 @@ function WelcomeHero({
 				<p className="text-sm text-muted-foreground">
 					Fish name etymology database
 				</p>
-				<p className="text-xs text-muted-foreground/70">
-					It's like LinkedIn but for fish
-				</p>
 			</div>
 
 			{/* Image + name/species as a connected unit */}
