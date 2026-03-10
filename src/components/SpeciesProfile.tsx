@@ -61,6 +61,23 @@ export function SpeciesProfile({
 	const imageUrls = data?.imageUrls ?? [];
 	const hasMultipleImages = imageUrls.length > 1;
 
+	// Detect vague Wikidata descriptions that should be replaced by local notes
+	const vagueDescriptionPatterns = [
+		/^species of (fish|animal|ray-finned fish|organism)$/i,
+		/^taxon$/i,
+	];
+	const isVagueDescription =
+		data?.description &&
+		vagueDescriptionPatterns.some((pattern) =>
+			pattern.test(data.description.trim()),
+		);
+
+	// Use species notes as primary description if Wikidata description is vague
+	const primaryDescription =
+		isVagueDescription && speciesNotes ? speciesNotes : data?.description;
+	const showSpeciesNotesSecondary =
+		speciesNotes && !isVagueDescription && data?.description;
+
 	return (
 		<div className="space-y-4">
 			{/* Image gallery */}
@@ -135,16 +152,18 @@ export function SpeciesProfile({
 					<p className="text-sm text-muted-foreground">
 						Could not load information from Wikipedia.
 					</p>
-				) : data?.description ? (
-					<p className="text-sm leading-relaxed">{data.description}</p>
+				) : primaryDescription ? (
+					<p className="text-sm leading-relaxed">{primaryDescription}</p>
+				) : speciesNotes ? (
+					<p className="text-sm leading-relaxed">{speciesNotes}</p>
 				) : (
 					<p className="text-sm text-muted-foreground">
 						No Wikipedia article found for this species.
 					</p>
 				)}
 
-				{/* Local species notes as fallback */}
-				{speciesNotes && (
+				{/* Local species notes as secondary info when Wikidata description is good */}
+				{showSpeciesNotesSecondary && (
 					<p className="border-l-2 border-muted-foreground/30 pl-3 text-sm text-muted-foreground">
 						{speciesNotes}
 					</p>
