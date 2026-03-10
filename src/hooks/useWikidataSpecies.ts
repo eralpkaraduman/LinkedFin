@@ -95,6 +95,60 @@ function getCommonsImageUrl(filename: string, width = 300): string {
 	return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=${width}`;
 }
 
+interface CommonsSearchResult {
+	query?: {
+		search?: Array<{
+			title: string;
+		}>;
+	};
+}
+
+/**
+ * Search Wikimedia Commons for images of a species when Wikidata has no P18.
+ * This is a fallback for species whose Wikidata entries lack image claims
+ * but have images uploaded to Commons (e.g., Penaeus kerathurus).
+ */
+async function searchCommonsImages(
+	scientificName: string,
+	limit = 5,
+): Promise<string[]> {
+	const url = new URL("https://commons.wikimedia.org/w/api.php");
+	url.searchParams.set("action", "query");
+	url.searchParams.set("list", "search");
+	url.searchParams.set("srsearch", scientificName);
+	url.searchParams.set("srnamespace", "6"); // File namespace
+	url.searchParams.set("srlimit", String(limit));
+	url.searchParams.set("format", "json");
+	url.searchParams.set("origin", "*");
+
+	try {
+		const response = await fetch(url.toString());
+		if (!response.ok) return [];
+
+		const data: CommonsSearchResult = await response.json();
+		const results = data.query?.search ?? [];
+
+		// Extract filenames from "File:..." titles, filter to image extensions
+		return results
+			.map((r) => r.title.replace(/^File:/, ""))
+			.filter((name) => /\.(jpg|jpeg|png|gif|webp)$/i.test(name));
+	} catch {
+		return [];
+	}
+}
+
+function extractImageUrls(entity: WikidataEntity): string[] {
+	const imageUrls: string[] = [];
+	const p18Claims = entity.claims?.P18 ?? [];
+	for (const claim of p18Claims) {
+		const filename = claim.mainsnak?.datavalue?.value;
+		if (filename) {
+			imageUrls.push(getCommonsImageUrl(filename));
+		}
+	}
+	return imageUrls;
+}
+
 async function fetchWikidataSpecies(
 	scientificName: string,
 ): Promise<WikidataSpecies | null> {
@@ -126,14 +180,36 @@ async function fetchWikidataSpecies(
 	}
 
 	// Extract all images from P18 (image property)
-	const imageUrls: string[] = [];
-	const p18Claims = entity.claims?.P18 ?? [];
-	for (const claim of p18Claims) {
-		const filename = claim.mainsnak?.datavalue?.value;
-		if (filename) {
-			imageUrls.push(getCommonsImageUrl(filename));
+	let imageUrls = extractImageUrls(entity);
+
+	// If no images found, try synonyms that may have better Wikidata coverage
+	if (imageUrls.length === 0) {
+		const synonyms = SCIENTIFIC_NAME_SYNONYMS[scientificName];
+		if (synonyms) {
+			for (const synonym of synonyms) {
+				const synonymQid = await searchWikidataEntity(synonym);
+				if (synonymQid) {
+					const synonymEntity = await getWikidataEntity(synonymQid);
+					if (synonymEntity) {
+						const synonymImages = extractImageUrls(synonymEntity);
+						if (synonymImages.length > 0) {
+							imageUrls = synonymImages;
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
+
+	// Final fallback: search Wikimedia Commons directly
+	// This handles species like Penaeus kerathurus where Wikidata
+	// has no P18 image claim but Commons has images uploaded
+	if (imageUrls.length === 0) {
+		const commonsFilenames = await searchCommonsImages(scientificName);
+		imageUrls = commonsFilenames.map((f) => getCommonsImageUrl(f));
+	}
+
 	const imageUrl = imageUrls[0];
 
 	// Get Wikipedia URL (prefer English, fall back to Turkish)
