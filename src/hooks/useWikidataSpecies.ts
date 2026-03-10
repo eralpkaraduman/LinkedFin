@@ -1,5 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 
+/**
+ * Map of current scientific names to their synonyms/basionyms that
+ * may have better Wikidata coverage (especially images).
+ * This handles cases where taxonomic reclassification has split
+ * the data across multiple Wikidata entries.
+ */
+const SCIENTIFIC_NAME_SYNONYMS: Record<string, string[]> = {
+	// Chelon aurata (golden grey mullet) - images are on the old Liza aurata entry
+	"Chelon aurata": ["Liza aurata"],
+};
+
 export interface WikidataSpecies {
 	qid: string;
 	description: string;
