@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite dev --port 4141",
     "build": "pnpm db:copy && vite build && cp dist/client/_shell.html dist/client/index.html",
-    "ci": "pnpm rebuild better-sqlite3 && pnpm check && pnpm tsc --noEmit && pnpm test && pnpm db:validate && pnpm build && pnpm db:sync",
+    "deploy": "pnpm rebuild better-sqlite3 && pnpm check && pnpm tsc --noEmit && pnpm test && pnpm db:validate && pnpm build && pnpm db:sync",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
