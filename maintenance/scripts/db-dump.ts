@@ -16,25 +16,29 @@ function dumpTable(name: string) {
 	}
 }
 
-// Drop in reverse dependency order
-console.log("PRAGMA foreign_keys=OFF;");
-console.log("DROP TABLE IF EXISTS name_relations;");
-console.log("DROP TABLE IF EXISTS names;");
-console.log("DROP TABLE IF EXISTS regions;");
-console.log("DROP TABLE IF EXISTS species;");
-
-// Schema
+// Discover all tables
 const tables = db
-	.prepare("SELECT sql FROM sqlite_master WHERE type='table' ORDER BY name")
-	.all() as { sql: string }[];
+	.prepare(
+		"SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+	)
+	.all() as { name: string; sql: string }[];
+
+// Disable FK checks so drop/insert order doesn't matter
+console.log("PRAGMA foreign_keys=OFF;");
+
+// Drop all tables
+for (const t of [...tables].reverse()) {
+	console.log(`DROP TABLE IF EXISTS "${t.name}";`);
+}
+
+// Create all tables
 for (const t of tables) {
 	console.log(`${t.sql};`);
 }
 
-// Data in dependency order
-dumpTable("species");
-dumpTable("regions");
-dumpTable("names");
-dumpTable("name_relations");
+// Insert data (FK off, so order doesn't matter)
+for (const t of tables) {
+	dumpTable(t.name);
+}
 
 db.close();
