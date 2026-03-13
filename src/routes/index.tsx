@@ -270,17 +270,18 @@ function HomePage() {
 					</TableHeader>
 					<TableBody>
 						{displayResults.map((item) => (
-							<TableRow key={item.id} className="cursor-pointer">
-								<TableCell className="p-0">
-									<Link
-										to="/name/$id"
-										params={{ id: item.id }}
-										className="block px-2 py-2 font-medium"
-										onClick={() => trackDetailView(item.id, item.name)}
-									>
-										{item.name}
-									</Link>
-								</TableCell>
+							<TableRow
+								key={item.id}
+								className="cursor-pointer"
+								onClick={() => {
+									trackDetailView(item.id, item.name);
+									navigate({
+										to: "/name/$id",
+										params: { id: item.id },
+									});
+								}}
+							>
+								<TableCell className="font-medium">{item.name}</TableCell>
 								<TableCell>{item.transliteration || ""}</TableCell>
 								<TableCell>{item.region}</TableCell>
 								<TableCell className="text-right italic">
