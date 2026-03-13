@@ -4,6 +4,7 @@ import {
 	buildNameOg,
 	buildSpeciesOg,
 	isArabicLang,
+	stripArabic,
 	truncate,
 } from "../og-utils.js";
 
@@ -67,18 +68,6 @@ function stripPolytonicMarks(str) {
 		.normalize("NFD")
 		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
 		.normalize("NFC");
-}
-
-/**
- * Replace Arabic script words with … — satori cannot render RTL/Arabic shaping.
- * Transliterations are already inline so meaning is preserved.
- */
-function stripArabic(str) {
-	return str
-		.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, "\u2026")
-		.replace(/\s*\u2026\s*/g, " \u2026 ")
-		.replace(/  +/g, " ")
-		.trim();
 }
 
 function escapeImageHtml(str) {

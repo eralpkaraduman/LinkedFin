@@ -59,6 +59,18 @@ export function isArabicLang(lang) {
 }
 
 
+/**
+ * Replace Arabic script words with … — satori cannot render RTL/Arabic shaping.
+ * Transliterations are already inline so meaning is preserved.
+ */
+export function stripArabic(str) {
+	return str
+		.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, "\u2026")
+		.replace(/\s*\u2026\s*/g, " \u2026 ")
+		.replace(/  +/g, " ")
+		.trim();
+}
+
 export const GENERIC_OG = {
 	title: "LinkedFin",
 	description:
