@@ -15,33 +15,16 @@ async function loadFont(key, url) {
 	return fontCache[key];
 }
 
-const NPM_BASE = "https://cdn.jsdelivr.net/npm";
 const FONTS = [
-	{
-		key: "latin",
-		name: "Noto Sans",
-		url: `${NPM_BASE}/@fontsource/noto-sans@latest/files/noto-sans-latin-700-normal.woff`,
-	},
-	{
-		key: "greek",
-		name: "Noto Greek",
-		url: `${NPM_BASE}/@fontsource/noto-sans@latest/files/noto-sans-greek-700-normal.woff`,
-	},
-	{
-		key: "cyrillic",
-		name: "Noto Cyrillic",
-		url: `${NPM_BASE}/@fontsource/noto-sans@latest/files/noto-sans-cyrillic-700-normal.woff`,
-	},
-	{
-		key: "turkish",
-		name: "Noto Turkish",
-		url: `${NPM_BASE}/@fontsource/noto-sans@latest/files/noto-sans-latin-ext-700-normal.woff`,
-	},
+	{ key: "latin", name: "Noto Sans", file: "noto-sans-latin-700.woff" },
+	{ key: "greek", name: "Noto Greek", file: "noto-sans-greek-700.woff" },
+	{ key: "cyrillic", name: "Noto Cyrillic", file: "noto-sans-cyrillic-700.woff" },
+	{ key: "turkish", name: "Noto Turkish", file: "noto-sans-latin-ext-700.woff" },
 ];
 
-async function loadFonts() {
+async function loadFonts(origin) {
 	const results = await Promise.allSettled(
-		FONTS.map((f) => loadFont(f.key, f.url)),
+		FONTS.map((f) => loadFont(f.key, `${origin}/fonts/${f.file}`)),
 	);
 	return results
 		.map((r, i) =>
@@ -137,7 +120,7 @@ export async function onRequest(context) {
 	description = escapeImageHtml(truncate(stripPolytonicMarks(description), 120));
 
 	try {
-		const fonts = await loadFonts();
+		const fonts = await loadFonts(url.origin);
 		return new ImageResponse(buildHtml(title, description), {
 			width: 1200,
 			height: 630,
