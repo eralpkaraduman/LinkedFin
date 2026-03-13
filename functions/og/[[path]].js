@@ -20,7 +20,6 @@ const FONTS = [
 	{ key: "greek", file: "noto-sans-greek-700.woff" },
 	{ key: "cyrillic", file: "noto-sans-cyrillic-700.woff" },
 	{ key: "latin-ext", file: "noto-sans-latin-ext-700.woff" },
-	{ key: "arabic", file: "noto-sans-arabic-700.woff" },
 ];
 
 async function loadFonts(origin) {
@@ -67,6 +66,18 @@ function stripPolytonicMarks(str) {
 		.normalize("NFD")
 		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
 		.normalize("NFC");
+}
+
+/**
+ * Strip Arabic script characters — satori cannot render RTL/Arabic shaping.
+ * Transliterations are already inline so meaning is preserved.
+ * Cleans up leftover double spaces after removal.
+ */
+function stripArabic(str) {
+	return str
+		.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, "")
+		.replace(/  +/g, " ")
+		.trim();
 }
 
 function escapeImageHtml(str) {
@@ -120,8 +131,8 @@ export async function onRequest(context) {
 	}
 
 	// Strip polytonic marks (unsupported by font), truncate, and escape
-	title = escapeImageHtml(truncate(stripPolytonicMarks(title), 60));
-	description = escapeImageHtml(truncate(stripPolytonicMarks(description), 120));
+	title = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(title)), 60));
+	description = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(description)), 120));
 
 	try {
 		const fonts = await loadFonts(url.origin);
