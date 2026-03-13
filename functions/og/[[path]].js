@@ -70,7 +70,8 @@ function buildHtml(title, description) {
 		: "";
 
 	return [
-		`<div style="display:flex;flex-direction:column;justify-content:center;width:1200px;height:630px;background:#0f172a;padding:60px 80px;font-family:Noto Sans, Noto Greek, Noto Cyrillic, Noto Turkish;color:#f8fafc">`,
+		`<div style="display:flex;align-items:center;justify-content:center;width:1200px;height:630px;background:#0f172a;font-family:Noto Sans, Noto Greek, Noto Cyrillic, Noto Turkish;color:#f8fafc">`,
+		`<div style="display:flex;flex-direction:column;justify-content:center;width:630px;height:630px;padding:60px 40px">`,
 		`<div style="display:flex;align-items:center;font-size:28px;margin-bottom:40px">`,
 		`<span style="color:#f8fafc;font-weight:700;margin-right:4px">Linked</span>`,
 		`<span style="background:#0A66C2;color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">Fin</span>`,
@@ -78,6 +79,7 @@ function buildHtml(title, description) {
 		`<div style="display:flex;font-size:${titleSize};font-weight:700;line-height:1.2;color:#f8fafc;margin-bottom:20px">${title}</div>`,
 		descHtml,
 		`<div style="display:flex;font-size:22px;color:#475569;margin-top:40px">Fish name etymology database</div>`,
+		`</div>`,
 		`</div>`,
 	].join("");
 }
