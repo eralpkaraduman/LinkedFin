@@ -30,11 +30,9 @@ describe("generated database types", () => {
 	});
 
 	it("Species interface has expected fields", () => {
-		// Note: habitat uses Generated<> type for default values
-		const mockSpecies: Partial<Species> = {
+		const mockSpecies: Species = {
 			id: "sp_001",
 			scientific_name: "Gadus morhua",
-			family: "Gadidae",
 			notes: null,
 		};
 		expect(mockSpecies.scientific_name).toBe("Gadus morhua");

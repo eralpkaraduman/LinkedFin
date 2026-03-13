@@ -3,13 +3,6 @@
  * Please do not edit it manually.
  */
 
-import type { ColumnType } from "kysely";
-
-export type Generated<T> =
-	T extends ColumnType<infer S, infer I, infer U>
-		? ColumnType<S, I | undefined, U>
-		: ColumnType<T, T | undefined, T>;
-
 export interface NameRelations {
 	notes: string | null;
 	relation: string;
@@ -43,8 +36,6 @@ export interface Regions {
 }
 
 export interface Species {
-	family: string | null;
-	habitat: Generated<string | null>;
 	id: string;
 	notes: string | null;
 	scientific_name: string;
