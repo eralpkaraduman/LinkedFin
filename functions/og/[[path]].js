@@ -45,7 +45,7 @@ function buildHtml(title, description) {
 		`<div style="display:flex;flex-direction:column;justify-content:center;gap:24px;width:1200px;height:630px;background:#0f172a;padding:32px 40px;font-family:Noto Sans, Noto Greek, Noto Cyrillic, Noto Turkish;color:#f8fafc">`,
 		`<div style="display:flex;align-items:center;font-size:32px">`,
 		`<span style="color:#f8fafc;font-weight:700;margin-right:4px">Linked</span>`,
-		`<span style="background:#2563EB;color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">Fin</span>`,
+		`<span style="background:#0891B2;color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">Fin</span>`,
 		`</div>`,
 		`<div style="display:flex;flex-direction:column;gap:16px">`,
 		`<div style="display:flex;font-size:${titleSize};font-weight:700;line-height:1.15;color:#f8fafc">${title}</div>`,
