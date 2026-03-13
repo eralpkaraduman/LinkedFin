@@ -59,14 +59,22 @@ function buildHtml(title, description) {
 }
 
 /**
- * Strip polytonic-only combining marks that Noto Sans Greek (monotonic) can't render.
- * Keeps monotonic tonos (U+0301) and diaeresis (U+0308) which the font supports.
- * Targets: smooth/rough breathing (U+0313/0314), perispomeni (U+0342), iota subscript (U+0345).
+ * Strip combining marks unsupported by our OG image fonts.
+ * NFD decompose → remove unsupported marks → NFC recompose.
+ *
+ * Stripped marks:
+ * - U+0304 macron (ā→a, ī→i, ū→u) — transliteration diacritics
+ * - U+0323 dot below (ṭ→t, ḥ→h, ṣ→s) — transliteration diacritics
+ * - U+0313/0314 smooth/rough breathing — polytonic Greek
+ * - U+0342 perispomeni — polytonic Greek
+ * - U+0345 iota subscript — polytonic Greek
+ *
+ * Keeps: U+0301 acute, U+0300 grave, U+0308 diaeresis, U+0327 cedilla
  */
-function stripPolytonicMarks(str) {
+function stripUnsupportedMarks(str) {
 	return str
 		.normalize("NFD")
-		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
+		.replace(/[\u0304\u0323\u0313\u0314\u0342\u0345]/g, "")
 		.normalize("NFC");
 }
 
@@ -123,8 +131,8 @@ export async function onRequest(context) {
 	}
 
 	// Strip polytonic marks (unsupported by font), truncate, and escape
-	title = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(title)), 60));
-	description = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(description)), 120));
+	title = escapeImageHtml(truncate(stripArabic(stripUnsupportedMarks(title)), 60));
+	description = escapeImageHtml(truncate(stripArabic(stripUnsupportedMarks(description)), 120));
 
 	try {
 		const fonts = await loadFonts(url.origin);
