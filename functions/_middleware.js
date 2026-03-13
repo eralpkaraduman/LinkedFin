@@ -94,7 +94,7 @@ function lookupSpecies(database, speciesId) {
 
 	return {
 		title: `LinkedFin: ${species.scientific_name}`,
-		description: truncate(nameList, 200) || species.scientific_name,
+		description: truncate(nameList, 500) || species.scientific_name,
 	};
 }
 
