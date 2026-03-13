@@ -58,12 +58,6 @@ export function isArabicLang(lang) {
 	return ARABIC_LANGS.has(lang);
 }
 
-/** Check if string contains Arabic script characters */
-export function hasArabic(str) {
-	return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(
-		str,
-	);
-}
 
 export const GENERIC_OG = {
 	title: "LinkedFin",

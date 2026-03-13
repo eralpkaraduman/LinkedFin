@@ -3,7 +3,7 @@ import {
 	getLangName,
 	sanitize,
 	truncate,
-	hasArabic,
+	isArabicLang,
 	buildNameOg,
 	buildSpeciesOg,
 	GENERIC_OG,
@@ -68,16 +68,17 @@ describe("truncate", () => {
 	});
 });
 
-describe("hasArabic", () => {
-	it("detects Arabic script", () => {
-		expect(hasArabic("مرجان")).toBe(true);
-		expect(hasArabic("سلطان ابراهيم")).toBe(true);
+describe("isArabicLang", () => {
+	it("detects Arabic language codes", () => {
+		expect(isArabicLang("arb")).toBe(true);
+		expect(isArabicLang("arz")).toBe(true);
+		expect(isArabicLang("apc")).toBe(true);
 	});
 
-	it("returns false for non-Arabic", () => {
-		expect(hasArabic("Barbun")).toBe(false);
-		expect(hasArabic("Συναγρίδα")).toBe(false);
-		expect(hasArabic("")).toBe(false);
+	it("returns false for non-Arabic languages", () => {
+		expect(isArabicLang("tur")).toBe(false);
+		expect(isArabicLang("ell")).toBe(false);
+		expect(isArabicLang("eng")).toBe(false);
 	});
 });
 
