@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeftIcon, CheckIcon, LinkIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, LinkIcon, ShareIcon } from "lucide-react";
 import { useState } from "react";
 import { NameDetail } from "#/components/NameDetail";
 import { SpeciesCard } from "#/components/SpeciesCard";
@@ -51,18 +51,36 @@ function DetailPage() {
 						</Link>
 						<h1 className="text-2xl font-bold">{name.name}</h1>
 					</div>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={copyLink}
-						title="Copy link"
-					>
-						{copied ? (
-							<CheckIcon className="h-4 w-4 text-green-500" />
-						) : (
-							<LinkIcon className="h-4 w-4" />
+					<div className="flex gap-1">
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={copyLink}
+							title="Copy link"
+						>
+							{copied ? (
+								<CheckIcon className="h-4 w-4 text-green-500" />
+							) : (
+								<LinkIcon className="h-4 w-4" />
+							)}
+						</Button>
+						{typeof navigator !== "undefined" && navigator.share && (
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() =>
+									navigator.share({
+										title: `LinkedFin: ${name.name}`,
+										text: name.etymology || name.scientific_name,
+										url: window.location.href,
+									})
+								}
+								title="Share"
+							>
+								<ShareIcon className="h-4 w-4" />
+							</Button>
 						)}
-					</Button>
+					</div>
 				</div>
 
 				<div className="space-y-4">
