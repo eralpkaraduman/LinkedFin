@@ -69,7 +69,10 @@ function stripPolytonicMarks(str) {
 }
 
 function escapeImageHtml(str) {
-	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+	return str
+		.replace(/↳/g, "—")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;");
 }
 
 export async function onRequest(context) {
