@@ -81,7 +81,7 @@ function lookupName(database, nameId) {
 
 function lookupSpecies(database, speciesId) {
 	const species = database.selectObject(
-		"SELECT scientific_name, notes FROM species WHERE id = ? LIMIT 1",
+		"SELECT scientific_name FROM species WHERE id = ? LIMIT 1",
 		[speciesId],
 	);
 	if (!species) return null;
@@ -92,14 +92,9 @@ function lookupSpecies(database, speciesId) {
 	);
 	const nameList = names.map((n) => n.name).join(", ");
 
-	let description = species.notes || species.scientific_name;
-	if (nameList) {
-		description += ` — ${truncate(nameList, 200 - description.length)}`;
-	}
-
 	return {
 		title: `LinkedFin: ${species.scientific_name}`,
-		description,
+		description: truncate(nameList, 200) || species.scientific_name,
 	};
 }
 
