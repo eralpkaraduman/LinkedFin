@@ -60,7 +60,6 @@ const validSpecies = (overrides: Partial<Species> = {}): Species => ({
 const validRegion = (overrides: Partial<Regions> = {}): Regions => ({
   id: "test-region",
   name: "Test Region",
-  language: "en",
   name_local: null,
   polygon: null,
   notes: null,
@@ -229,12 +228,6 @@ describe("validateRegionsRequiredFields", () => {
     expect(result.errors).toContainEqual(expect.stringContaining("missing 'name'"))
   })
 
-  it("fails when language is missing", () => {
-    const regions = [validRegion({ language: "" })]
-    const result = validateRegionsRequiredFields(regions)
-    expect(result.passed).toBe(false)
-    expect(result.errors).toContainEqual(expect.stringContaining("missing 'language'"))
-  })
 })
 
 describe("validateRelationsRequiredFields", () => {

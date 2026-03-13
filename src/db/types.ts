@@ -27,11 +27,7 @@ export interface Names {
 
 export interface Regions {
 	id: string;
-	language: string;
 	name: string;
-	name_local: string | null;
-	notes: string | null;
-	polygon: string | null;
 }
 
 export interface Species {

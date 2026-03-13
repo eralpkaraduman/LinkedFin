@@ -111,7 +111,6 @@ export function validateRegionsRequiredFields(regions: Regions[]): ValidationRes
   const errors: string[] = []
   for (const r of regions) {
     if (!r.name) errors.push(`${r.id}: missing 'name'`)
-    if (!r.language) errors.push(`${r.id}: missing 'language'`)
   }
   return { check: "Regions: required fields", passed: errors.length === 0, errors, warnings: [] }
 }
