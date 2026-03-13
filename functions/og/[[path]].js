@@ -17,24 +17,9 @@ async function loadFont(key, url) {
 	return fontCache[key];
 }
 
-const FONTS = [
-	{ key: "latin", file: "noto-sans-latin-700.woff" },
-	{ key: "greek", file: "noto-sans-greek-700.woff" },
-	{ key: "cyrillic", file: "noto-sans-cyrillic-700.woff" },
-	{ key: "latin-ext", file: "noto-sans-latin-ext-700.woff" },
-];
-
 async function loadFonts(origin) {
-	const results = await Promise.allSettled(
-		FONTS.map((f) => loadFont(f.key, `${origin}/fonts/${f.file}`)),
-	);
-	return results
-		.map((r, i) =>
-			r.status === "fulfilled"
-				? { name: "Noto Sans", data: r.value, weight: 700, style: "normal" }
-				: null,
-		)
-		.filter(Boolean);
+	const data = await loadFont("noto", `${origin}/fonts/noto-sans-bold.woff`);
+	return [{ name: "Noto Sans", data, weight: 700, style: "normal" }];
 }
 
 function buildHtml(title, description) {
@@ -59,22 +44,13 @@ function buildHtml(title, description) {
 }
 
 /**
- * Strip combining marks unsupported by our OG image fonts.
- * NFD decompose → remove unsupported marks → NFC recompose.
- *
- * Stripped marks:
- * - U+0304 macron (ā→a, ī→i, ū→u) — transliteration diacritics
- * - U+0323 dot below (ṭ→t, ḥ→h, ṣ→s) — transliteration diacritics
- * - U+0313/0314 smooth/rough breathing — polytonic Greek
- * - U+0342 perispomeni — polytonic Greek
- * - U+0345 iota subscript — polytonic Greek
- *
- * Keeps: U+0301 acute, U+0300 grave, U+0308 diaeresis, U+0327 cedilla
+ * Strip polytonic Greek combining marks unsupported by Noto Sans monotonic Greek.
+ * Targets: smooth/rough breathing (U+0313/0314), perispomeni (U+0342), iota subscript (U+0345).
  */
-function stripUnsupportedMarks(str) {
+function stripPolytonicMarks(str) {
 	return str
 		.normalize("NFD")
-		.replace(/[\u0304\u0323\u0313\u0314\u0342\u0345]/g, "")
+		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
 		.normalize("NFC");
 }
 
@@ -131,8 +107,8 @@ export async function onRequest(context) {
 	}
 
 	// Strip polytonic marks (unsupported by font), truncate, and escape
-	title = escapeImageHtml(truncate(stripArabic(stripUnsupportedMarks(title)), 60));
-	description = escapeImageHtml(truncate(stripArabic(stripUnsupportedMarks(description)), 120));
+	title = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(title)), 60));
+	description = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(description)), 120));
 
 	try {
 		const fonts = await loadFonts(url.origin);
