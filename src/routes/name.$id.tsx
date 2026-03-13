@@ -43,10 +43,7 @@ function DetailPage() {
 						</Link>
 						<h1 className="text-2xl font-bold">{name.name}</h1>
 					</div>
-					<ShareActions
-						title={`LinkedFin: ${name.name}`}
-						text={name.etymology || name.scientific_name}
-					/>
+					<ShareActions />
 				</div>
 
 				<div className="space-y-4">

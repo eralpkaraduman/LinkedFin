@@ -2,12 +2,7 @@ import { CheckIcon, CopyIcon, ShareIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button";
 
-interface ShareActionsProps {
-	title: string;
-	text?: string;
-}
-
-export function ShareActions({ title, text }: ShareActionsProps) {
+export function ShareActions() {
 	const [copied, setCopied] = useState(false);
 
 	const copyLink = async () => {
@@ -18,8 +13,6 @@ export function ShareActions({ title, text }: ShareActionsProps) {
 
 	const share = () => {
 		navigator.share({
-			title,
-			text,
 			url: window.location.href,
 		});
 	};
