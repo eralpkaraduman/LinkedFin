@@ -53,20 +53,22 @@ async function loadFonts() {
 }
 
 function buildHtml(title, description) {
-	const titleSize = title.length > 30 ? "52px" : "64px";
+	const titleSize = title.length > 30 ? "64px" : "80px";
 	const descHtml = description
-		? `<div style="display:flex;font-size:28px;line-height:1.5;color:#94a3b8">${description}</div>`
+		? `<div style="display:flex;font-size:32px;line-height:1.4;color:#94a3b8">${description}</div>`
 		: "";
 
 	return [
-		`<div style="display:flex;flex-direction:column;justify-content:center;width:1200px;height:630px;background:#0f172a;padding:60px 80px;font-family:Noto Sans, Noto Greek, Noto Cyrillic, Noto Turkish;color:#f8fafc">`,
-		`<div style="display:flex;align-items:center;font-size:28px;margin-bottom:40px">`,
+		`<div style="display:flex;flex-direction:column;justify-content:space-between;width:1200px;height:630px;background:#0f172a;padding:32px 40px;font-family:Noto Sans, Noto Greek, Noto Cyrillic, Noto Turkish;color:#f8fafc">`,
+		`<div style="display:flex;align-items:center;font-size:24px">`,
 		`<span style="color:#f8fafc;font-weight:700;margin-right:4px">Linked</span>`,
 		`<span style="background:#0A66C2;color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">Fin</span>`,
 		`</div>`,
-		`<div style="display:flex;font-size:${titleSize};font-weight:700;line-height:1.2;color:#f8fafc;margin-bottom:20px">${title}</div>`,
+		`<div style="display:flex;flex-direction:column;gap:16px">`,
+		`<div style="display:flex;font-size:${titleSize};font-weight:700;line-height:1.15;color:#f8fafc">${title}</div>`,
 		descHtml,
-		`<div style="display:flex;font-size:22px;color:#475569;margin-top:40px">Fish name etymology database</div>`,
+		`</div>`,
+		`<div style="display:flex;font-size:20px;color:#475569">Fish name etymology database</div>`,
 		`</div>`,
 	].join("");
 }
