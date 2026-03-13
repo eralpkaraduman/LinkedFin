@@ -3,7 +3,7 @@
  * Both consumers must use these functions to avoid duplication.
  */
 
-const LANG_NAMES = {
+const LANG_NAMES: Record<string, string> = {
 	tur: "Turkish",
 	ell: "Greek",
 	eng: "English",
@@ -20,32 +20,17 @@ const LANG_NAMES = {
 	vec: "Venetian",
 };
 
-/**
- * Get human-readable language name from ISO 639-3 code.
- * @param {string} code
- * @returns {string}
- */
-export function getLangName(code) {
+export function getLangName(code: string): string {
 	return LANG_NAMES[code] || code;
 }
 
-/**
- * Collapse whitespace and trim.
- * @param {string} str
- * @returns {string}
- */
-export function sanitize(str) {
-	return String(str || "").replace(/\s+/g, " ").trim();
+export function sanitize(str: string | null | undefined): string {
+	return String(str || "")
+		.replace(/\s+/g, " ")
+		.trim();
 }
 
-/**
- * Truncate string, breaking at last separator before max.
- * @param {string} str
- * @param {number} max
- * @param {string} [sep=" "]
- * @returns {string}
- */
-export function truncate(str, max, sep = " ") {
+export function truncate(str: string, max: number, sep = " "): string {
 	if (str.length <= max) return str;
 	const cut = str.lastIndexOf(sep, max - 1);
 	return `${str.slice(0, cut > 0 ? cut : max)}\u2026`;
@@ -53,21 +38,22 @@ export function truncate(str, max, sep = " ") {
 
 const ARABIC_LANGS = new Set(["arb", "arz", "apc"]);
 
-/** Check if language code is an Arabic variant */
-export function isArabicLang(lang) {
+export function isArabicLang(lang: string): boolean {
 	return ARABIC_LANGS.has(lang);
 }
-
 
 /**
  * Replace Arabic script words with … — satori cannot render RTL/Arabic shaping.
  * Transliterations are already inline so meaning is preserved.
  */
-export function stripArabic(str) {
+export function stripArabic(str: string): string {
 	return str
-		.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, "\u2026")
+		.replace(
+			/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g,
+			"\u2026",
+		)
 		.replace(/\s*\u2026\s*/g, " \u2026 ")
-		.replace(/  +/g, " ")
+		.replace(/ {2,}/g, " ")
 		.trim();
 }
 
@@ -83,14 +69,26 @@ export const GENERIC_META = {
 		"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names from Turkish, Greek, Arabic, and more.",
 };
 
-/**
- * Build OG title and description for a name record.
- * Used by both middleware (meta tags) and image generation.
- *
- * @param {{ name: string, lang: string, region_name: string, etymology: string|null, transliteration: string|null }} row
- * @returns {{ title: string, description: string }}
- */
-export function buildNameOg(row) {
+export interface NameRow {
+	name: string;
+	lang: string;
+	region_name: string;
+	etymology: string | null;
+	transliteration: string | null;
+}
+
+export interface SpeciesRow {
+	scientific_name: string;
+}
+
+export interface NameEntry {
+	name: string;
+}
+
+export function buildNameOg(row: NameRow): {
+	title: string;
+	description: string;
+} {
 	const title = row.name;
 	const prefix = `${getLangName(row.lang)} · ${row.region_name}`;
 	const etymology = sanitize(row.etymology);
@@ -98,14 +96,10 @@ export function buildNameOg(row) {
 	return { title, description };
 }
 
-/**
- * Build OG title and description for a species record.
- *
- * @param {{ scientific_name: string }} species
- * @param {{ name: string }[]} names
- * @returns {{ title: string, description: string }}
- */
-export function buildSpeciesOg(species, names) {
+export function buildSpeciesOg(
+	species: SpeciesRow,
+	names: NameEntry[],
+): { title: string; description: string } {
 	const title = species.scientific_name;
 	const nameList = names.map((n) => n.name).join(", ");
 	const description = nameList || species.scientific_name;

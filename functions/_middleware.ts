@@ -1,12 +1,17 @@
 import {
-	GENERIC_META,
 	buildNameOg,
 	buildSpeciesOg,
+	GENERIC_META,
+	type NameRow,
 	sanitize,
 	truncate,
-} from "./og-utils.js";
+} from "./og-utils.ts";
 
-function escapeHtml(str) {
+interface Env {
+	DB: D1Database;
+}
+
+function escapeHtml(str: string): string {
 	return String(str)
 		.replace(/&/g, "&amp;")
 		.replace(/"/g, "&quot;")
@@ -14,14 +19,15 @@ function escapeHtml(str) {
 		.replace(/>/g, "&gt;");
 }
 
-class OgTagsHandler {
-	constructor(title, description, url, imgUrl) {
-		this.title = title;
-		this.description = description;
-		this.url = url;
-		this.imgUrl = imgUrl;
-	}
-	element(el) {
+class OgTagsHandler implements HTMLRewriterElementContentHandlers {
+	constructor(
+		private title: string,
+		private description: string,
+		private url: string,
+		private imgUrl: string,
+	) {}
+
+	element(el: Element) {
 		const t = escapeHtml(sanitize(this.title));
 		const d = escapeHtml(sanitize(this.description));
 		const u = escapeHtml(this.url);
@@ -45,13 +51,16 @@ class OgTagsHandler {
 	}
 }
 
-async function lookupName(db, nameId) {
+async function lookupName(
+	db: D1Database,
+	nameId: string,
+): Promise<{ title: string; description: string } | null> {
 	const row = await db
 		.prepare(
 			"SELECT n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id WHERE n.id = ? LIMIT 1",
 		)
 		.bind(nameId)
-		.first();
+		.first<NameRow>();
 	if (!row) return null;
 	const og = buildNameOg(row);
 	return {
@@ -60,17 +69,20 @@ async function lookupName(db, nameId) {
 	};
 }
 
-async function lookupSpecies(db, speciesId) {
+async function lookupSpecies(
+	db: D1Database,
+	speciesId: string,
+): Promise<{ title: string; description: string } | null> {
 	const species = await db
 		.prepare("SELECT scientific_name FROM species WHERE id = ? LIMIT 1")
 		.bind(speciesId)
-		.first();
+		.first<{ scientific_name: string }>();
 	if (!species) return null;
 
 	const { results: names } = await db
 		.prepare("SELECT name FROM names WHERE species_id = ? ORDER BY id")
 		.bind(speciesId)
-		.all();
+		.all<{ name: string }>();
 
 	const og = buildSpeciesOg(species, names);
 	return {
@@ -79,7 +91,9 @@ async function lookupSpecies(db, speciesId) {
 	};
 }
 
-export async function onRequest(context) {
+export async function onRequest(
+	context: EventContext<Env, string, unknown>,
+): Promise<Response> {
 	const { request, next, env } = context;
 	const url = new URL(request.url);
 
@@ -88,11 +102,10 @@ export async function onRequest(context) {
 	const contentType = response.headers.get("content-type") ?? "";
 	if (!contentType.includes("text/html")) return response;
 
-	// Match /name/$id or /species/$id
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
 	const speciesMatch = url.pathname.match(/^\/species\/([^/]+)$/);
 
-	let og = null;
+	let og: { title: string; description: string } | null = null;
 	try {
 		if (nameMatch) {
 			og = await lookupName(env.DB, nameMatch[1]);
@@ -107,8 +120,7 @@ export async function onRequest(context) {
 		og = GENERIC_META;
 	}
 
-	// Dynamic OG image for name/species routes, static fallback otherwise
-	let imgUrl;
+	let imgUrl: string;
 	if (nameMatch) {
 		imgUrl = `${url.origin}/og/name/${nameMatch[1]}`;
 	} else if (speciesMatch) {

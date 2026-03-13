@@ -1,28 +1,37 @@
 import { ImageResponse } from "workers-og";
 import {
-	GENERIC_OG,
 	buildNameOg,
 	buildSpeciesOg,
+	GENERIC_OG,
 	isArabicLang,
+	type NameRow,
 	stripArabic,
 	truncate,
-} from "../og-utils.js";
+} from "../og-utils.ts";
 
-const fontCache = {};
+interface Env {
+	DB: D1Database;
+}
 
-async function loadFont(key, url) {
+const fontCache: Record<string, ArrayBuffer> = {};
+
+async function loadFont(key: string, url: string): Promise<ArrayBuffer> {
 	if (fontCache[key]) return fontCache[key];
 	const res = await fetch(url);
 	fontCache[key] = await res.arrayBuffer();
 	return fontCache[key];
 }
 
-async function loadFonts(origin) {
+async function loadFonts(
+	origin: string,
+): Promise<
+	{ name: string; data: ArrayBuffer; weight: number; style: string }[]
+> {
 	const data = await loadFont("noto", `${origin}/fonts/noto-sans-bold.woff`);
 	return [{ name: "Noto Sans", data, weight: 700, style: "normal" }];
 }
 
-function buildHtml(title, description) {
+function buildHtml(title: string, description: string): string {
 	const titleSize = title.length > 30 ? "64px" : "80px";
 	const descHtml = description
 		? `<div style="display:flex;font-size:36px;line-height:1.4;color:#94a3b8">${description}</div>`
@@ -47,25 +56,24 @@ function buildHtml(title, description) {
  * Strip polytonic Greek combining marks unsupported by Noto Sans monotonic Greek.
  * Targets: smooth/rough breathing (U+0313/0314), perispomeni (U+0342), iota subscript (U+0345).
  */
-function stripPolytonicMarks(str) {
+function stripPolytonicMarks(str: string): string {
 	return str
 		.normalize("NFD")
 		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
 		.normalize("NFC");
 }
 
-function escapeImageHtml(str) {
-	return str
-		.replace(/↳/g, "—")
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;");
+function escapeImageHtml(str: string): string {
+	return str.replace(/↳/g, "—").replace(/&/g, "&amp;").replace(/</g, "&lt;");
 }
 
-export async function onRequest(context) {
+export async function onRequest(
+	context: EventContext<Env, string, unknown>,
+): Promise<Response> {
 	const { env, params } = context;
 	const url = new URL(context.request.url);
 
-	const parts = (params.path || []).filter(Boolean);
+	const parts = ((params as { path?: string[] }).path || []).filter(Boolean);
 	const [type, id] = parts;
 
 	let title = GENERIC_OG.title;
@@ -77,12 +85,13 @@ export async function onRequest(context) {
 				"SELECT n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id WHERE n.id = ? LIMIT 1",
 			)
 				.bind(id)
-				.first();
+				.first<NameRow>();
 			if (row) {
 				const og = buildNameOg(row);
-				title = isArabicLang(row.lang) && row.transliteration
-					? row.transliteration
-					: og.title;
+				title =
+					isArabicLang(row.lang) && row.transliteration
+						? row.transliteration
+						: og.title;
 				description = og.description;
 			}
 		} else if (type === "species" && id) {
@@ -90,13 +99,13 @@ export async function onRequest(context) {
 				"SELECT scientific_name FROM species WHERE id = ? LIMIT 1",
 			)
 				.bind(id)
-				.first();
+				.first<{ scientific_name: string }>();
 			if (species) {
 				const { results: names } = await env.DB.prepare(
 					"SELECT name FROM names WHERE species_id = ? ORDER BY id",
 				)
 					.bind(id)
-					.all();
+					.all<{ name: string }>();
 				const og = buildSpeciesOg(species, names);
 				title = og.title;
 				description = og.description;
@@ -106,9 +115,12 @@ export async function onRequest(context) {
 		console.error("OG image DB lookup error:", e);
 	}
 
-	// Strip polytonic marks (unsupported by font), truncate, and escape
-	title = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(title)), 60));
-	description = escapeImageHtml(truncate(stripArabic(stripPolytonicMarks(description)), 120));
+	title = escapeImageHtml(
+		truncate(stripArabic(stripPolytonicMarks(title)), 60),
+	);
+	description = escapeImageHtml(
+		truncate(stripArabic(stripPolytonicMarks(description)), 120),
+	);
 
 	try {
 		const fonts = await loadFonts(url.origin);

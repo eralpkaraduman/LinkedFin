@@ -1,15 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	getLangName,
-	sanitize,
-	truncate,
-	isArabicLang,
-	stripArabic,
 	buildNameOg,
 	buildSpeciesOg,
-	GENERIC_OG,
 	GENERIC_META,
-} from "./og-utils.js";
+	GENERIC_OG,
+	getLangName,
+	isArabicLang,
+	sanitize,
+	stripArabic,
+	truncate,
+} from "./og-utils.ts";
 
 describe("getLangName", () => {
 	it("returns display name for known codes", () => {
@@ -92,8 +92,12 @@ describe("stripArabic", () => {
 
 	it("handles multiple Arabic words", () => {
 		expect(
-			stripArabic("From Arabic مزيت mazīt (oily/greasy) — From زيت zayt (olive oil)"),
-		).toBe("From Arabic \u2026 maz\u012Bt (oily/greasy) \u2014 From \u2026 zayt (olive oil)");
+			stripArabic(
+				"From Arabic مزيت mazīt (oily/greasy) — From زيت zayt (olive oil)",
+			),
+		).toBe(
+			"From Arabic \u2026 maz\u012Bt (oily/greasy) \u2014 From \u2026 zayt (olive oil)",
+		);
 	});
 
 	it("handles Arabic-only compound", () => {
