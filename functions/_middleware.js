@@ -12,6 +12,17 @@ function truncate(str, max) {
 	return `${str.slice(0, cut > 0 ? cut : max)}...`;
 }
 
+// Remove existing OG/Twitter meta tags so we can replace them
+class RemoveOgTags {
+	element(el) {
+		const prop = el.getAttribute("property") || "";
+		const name = el.getAttribute("name") || "";
+		if (prop.startsWith("og:") || name.startsWith("twitter:")) {
+			el.remove();
+		}
+	}
+}
+
 class OgTagsHandler {
 	constructor(title, description, url) {
 		this.title = title;
@@ -98,6 +109,8 @@ export async function onRequest(context) {
 		if (!og) return response;
 
 		const rewritten = new HTMLRewriter()
+			.on('meta[property^="og:"]', new RemoveOgTags())
+			.on('meta[name^="twitter:"]', new RemoveOgTags())
 			.on("head", new OgTagsHandler(og.title, og.description, url.href))
 			.transform(response);
 
