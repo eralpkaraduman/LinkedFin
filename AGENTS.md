@@ -326,6 +326,34 @@ Move this information to the `notes` field:
 6. **Historical context**: "Not native - farmed in Marmara region"
 7. **Disputed origins**: "Etymology contested between Turkish and Greek origins"
 
+### Foreign Words in Etymologies
+
+When an etymology mentions a word from another language, **always include its meaning or etymology** (if known). Do not leave foreign words unexplained.
+
+**Before (incomplete):**
+```
+red mullet: from French surmulet
+```
+
+**After (complete):**
+```
+red mullet: from French surmulet
+↳ From Old French sor (reddish-brown) + mulet (mullet)
+```
+
+**Before (incomplete):**
+```
+From Arabic مرجان marjān (coral)
+```
+
+**After (complete):**
+```
+From Arabic مرجان marjān (coral)
+↳ marjān from Greek μαργαρίτης margarítēs (pearl) via Syriac
+```
+
+Use `↳` to chain deeper derivations. Mark uncertain etymologies with "possibly" or "origin uncertain". If the deeper etymology is truly unknown, note it: `(origin uncertain)`.
+
 ### Format Checklist
 
 ✓ Meaning in parentheses: `word (meaning)` not `word meaning X`
@@ -334,6 +362,7 @@ Move this information to the `notes` field:
 ✓ Derivation chains use `↳` on new lines
 ✓ Context/cultural info in notes field
 ✓ Include transliteration for non-Latin scripts: `σαρδέλα sardéla`
+✓ Foreign words must include meaning/etymology when known
 
 ### Validation Command
 
