@@ -42,10 +42,6 @@ describe("generated database types", () => {
 		const mockRegion: Regions = {
 			id: "turkey",
 			name: "Turkey",
-			language: "Turkish",
-			name_local: "Türkiye",
-			notes: null,
-			polygon: null,
 		};
 		expect(mockRegion.id).toBe("turkey");
 	});
