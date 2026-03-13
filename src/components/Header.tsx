@@ -62,6 +62,10 @@ export default function Header() {
 						onChange={(e) => handleSearch(e.target.value)}
 						placeholder="Search fish names, regions, languages..."
 						className="h-8 text-sm sm:h-9"
+						autoComplete="off"
+						autoCorrect="off"
+						autoCapitalize="off"
+						spellCheck={false}
 					/>
 					{localQuery && (
 						<button
