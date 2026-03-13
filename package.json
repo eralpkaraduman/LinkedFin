@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite dev --port 4141",
-    "build": "vite build",
+    "build": "pnpm db:copy && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
