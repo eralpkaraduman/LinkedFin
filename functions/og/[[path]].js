@@ -20,6 +20,7 @@ const FONTS = [
 	{ key: "greek", file: "noto-sans-greek-700.woff" },
 	{ key: "cyrillic", file: "noto-sans-cyrillic-700.woff" },
 	{ key: "latin-ext", file: "noto-sans-latin-ext-700.woff" },
+	{ key: "arabic", file: "noto-sans-arabic-700.woff" },
 ];
 
 async function loadFonts(origin) {
