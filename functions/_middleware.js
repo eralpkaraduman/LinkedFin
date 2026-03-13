@@ -1,28 +1,3 @@
-import initSqlite from "@sqlite.org/sqlite-wasm";
-
-let db = null;
-
-async function getDb() {
-	if (db) return db;
-	const sqlite3 = await initSqlite({ print: () => {}, printErr: () => {} });
-	const res = await fetch("https://linkedfin.net/fish.db");
-	const buf = await res.arrayBuffer();
-	const bytes = new Uint8Array(buf);
-	db = new sqlite3.oo1.DB();
-	const p = sqlite3.wasm.allocFromTypedArray(bytes);
-	const rc = sqlite3.capi.sqlite3_deserialize(
-		db.pointer,
-		"main",
-		p,
-		bytes.length,
-		bytes.length,
-		sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE |
-			sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE,
-	);
-	if (rc !== 0) throw new Error(`sqlite3_deserialize failed: ${rc}`);
-	return db;
-}
-
 function escapeHtml(str) {
 	return String(str)
 		.replace(/&/g, "&amp;")
@@ -67,11 +42,11 @@ class OgTagsHandler {
 	}
 }
 
-function lookupName(database, nameId) {
-	const row = database.selectObject(
-		"SELECT name, etymology FROM names WHERE id = ? LIMIT 1",
-		[nameId],
-	);
+async function lookupName(db, nameId) {
+	const row = await db
+		.prepare("SELECT name, etymology FROM names WHERE id = ? LIMIT 1")
+		.bind(nameId)
+		.first();
 	if (!row) return null;
 	return {
 		title: `LinkedFin: ${row.name}`,
@@ -79,17 +54,17 @@ function lookupName(database, nameId) {
 	};
 }
 
-function lookupSpecies(database, speciesId) {
-	const species = database.selectObject(
-		"SELECT scientific_name FROM species WHERE id = ? LIMIT 1",
-		[speciesId],
-	);
+async function lookupSpecies(db, speciesId) {
+	const species = await db
+		.prepare("SELECT scientific_name FROM species WHERE id = ? LIMIT 1")
+		.bind(speciesId)
+		.first();
 	if (!species) return null;
 
-	const names = database.selectObjects(
-		"SELECT name FROM names WHERE species_id = ? ORDER BY id",
-		[speciesId],
-	);
+	const { results: names } = await db
+		.prepare("SELECT name FROM names WHERE species_id = ? ORDER BY id")
+		.bind(speciesId)
+		.all();
 	const nameList = names.map((n) => n.name).join(", ");
 
 	return {
@@ -98,7 +73,8 @@ function lookupSpecies(database, speciesId) {
 	};
 }
 
-export async function onRequest({ request, next }) {
+export async function onRequest(context) {
+	const { request, next, env } = context;
 	const url = new URL(request.url);
 	const accept = request.headers.get("accept") ?? "";
 
@@ -107,18 +83,17 @@ export async function onRequest({ request, next }) {
 	// Match /name/$id
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
 	// Match /?species=sp_XXX on homepage
-	const speciesId = url.pathname === "/" ? url.searchParams.get("species") : null;
+	const speciesId =
+		url.pathname === "/" ? url.searchParams.get("species") : null;
 
 	if (!nameMatch && !speciesId) return next();
 
 	const response = await next();
 
 	try {
-		const database = await getDb();
-
 		const og = nameMatch
-			? lookupName(database, nameMatch[1])
-			: lookupSpecies(database, speciesId);
+			? await lookupName(env.DB, nameMatch[1])
+			: await lookupSpecies(env.DB, speciesId);
 
 		if (!og) return response;
 

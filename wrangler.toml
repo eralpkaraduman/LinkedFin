@@ -1,0 +1,7 @@
+name = "linkedfin"
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "linkedfin-db"
+database_id = "f50422f5-91d9-483f-b2d5-dd693bdc775b"

@@ -15,7 +15,8 @@
     "check": "biome check",
     "db:types": "kysely-codegen --dialect sqlite --url ./fish.db --out-file src/db/types.ts",
     "db:copy": "cp fish.db public/fish.db",
-    "db:validate": "tsx maintenance/scripts/validate-integrity.ts"
+    "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
+    "db:sync": "sqlite3 fish.db .dump > fish.sql && npx wrangler d1 execute linkedfin-db --remote --file=fish.sql && rm fish.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -61,7 +62,8 @@
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "wrangler": "^4.73.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
