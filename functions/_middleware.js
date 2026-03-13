@@ -88,16 +88,20 @@ export async function onRequest(context) {
 
 	const response = await next();
 
-	// Match /name/$id
+	// Match /name/$id (dedicated route)
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
-	// Match /?species=sp_XXX on homepage
+	// Match /?name=nm_XXX or /?species=sp_XXX on homepage
+	const nameParam =
+		url.pathname === "/" ? url.searchParams.get("name") : null;
 	const speciesId =
 		url.pathname === "/" ? url.searchParams.get("species") : null;
 
+	const nameId = nameMatch ? nameMatch[1] : nameParam;
+
 	let og = null;
 	try {
-		if (nameMatch) {
-			og = await lookupName(env.DB, nameMatch[1]);
+		if (nameId) {
+			og = await lookupName(env.DB, nameId);
 		} else if (speciesId) {
 			og = await lookupSpecies(env.DB, speciesId);
 		}
