@@ -79,11 +79,7 @@ export const GENERIC_META = {
  * @returns {{ title: string, description: string }}
  */
 export function buildNameOg(row) {
-	const displayName =
-		isArabicLang(row.lang) && row.transliteration
-			? row.transliteration
-			: row.name;
-	const title = displayName;
+	const title = row.name;
 	const prefix = `${getLangName(row.lang)} · ${row.region_name}`;
 	const etymology = sanitize(row.etymology);
 	const description = etymology ? `${prefix} — ${etymology}` : prefix;

@@ -3,6 +3,7 @@ import {
 	GENERIC_OG,
 	buildNameOg,
 	buildSpeciesOg,
+	isArabicLang,
 	truncate,
 } from "../og-utils.js";
 
@@ -69,13 +70,13 @@ function stripPolytonicMarks(str) {
 }
 
 /**
- * Strip Arabic script characters — satori cannot render RTL/Arabic shaping.
+ * Replace Arabic script words with … — satori cannot render RTL/Arabic shaping.
  * Transliterations are already inline so meaning is preserved.
- * Cleans up leftover double spaces after removal.
  */
 function stripArabic(str) {
 	return str
-		.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, "")
+		.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, "\u2026")
+		.replace(/\s*\u2026\s*/g, " \u2026 ")
 		.replace(/  +/g, " ")
 		.trim();
 }
@@ -106,7 +107,9 @@ export async function onRequest(context) {
 				.first();
 			if (row) {
 				const og = buildNameOg(row);
-				title = og.title;
+				title = isArabicLang(row.lang) && row.transliteration
+					? row.transliteration
+					: og.title;
 				description = og.description;
 			}
 		} else if (type === "species" && id) {

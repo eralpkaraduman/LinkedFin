@@ -98,7 +98,7 @@ describe("buildNameOg", () => {
 		);
 	});
 
-	it("uses transliteration for Arabic names", () => {
+	it("keeps Arabic name in title (meta tags render Arabic fine)", () => {
 		const row = {
 			name: "سلطان ابراهيم",
 			lang: "apc",
@@ -107,7 +107,7 @@ describe("buildNameOg", () => {
 			transliteration: "Sultan Ibrahim",
 		};
 		const result = buildNameOg(row);
-		expect(result.title).toBe("Sultan Ibrahim");
+		expect(result.title).toBe("سلطان ابراهيم");
 		expect(result.description).toContain("Levantine Arabic · Levant");
 	});
 
