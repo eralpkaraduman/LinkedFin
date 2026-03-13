@@ -1,9 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeftIcon, CheckIcon, LinkIcon, ShareIcon } from "lucide-react";
+import {
+	ArrowLeftIcon,
+	CheckIcon,
+	CopyIcon,
+	EllipsisVerticalIcon,
+	ShareIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { NameDetail } from "#/components/NameDetail";
 import { SpeciesCard } from "#/components/SpeciesCard";
 import { Button } from "#/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "#/components/ui/dropdown-menu";
 import { useDatabase } from "#/lib/DatabaseContext";
 
 export const Route = createFileRoute("/name/$id")({
@@ -21,6 +33,16 @@ function DetailPage() {
 		await navigator.clipboard.writeText(window.location.href);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
+	};
+
+	const share = () => {
+		if (name) {
+			navigator.share({
+				title: `LinkedFin: ${name.name}`,
+				text: name.etymology || name.scientific_name,
+				url: window.location.href,
+			});
+		}
 	};
 
 	if (!name) {
@@ -51,36 +73,30 @@ function DetailPage() {
 						</Link>
 						<h1 className="text-2xl font-bold">{name.name}</h1>
 					</div>
-					<div className="flex gap-1">
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={copyLink}
-							title="Copy link"
-						>
-							{copied ? (
-								<CheckIcon className="h-4 w-4 text-green-500" />
-							) : (
-								<LinkIcon className="h-4 w-4" />
-							)}
-						</Button>
-						{typeof navigator !== "undefined" && navigator.share && (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() =>
-									navigator.share({
-										title: `LinkedFin: ${name.name}`,
-										text: name.etymology || name.scientific_name,
-										url: window.location.href,
-									})
-								}
-								title="Share"
-							>
-								<ShareIcon className="h-4 w-4" />
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" size="icon">
+								<EllipsisVerticalIcon className="h-4 w-4" />
+								<span className="sr-only">Actions</span>
 							</Button>
-						)}
-					</div>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onClick={copyLink}>
+								{copied ? (
+									<CheckIcon className="text-green-500" />
+								) : (
+									<CopyIcon />
+								)}
+								{copied ? "Copied!" : "Copy link"}
+							</DropdownMenuItem>
+							{typeof navigator !== "undefined" && navigator.share && (
+								<DropdownMenuItem onClick={share}>
+									<ShareIcon />
+									Share
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 
 				<div className="space-y-4">
