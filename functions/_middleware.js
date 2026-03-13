@@ -6,6 +6,11 @@ function escapeHtml(str) {
 		.replace(/>/g, "&gt;");
 }
 
+/** Collapse whitespace and trim for use in meta tag content attributes. */
+function sanitizeOgText(str) {
+	return String(str).replace(/\s+/g, " ").trim();
+}
+
 function truncate(str, max) {
 	if (str.length <= max) return str;
 	const cut = str.lastIndexOf(", ", max - 1);
@@ -19,19 +24,20 @@ const GENERIC = {
 };
 
 class OgTagsHandler {
-	constructor(title, description, url) {
+	constructor(title, description, url, imgUrl) {
 		this.title = title;
 		this.description = description;
 		this.url = url;
+		this.imgUrl = imgUrl;
 	}
 	element(el) {
-		const t = escapeHtml(this.title);
-		const d = escapeHtml(this.description);
+		const t = escapeHtml(sanitizeOgText(this.title));
+		const d = escapeHtml(sanitizeOgText(this.description));
 		const u = escapeHtml(this.url);
-		const img = "https://linkedfin.net/og-image.png";
+		const img = escapeHtml(this.imgUrl);
 		el.append(
-			`<meta property="og:type" content="website" />` +
-				`<meta property="og:site_name" content="LinkedFin" />` +
+			`<meta name="robots" content="index, follow" />` +
+				`<meta property="og:type" content="website" />` +
 				`<meta property="og:url" content="${u}" />` +
 				`<meta property="og:title" content="${t}" />` +
 				`<meta property="og:description" content="${d}" />` +
@@ -82,11 +88,11 @@ async function lookupSpecies(db, speciesId) {
 export async function onRequest(context) {
 	const { request, next, env } = context;
 	const url = new URL(request.url);
-	const accept = request.headers.get("accept") ?? "";
-
-	if (!accept.includes("text/html")) return next();
 
 	const response = await next();
+
+	const contentType = response.headers.get("content-type") ?? "";
+	if (!contentType.includes("text/html")) return response;
 
 	// Match /name/$id or /species/$id
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
@@ -107,8 +113,18 @@ export async function onRequest(context) {
 		og = GENERIC;
 	}
 
+	// Dynamic OG image for name/species routes, static fallback otherwise
+	let imgUrl;
+	if (nameMatch) {
+		imgUrl = `${url.origin}/og/name/${nameMatch[1]}`;
+	} else if (speciesMatch) {
+		imgUrl = `${url.origin}/og/species/${speciesMatch[1]}`;
+	} else {
+		imgUrl = `${url.origin}/og/home`;
+	}
+
 	const rewritten = new HTMLRewriter()
-		.on("head", new OgTagsHandler(og.title, og.description, url.href))
+		.on("head", new OgTagsHandler(og.title, og.description, url.href, imgUrl))
 		.transform(response);
 
 	const cached = new Response(rewritten.body, rewritten);
