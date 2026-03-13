@@ -33,7 +33,7 @@ export function ShareActions({ title, text }: ShareActionsProps) {
 					<CopyIcon className="h-4 w-4" />
 				)}
 			</Button>
-			{typeof navigator !== "undefined" && navigator.share && (
+			{typeof navigator !== "undefined" && "share" in navigator && (
 				<Button variant="ghost" size="icon" onClick={share} title="Share">
 					<ShareIcon className="h-4 w-4" />
 				</Button>

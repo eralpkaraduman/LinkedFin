@@ -8,7 +8,6 @@
 export type {
 	DB,
 	DB as Database,
-	Generated,
 	NameRelations,
 	Names,
 	Regions,
