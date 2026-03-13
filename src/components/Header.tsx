@@ -49,7 +49,7 @@ export default function Header() {
 						className="inline-flex items-center gap-0.5 px-2 py-1 text-sm text-foreground no-underline transition sm:px-3 sm:py-1.5"
 					>
 						<span className="text-foreground">Linked</span>
-						<span className="rounded bg-[#0A66C2] px-1 text-white">Fin</span>
+						<span className="rounded bg-[#2563EB] px-1 text-white">Fin</span>
 					</Link>
 				</h1>
 

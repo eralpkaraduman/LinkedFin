@@ -89,7 +89,7 @@ function WelcomeHero({
 				<h2 className="text-lg font-semibold">
 					<span className="font-normal text-muted-foreground">Welcome to</span>{" "}
 					<span className="text-foreground">Linked</span>
-					<span className="rounded bg-[#0A66C2] px-1 text-white">Fin</span>
+					<span className="rounded bg-[#2563EB] px-1 text-white">Fin</span>
 				</h2>
 				<p className="text-sm text-muted-foreground">
 					Fish name etymology database
