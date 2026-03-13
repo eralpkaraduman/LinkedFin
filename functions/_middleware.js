@@ -88,18 +88,16 @@ export async function onRequest(context) {
 
 	const response = await next();
 
-	// Match /name/$id
+	// Match /name/$id or /species/$id
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
-	// Match /?species=sp_XXX on homepage
-	const speciesId =
-		url.pathname === "/" ? url.searchParams.get("species") : null;
+	const speciesMatch = url.pathname.match(/^\/species\/([^/]+)$/);
 
 	let og = null;
 	try {
 		if (nameMatch) {
 			og = await lookupName(env.DB, nameMatch[1]);
-		} else if (speciesId) {
-			og = await lookupSpecies(env.DB, speciesId);
+		} else if (speciesMatch) {
+			og = await lookupSpecies(env.DB, speciesMatch[1]);
 		}
 	} catch (e) {
 		console.error("OG lookup error:", e);

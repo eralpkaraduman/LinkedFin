@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SpeciesImage } from "#/components/SpeciesImage";
@@ -17,7 +18,6 @@ interface SpeciesProfileProps {
 	speciesId: string;
 	scientificName: string;
 	speciesNotes?: string | null;
-	onNameClick: (nameId: string) => void;
 }
 
 function buildGitHubIssueUrl(
@@ -35,7 +35,6 @@ export function SpeciesProfile({
 	speciesId,
 	scientificName,
 	speciesNotes,
-	onNameClick,
 }: SpeciesProfileProps) {
 	const { data, isLoading, error } = useWikidataSpecies(scientificName);
 	const { getNamesBySpecies } = useDatabase();
@@ -178,17 +177,17 @@ export function SpeciesProfile({
 					</h3>
 					<div className="flex flex-wrap gap-2">
 						{names.map((name) => (
-							<button
+							<Link
 								key={name.id}
-								type="button"
-								onClick={() => onNameClick(name.id)}
-								className="cursor-pointer rounded-lg bg-muted/50 px-3 py-2 text-left transition hover:bg-muted"
+								to="/name/$id"
+								params={{ id: name.id }}
+								className="rounded-lg bg-muted/50 px-3 py-2 text-left transition hover:bg-muted"
 							>
 								<span className="block text-sm font-medium">{name.name}</span>
 								<span className="block text-xs text-muted-foreground">
 									{name.region}
 								</span>
-							</button>
+							</Link>
 						))}
 					</div>
 				</div>

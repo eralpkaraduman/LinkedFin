@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeftIcon, CheckIcon, LinkIcon } from "lucide-react";
 import { useState } from "react";
 import { NameDetail } from "#/components/NameDetail";
+import { SpeciesCard } from "#/components/SpeciesCard";
 import { Button } from "#/components/ui/button";
 import { useDatabase } from "#/lib/DatabaseContext";
 
@@ -49,14 +50,6 @@ function DetailPage() {
 							Back to search
 						</Link>
 						<h1 className="text-2xl font-bold">{name.name}</h1>
-						<a
-							href={`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name.scientific_name)}`}
-							target="_blank"
-							rel="noreferrer"
-							className="text-muted-foreground italic underline underline-offset-2"
-						>
-							{name.scientific_name}
-						</a>
 					</div>
 					<Button
 						variant="ghost"
@@ -72,7 +65,13 @@ function DetailPage() {
 					</Button>
 				</div>
 
-				<NameDetail name={name} />
+				<div className="space-y-4">
+					<SpeciesCard
+						speciesId={name.species_id}
+						scientificName={name.scientific_name}
+					/>
+					<NameDetail name={name} />
+				</div>
 			</div>
 		</main>
 	);

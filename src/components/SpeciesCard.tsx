@@ -1,20 +1,21 @@
+import { Link } from "@tanstack/react-router";
 import { ChevronRightIcon } from "lucide-react";
 import { SpeciesImage } from "#/components/SpeciesImage";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 
 interface SpeciesCardProps {
+	speciesId: string;
 	scientificName: string;
-	onClick: () => void;
 }
 
-export function SpeciesCard({ scientificName, onClick }: SpeciesCardProps) {
+export function SpeciesCard({ speciesId, scientificName }: SpeciesCardProps) {
 	const { data, isLoading } = useWikidataSpecies(scientificName);
 
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className="flex w-full cursor-pointer items-center gap-3 rounded-lg border bg-muted/30 p-2 text-left transition hover:bg-muted/50"
+		<Link
+			to="/species/$id"
+			params={{ id: speciesId }}
+			className="flex w-full items-center gap-3 rounded-lg border bg-muted/30 p-2 text-left transition hover:bg-muted/50"
 		>
 			{/* Thumbnail with letterbox */}
 			<div className="h-10 w-10 shrink-0 overflow-hidden rounded">
@@ -37,6 +38,6 @@ export function SpeciesCard({ scientificName, onClick }: SpeciesCardProps) {
 
 			{/* Chevron */}
 			<ChevronRightIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-		</button>
+		</Link>
 	);
 }

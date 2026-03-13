@@ -5,10 +5,9 @@ import type { FishName } from "#/lib/types";
 
 interface NameDetailProps {
 	name: FishName;
-	onNavigate?: (id: string) => void;
 }
 
-export function NameDetail({ name, onNavigate }: NameDetailProps) {
+export function NameDetail({ name }: NameDetailProps) {
 	const { relations, getNameById, getNamesBySpecies } = useDatabase();
 
 	const sizeChain = buildChain(name.id, "smaller_than", relations);
@@ -32,24 +31,11 @@ export function NameDetail({ name, onNavigate }: NameDetailProps) {
 		id: string;
 		children: React.ReactNode;
 		className?: string;
-	}) => {
-		if (onNavigate) {
-			return (
-				<button
-					type="button"
-					onClick={() => onNavigate(id)}
-					className={`cursor-pointer ${className}`}
-				>
-					{children}
-				</button>
-			);
-		}
-		return (
-			<Link to="/name/$id" params={{ id }} className={className}>
-				{children}
-			</Link>
-		);
-	};
+	}) => (
+		<Link to="/name/$id" params={{ id }} className={className}>
+			{children}
+		</Link>
+	);
 
 	const NameCard = ({
 		item,

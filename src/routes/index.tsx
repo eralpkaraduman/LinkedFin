@@ -1,13 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CheckIcon, LinkIcon, ShuffleIcon, XIcon } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ShuffleIcon, XIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { DetailModal } from "#/components/DetailModal";
-import { ErrorBoundary } from "#/components/ErrorBoundary";
-import { NameDetail } from "#/components/NameDetail";
-import { SpeciesCard } from "#/components/SpeciesCard";
 import { SpeciesImage } from "#/components/SpeciesImage";
-import { SpeciesProfile } from "#/components/SpeciesProfile";
-import { Button } from "#/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -18,19 +12,15 @@ import {
 } from "#/components/ui/table";
 import { getItem, useSearch } from "#/hooks/useSearch";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
-import { trackCopyLink, trackDetailView, trackSearch } from "#/lib/analytics";
+import { trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
 
 interface SearchParams {
 	q?: string;
-	name?: string; // Selected name ID for modal
-	species?: string; // Selected species ID for profile
 }
 
 // Session storage keys (persists across HMR/deep links)
 const STORAGE_KEYS = {
-	previousName: "linkedfin_prev_name",
-	previousSpecies: "linkedfin_prev_species",
 	shuffleKey: "linkedfin_shuffle_key",
 	heroShuffleKey: "linkedfin_hero_shuffle_key",
 } as const;
@@ -75,50 +65,19 @@ function getRandomSample<T>(array: T[], count: number): T[] {
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>): SearchParams => ({
 		q: typeof search.q === "string" ? search.q : undefined,
-		name: typeof search.name === "string" ? search.name : undefined,
-		species: typeof search.species === "string" ? search.species : undefined,
 	}),
 	component: HomePage,
 });
 
-function CopyLinkButton({ nameId }: { nameId: string }) {
-	const [copied, setCopied] = useState(false);
-
-	const copyLink = async () => {
-		await navigator.clipboard.writeText(
-			`${window.location.origin}/name/${nameId}`,
-		);
-		trackCopyLink(nameId);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
-	};
-
-	return (
-		<Button
-			variant="ghost"
-			size="icon"
-			onClick={copyLink}
-			title="Copy link"
-			className="shrink-0"
-		>
-			{copied ? (
-				<CheckIcon className="h-4 w-4 text-green-500" />
-			) : (
-				<LinkIcon className="h-4 w-4" />
-			)}
-		</Button>
-	);
-}
-
 function WelcomeHero({
+	nameId,
 	name,
 	scientificName,
-	onClick,
 	onShuffle,
 }: {
+	nameId: string;
 	name: string;
 	scientificName: string;
-	onClick: () => void;
 	onShuffle: () => void;
 }) {
 	const { data, isLoading } = useWikidataSpecies(scientificName);
@@ -139,10 +98,10 @@ function WelcomeHero({
 
 			{/* Image + name/species as a connected unit */}
 			<div className="relative">
-				<button
-					type="button"
-					onClick={onClick}
-					className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl p-3"
+				<Link
+					to="/name/$id"
+					params={{ id: nameId }}
+					className="group flex flex-col items-center gap-1.5 rounded-xl p-3"
 				>
 					<div className="relative w-36 aspect-[4/3]">
 						<div className="h-full w-full overflow-hidden rounded-xl ring-2 ring-border transition group-hover:ring-primary">
@@ -165,10 +124,8 @@ function WelcomeHero({
 							{scientificName}
 						</span>
 					</div>
-				</button>
-				{/* Shuffle button - positioned over image bottom-right
-				     Bottom offset: text line (~20px) + parent padding (12px) + image inset (6px) = 38px
-				     Right offset: parent padding (12px) + image inset (6px) = 18px */}
+				</Link>
+				{/* Shuffle button */}
 				<button
 					type="button"
 					onClick={onShuffle}
@@ -183,9 +140,9 @@ function WelcomeHero({
 }
 
 function HomePage() {
-	const { q = "", name: nameId, species: speciesId } = Route.useSearch();
+	const { q = "" } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
-	const { names, getNameById, getSpeciesInfo } = useDatabase();
+	const { names } = useDatabase();
 
 	// Defer the search query so expensive Fuse.js search doesn't block UI
 	const deferredQuery = useDeferredValue(q);
@@ -257,66 +214,6 @@ function HomePage() {
 		};
 	}, [deferredQuery, searchResults.length]);
 
-	const selectedName = nameId ? getNameById(nameId) : null;
-	const selectedSpecies = speciesId ? getSpeciesInfo(speciesId) : null;
-
-	// Track navigation history for back buttons (persisted in sessionStorage)
-	useEffect(() => {
-		if (nameId) {
-			setStoredValue("previousName", nameId);
-		}
-	}, [nameId]);
-
-	useEffect(() => {
-		if (speciesId) {
-			setStoredValue("previousSpecies", speciesId);
-		}
-	}, [speciesId]);
-
-	const openDetail = (id: string) => {
-		const name = getNameById(id);
-		if (name) {
-			trackDetailView(id, name.name);
-		}
-		navigate({
-			search: (prev) => ({ q: prev.q, name: id }),
-		});
-	};
-
-	const openSpecies = (id: string) => {
-		navigate({
-			search: (prev) => ({ q: prev.q, species: id }),
-		});
-	};
-
-	const closeDetail = () => {
-		navigate({
-			search: (prev) => ({ q: prev.q }), // Remove name/species, keep q
-		});
-	};
-
-	const backToSpecies = () => {
-		const previousId = getStoredValue("previousSpecies");
-		if (previousId) {
-			navigate({
-				search: (prev) => ({ q: prev.q, species: previousId }),
-			});
-		} else {
-			closeDetail();
-		}
-	};
-
-	const backToName = () => {
-		const previousId = getStoredValue("previousName");
-		if (previousId) {
-			navigate({
-				search: (prev) => ({ q: prev.q, name: previousId }),
-			});
-		} else {
-			closeDetail();
-		}
-	};
-
 	const displayResults = results.map(getItem);
 
 	return (
@@ -324,9 +221,9 @@ function HomePage() {
 			{/* Welcome hero when in random mode */}
 			{!isValidSearch && heroItem && (
 				<WelcomeHero
+					nameId={heroItem.id}
 					name={heroItem.name}
 					scientificName={heroItem.scientific_name}
-					onClick={() => openDetail(heroItem.id)}
 					onShuffle={shuffleHero}
 				/>
 			)}
@@ -373,12 +270,17 @@ function HomePage() {
 					</TableHeader>
 					<TableBody>
 						{displayResults.map((item) => (
-							<TableRow
-								key={item.id}
-								className="cursor-pointer"
-								onClick={() => openDetail(item.id)}
-							>
-								<TableCell className="font-medium">{item.name}</TableCell>
+							<TableRow key={item.id} className="cursor-pointer">
+								<TableCell className="p-0">
+									<Link
+										to="/name/$id"
+										params={{ id: item.id }}
+										className="block px-2 py-2 font-medium"
+										onClick={() => trackDetailView(item.id, item.name)}
+									>
+										{item.name}
+									</Link>
+								</TableCell>
 								<TableCell>{item.transliteration || ""}</TableCell>
 								<TableCell>{item.region}</TableCell>
 								<TableCell className="text-right italic">
@@ -389,56 +291,6 @@ function HomePage() {
 					</TableBody>
 				</Table>
 			</div>
-
-			{/* Name Detail Modal */}
-			<DetailModal
-				open={!!selectedName && !speciesId}
-				onOpenChange={(open) => !open && closeDetail()}
-				onBack={getStoredValue("previousSpecies") ? backToSpecies : undefined}
-				title={selectedName?.name || ""}
-				action={selectedName && <CopyLinkButton nameId={selectedName.id} />}
-			>
-				{selectedName && (
-					<div className="space-y-4">
-						<SpeciesCard
-							scientificName={selectedName.scientific_name}
-							onClick={() => openSpecies(selectedName.species_id)}
-						/>
-						<NameDetail name={selectedName} onNavigate={openDetail} />
-					</div>
-				)}
-			</DetailModal>
-
-			{/* Species Profile Modal */}
-			<DetailModal
-				open={!!selectedSpecies}
-				onOpenChange={(open) => !open && closeDetail()}
-				onBack={getStoredValue("previousName") ? backToName : undefined}
-				title={
-					<span className="italic">
-						{selectedSpecies?.scientific_name || ""}
-					</span>
-				}
-			>
-				{selectedSpecies && speciesId && (
-					<ErrorBoundary
-						fallback={
-							<div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
-								<p className="text-sm text-muted-foreground">
-									Failed to load species profile.
-								</p>
-							</div>
-						}
-					>
-						<SpeciesProfile
-							speciesId={speciesId}
-							scientificName={selectedSpecies.scientific_name}
-							speciesNotes={selectedSpecies.notes}
-							onNameClick={openDetail}
-						/>
-					</ErrorBoundary>
-				)}
-			</DetailModal>
 		</main>
 	);
 }
