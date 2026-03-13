@@ -85,9 +85,9 @@ function CopyLinkButton({ nameId }: { nameId: string }) {
 	const [copied, setCopied] = useState(false);
 
 	const copyLink = async () => {
-		const url = new URL(window.location.origin + window.location.pathname);
-		url.searchParams.set("name", nameId);
-		await navigator.clipboard.writeText(url.toString());
+		await navigator.clipboard.writeText(
+			`${window.location.origin}/name/${nameId}`,
+		);
 		trackCopyLink(nameId);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
