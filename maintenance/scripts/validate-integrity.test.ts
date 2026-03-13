@@ -15,7 +15,6 @@ import {
   validateEtymology,
   validateNamesToSpeciesFK,
   validateNamesToRegionsFK,
-  validateRegionsParentFK,
   validateRelationsSourceFK,
   validateRelationsTargetFK,
   validateRelationTypes,
@@ -63,7 +62,6 @@ const validRegion = (overrides: Partial<Regions> = {}): Regions => ({
   name: "Test Region",
   language: "en",
   name_local: null,
-  parent_region: null,
   polygon: null,
   notes: null,
   ...overrides,
@@ -442,29 +440,6 @@ describe("validateNamesToRegionsFK", () => {
   })
 })
 
-describe("validateRegionsParentFK", () => {
-  it("passes when no parent_region", () => {
-    const regions = [validRegion({ parent_region: null })]
-    const regionIds = new Set(["test-region"])
-    const result = validateRegionsParentFK(regions, regionIds)
-    expect(result.passed).toBe(true)
-  })
-
-  it("passes when parent_region exists", () => {
-    const regions = [validRegion({ id: "child", parent_region: "parent" })]
-    const regionIds = new Set(["child", "parent"])
-    const result = validateRegionsParentFK(regions, regionIds)
-    expect(result.passed).toBe(true)
-  })
-
-  it("fails when parent_region does not exist", () => {
-    const regions = [validRegion({ parent_region: "nonexistent" })]
-    const regionIds = new Set(["test-region"])
-    const result = validateRegionsParentFK(regions, regionIds)
-    expect(result.passed).toBe(false)
-    expect(result.errors).toContainEqual(expect.stringContaining("non-existent parent region"))
-  })
-})
 
 describe("validateRelationsSourceFK", () => {
   it("passes when source_id exists", () => {
@@ -720,7 +695,7 @@ describe("runAllValidations", () => {
       relations: [],
     })
     const results = runAllValidations(ctx)
-    expect(results).toHaveLength(24)
+    expect(results).toHaveLength(23)
   })
 
   it("all pass for valid minimal data", () => {

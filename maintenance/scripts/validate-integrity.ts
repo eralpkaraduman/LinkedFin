@@ -146,15 +146,6 @@ export function validateNamesToRegionsFK(names: Names[], regionIds: Set<string>)
   return { check: "Names → Regions foreign key", passed: errors.length === 0, errors, warnings: [] }
 }
 
-export function validateRegionsParentFK(regions: Regions[], regionIds: Set<string>): ValidationResult {
-  const errors: string[] = []
-  for (const r of regions) {
-    if (r.parent_region && !regionIds.has(r.parent_region)) {
-      errors.push(`${r.id} (${r.name}): references non-existent parent region '${r.parent_region}'`)
-    }
-  }
-  return { check: "Regions: parent_region foreign key", passed: errors.length === 0, errors, warnings: [] }
-}
 
 export function validateRelationsSourceFK(relations: NameRelations[], nameIds: Set<string>): ValidationResult {
   const errors: string[] = []
@@ -358,7 +349,6 @@ export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
     validateEtymology(ctx.names),
     validateNamesToSpeciesFK(ctx.names, ctx.speciesIds),
     validateNamesToRegionsFK(ctx.names, ctx.regionIds),
-    validateRegionsParentFK(ctx.regions, ctx.regionIds),
     validateRelationsSourceFK(ctx.relations, ctx.nameIds),
     validateRelationsTargetFK(ctx.relations, ctx.nameIds),
     validateRelationTypes(ctx.relations),

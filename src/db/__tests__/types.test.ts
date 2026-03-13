@@ -45,7 +45,6 @@ describe("generated database types", () => {
 			language: "Turkish",
 			name_local: "Türkiye",
 			notes: null,
-			parent_region: null,
 			polygon: null,
 		};
 		expect(mockRegion.id).toBe("turkey");

@@ -31,7 +31,6 @@ export interface Regions {
 	name: string;
 	name_local: string | null;
 	notes: string | null;
-	parent_region: string | null;
 	polygon: string | null;
 }
 
