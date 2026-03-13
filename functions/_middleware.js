@@ -31,15 +31,21 @@ function escapeHtml(str) {
 		.replace(/>/g, "&gt;");
 }
 
+function truncate(str, max) {
+	if (str.length <= max) return str;
+	const cut = str.lastIndexOf(", ", max - 1);
+	return `${str.slice(0, cut > 0 ? cut : max)}...`;
+}
+
 class OgTagsHandler {
-	constructor(name, etymology, url) {
-		this.name = name;
-		this.etymology = etymology;
+	constructor(title, description, url) {
+		this.title = title;
+		this.description = description;
 		this.url = url;
 	}
 	element(el) {
-		const t = escapeHtml(`LinkedFin: ${this.name}`);
-		const d = escapeHtml(this.etymology);
+		const t = escapeHtml(this.title);
+		const d = escapeHtml(this.description);
 		const u = escapeHtml(this.url);
 		const img = "https://linkedfin.net/og-image.png";
 		el.append(
@@ -61,27 +67,68 @@ class OgTagsHandler {
 	}
 }
 
+function lookupName(database, nameId) {
+	const row = database.selectObject(
+		"SELECT name, etymology FROM names WHERE id = ? LIMIT 1",
+		[nameId],
+	);
+	if (!row) return null;
+	return {
+		title: `LinkedFin: ${row.name}`,
+		description: row.etymology,
+	};
+}
+
+function lookupSpecies(database, speciesId) {
+	const species = database.selectObject(
+		"SELECT scientific_name, notes FROM species WHERE id = ? LIMIT 1",
+		[speciesId],
+	);
+	if (!species) return null;
+
+	const names = database.selectObjects(
+		"SELECT name FROM names WHERE species_id = ? ORDER BY id",
+		[speciesId],
+	);
+	const nameList = names.map((n) => n.name).join(", ");
+
+	let description = species.notes || species.scientific_name;
+	if (nameList) {
+		description += ` — ${truncate(nameList, 200 - description.length)}`;
+	}
+
+	return {
+		title: `LinkedFin: ${species.scientific_name}`,
+		description,
+	};
+}
+
 export async function onRequest({ request, next }) {
 	const url = new URL(request.url);
 	const accept = request.headers.get("accept") ?? "";
 
-	// Only intercept /name/* HTML requests
-	const match = url.pathname.match(/^\/name\/([^/]+)$/);
-	if (!match || !accept.includes("text/html")) return next();
+	if (!accept.includes("text/html")) return next();
 
-	const nameId = match[1];
+	// Match /name/$id
+	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
+	// Match /?species=sp_XXX on homepage
+	const speciesId = url.pathname === "/" ? url.searchParams.get("species") : null;
+
+	if (!nameMatch && !speciesId) return next();
+
 	const response = await next();
 
 	try {
 		const database = await getDb();
-		const row = database.selectObject(
-			"SELECT name, etymology FROM names WHERE id = ? LIMIT 1",
-			[nameId],
-		);
-		if (!row) return response;
+
+		const og = nameMatch
+			? lookupName(database, nameMatch[1])
+			: lookupSpecies(database, speciesId);
+
+		if (!og) return response;
 
 		const rewritten = new HTMLRewriter()
-			.on("head", new OgTagsHandler(row.name, row.etymology, url.href))
+			.on("head", new OgTagsHandler(og.title, og.description, url.href))
 			.transform(response);
 
 		const cached = new Response(rewritten.body, rewritten);
