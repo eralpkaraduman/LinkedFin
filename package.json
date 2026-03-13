@@ -16,7 +16,7 @@
     "db:types": "kysely-codegen --dialect sqlite --url ./fish.db --out-file src/db/types.ts",
     "db:copy": "cp fish.db public/fish.db",
     "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
-    "db:sync": "echo 'DROP TABLE IF EXISTS names; DROP TABLE IF EXISTS species; DROP TABLE IF EXISTS regions; DROP TABLE IF EXISTS name_relations;' | cat - <(sqlite3 fish.db .dump) > fish.sql && npx wrangler d1 execute linkedfin-db --remote --file=fish.sql && rm fish.sql"
+    "db:sync": "echo 'DROP TABLE IF EXISTS names; DROP TABLE IF EXISTS species; DROP TABLE IF EXISTS regions; DROP TABLE IF EXISTS name_relations;' | cat - <(sqlite3 fish.db .dump | grep -v '^BEGIN TRANSACTION' | grep -v '^COMMIT') > fish.sql && npx wrangler d1 execute linkedfin-db --remote --file=fish.sql && rm fish.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
