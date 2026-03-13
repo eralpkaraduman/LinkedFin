@@ -1,6 +1,9 @@
-name = "linkedfin"
+name = "linkedfin-net"
 pages_build_output_dir = "dist/client"
 compatibility_date = "2024-09-23"
+
+[build]
+command = "pnpm install --frozen-lockfile && pnpm rebuild better-sqlite3 && pnpm check && pnpm tsc --noEmit && pnpm test && pnpm db:validate && pnpm build"
 
 [[d1_databases]]
 binding = "DB"
