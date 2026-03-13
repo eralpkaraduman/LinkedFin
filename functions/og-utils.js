@@ -51,6 +51,13 @@ export function truncate(str, max, sep = " ") {
 	return `${str.slice(0, cut > 0 ? cut : max)}\u2026`;
 }
 
+const ARABIC_LANGS = new Set(["arb", "arz", "apc"]);
+
+/** Check if language code is an Arabic variant */
+export function isArabicLang(lang) {
+	return ARABIC_LANGS.has(lang);
+}
+
 /** Check if string contains Arabic script characters */
 export function hasArabic(str) {
 	return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(
@@ -79,7 +86,7 @@ export const GENERIC_META = {
  */
 export function buildNameOg(row) {
 	const displayName =
-		hasArabic(row.name) && row.transliteration
+		isArabicLang(row.lang) && row.transliteration
 			? row.transliteration
 			: row.name;
 	const title = displayName;
