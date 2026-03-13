@@ -55,12 +55,12 @@ async function loadFonts() {
 function buildHtml(title, description) {
 	const titleSize = title.length > 30 ? "64px" : "80px";
 	const descHtml = description
-		? `<div style="display:flex;font-size:32px;line-height:1.4;color:#94a3b8">${description}</div>`
+		? `<div style="display:flex;font-size:36px;line-height:1.4;color:#94a3b8">${description}</div>`
 		: "";
 
 	return [
 		`<div style="display:flex;flex-direction:column;justify-content:space-between;width:1200px;height:630px;background:#0f172a;padding:32px 40px;font-family:Noto Sans, Noto Greek, Noto Cyrillic, Noto Turkish;color:#f8fafc">`,
-		`<div style="display:flex;align-items:center;font-size:24px">`,
+		`<div style="display:flex;align-items:center;font-size:32px">`,
 		`<span style="color:#f8fafc;font-weight:700;margin-right:4px">Linked</span>`,
 		`<span style="background:#0A66C2;color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">Fin</span>`,
 		`</div>`,
@@ -68,9 +68,21 @@ function buildHtml(title, description) {
 		`<div style="display:flex;font-size:${titleSize};font-weight:700;line-height:1.15;color:#f8fafc">${title}</div>`,
 		descHtml,
 		`</div>`,
-		`<div style="display:flex;font-size:20px;color:#475569">Fish name etymology database</div>`,
+		`<div style="display:flex;font-size:28px;color:#475569">Fish name etymology database</div>`,
 		`</div>`,
 	].join("");
+}
+
+/**
+ * Strip polytonic-only combining marks that Noto Sans Greek (monotonic) can't render.
+ * Keeps monotonic tonos (U+0301) and diaeresis (U+0308) which the font supports.
+ * Targets: smooth/rough breathing (U+0313/0314), perispomeni (U+0342), iota subscript (U+0345).
+ */
+function stripPolytonicMarks(str) {
+	return str
+		.normalize("NFD")
+		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
+		.normalize("NFC");
 }
 
 function escapeImageHtml(str) {
@@ -120,9 +132,9 @@ export async function onRequest(context) {
 		console.error("OG image DB lookup error:", e);
 	}
 
-	// Truncate and escape for image HTML
-	title = escapeImageHtml(truncate(title, 60));
-	description = escapeImageHtml(truncate(description, 120));
+	// Strip polytonic marks (unsupported by font), truncate, and escape
+	title = escapeImageHtml(truncate(stripPolytonicMarks(title), 60));
+	description = escapeImageHtml(truncate(stripPolytonicMarks(description), 120));
 
 	try {
 		const fonts = await loadFonts();
