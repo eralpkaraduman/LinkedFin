@@ -1,4 +1,10 @@
 import { ImageResponse } from "workers-og";
+import {
+	GENERIC_OG,
+	buildNameOg,
+	buildSpeciesOg,
+	truncate,
+} from "../og-utils.js";
 
 const fontCache = {};
 
@@ -46,23 +52,6 @@ async function loadFonts() {
 		.filter(Boolean);
 }
 
-function sanitize(str) {
-	return String(str || "").replace(/\s+/g, " ").trim();
-}
-
-function truncate(str, max) {
-	if (str.length <= max) return str;
-	const cut = str.lastIndexOf(" ", max - 1);
-	return `${str.slice(0, cut > 0 ? cut : max)}\u2026`;
-}
-
-/** Check if string contains Arabic script characters */
-function hasArabic(str) {
-	return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(
-		str,
-	);
-}
-
 function buildHtml(title, description) {
 	const titleSize = title.length > 30 ? "52px" : "64px";
 	const descHtml = description
@@ -82,6 +71,10 @@ function buildHtml(title, description) {
 	].join("");
 }
 
+function escapeImageHtml(str) {
+	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+}
+
 export async function onRequest(context) {
 	const { env, params } = context;
 	const url = new URL(context.request.url);
@@ -89,24 +82,20 @@ export async function onRequest(context) {
 	const parts = (params.path || []).filter(Boolean);
 	const [type, id] = parts;
 
-	let title = "LinkedFin";
-	let description =
-		"Explore the origins and meanings of fish names across languages";
+	let title = GENERIC_OG.title;
+	let description = GENERIC_OG.description;
 
 	try {
 		if (type === "name" && id) {
 			const row = await env.DB.prepare(
-				"SELECT name, transliteration, etymology FROM names WHERE id = ? LIMIT 1",
+				"SELECT n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id WHERE n.id = ? LIMIT 1",
 			)
 				.bind(id)
 				.first();
 			if (row) {
-				// Use transliteration for Arabic names (satori can't render RTL)
-				title =
-					hasArabic(row.name) && row.transliteration
-						? row.transliteration
-						: row.name;
-				description = sanitize(row.etymology) || "";
+				const og = buildNameOg(row);
+				title = og.title;
+				description = og.description;
 			}
 		} else if (type === "species" && id) {
 			const species = await env.DB.prepare(
@@ -115,24 +104,23 @@ export async function onRequest(context) {
 				.bind(id)
 				.first();
 			if (species) {
-				title = species.scientific_name;
 				const { results: names } = await env.DB.prepare(
 					"SELECT name FROM names WHERE species_id = ? ORDER BY id",
 				)
 					.bind(id)
 					.all();
-				description = names.map((n) => n.name).join(", ");
+				const og = buildSpeciesOg(species, names);
+				title = og.title;
+				description = og.description;
 			}
 		}
 	} catch (e) {
 		console.error("OG image DB lookup error:", e);
 	}
 
-	// Escape HTML entities in dynamic text
-	title = truncate(title, 60).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-	description = truncate(description, 120)
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;");
+	// Truncate and escape for image HTML
+	title = escapeImageHtml(truncate(title, 60));
+	description = escapeImageHtml(truncate(description, 120));
 
 	try {
 		const fonts = await loadFonts();

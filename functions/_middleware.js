@@ -1,3 +1,11 @@
+import {
+	GENERIC_META,
+	buildNameOg,
+	buildSpeciesOg,
+	sanitize,
+	truncate,
+} from "./og-utils.js";
+
 function escapeHtml(str) {
 	return String(str)
 		.replace(/&/g, "&amp;")
@@ -5,23 +13,6 @@ function escapeHtml(str) {
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;");
 }
-
-/** Collapse whitespace and trim for use in meta tag content attributes. */
-function sanitizeOgText(str) {
-	return String(str).replace(/\s+/g, " ").trim();
-}
-
-function truncate(str, max) {
-	if (str.length <= max) return str;
-	const cut = str.lastIndexOf(", ", max - 1);
-	return `${str.slice(0, cut > 0 ? cut : max)}...`;
-}
-
-const GENERIC = {
-	title: "LinkedFin - Fish Names Etymology Database",
-	description:
-		"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names from Turkish, Greek, Arabic, and more.",
-};
 
 class OgTagsHandler {
 	constructor(title, description, url, imgUrl) {
@@ -31,8 +22,8 @@ class OgTagsHandler {
 		this.imgUrl = imgUrl;
 	}
 	element(el) {
-		const t = escapeHtml(sanitizeOgText(this.title));
-		const d = escapeHtml(sanitizeOgText(this.description));
+		const t = escapeHtml(sanitize(this.title));
+		const d = escapeHtml(sanitize(this.description));
 		const u = escapeHtml(this.url);
 		const img = escapeHtml(this.imgUrl);
 		el.append(
@@ -56,13 +47,16 @@ class OgTagsHandler {
 
 async function lookupName(db, nameId) {
 	const row = await db
-		.prepare("SELECT name, etymology FROM names WHERE id = ? LIMIT 1")
+		.prepare(
+			"SELECT n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id WHERE n.id = ? LIMIT 1",
+		)
 		.bind(nameId)
 		.first();
 	if (!row) return null;
+	const og = buildNameOg(row);
 	return {
-		title: `LinkedFin: ${row.name}`,
-		description: row.etymology,
+		title: `LinkedFin: ${og.title}`,
+		description: truncate(og.description, 500),
 	};
 }
 
@@ -77,11 +71,11 @@ async function lookupSpecies(db, speciesId) {
 		.prepare("SELECT name FROM names WHERE species_id = ? ORDER BY id")
 		.bind(speciesId)
 		.all();
-	const nameList = names.map((n) => n.name).join(", ");
 
+	const og = buildSpeciesOg(species, names);
 	return {
-		title: `LinkedFin: ${species.scientific_name}`,
-		description: truncate(nameList, 500) || species.scientific_name,
+		title: `LinkedFin: ${og.title}`,
+		description: truncate(og.description, 500, ", "),
 	};
 }
 
@@ -110,7 +104,7 @@ export async function onRequest(context) {
 	}
 
 	if (!og) {
-		og = GENERIC;
+		og = GENERIC_META;
 	}
 
 	// Dynamic OG image for name/species routes, static fallback otherwise
