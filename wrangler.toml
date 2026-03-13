@@ -1,5 +1,6 @@
 name = "linkedfin"
 compatibility_date = "2024-09-23"
+account_id = "5a8c63d2d2ea9ef8f98d8a0df7329cd5"
 
 [[d1_databases]]
 binding = "DB"
