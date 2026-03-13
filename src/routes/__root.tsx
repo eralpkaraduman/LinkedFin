@@ -28,62 +28,7 @@ export const Route = createRootRoute({
 				content:
 					"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names from Turkish, Greek, Arabic, and more.",
 			},
-			// Open Graph
-			{
-				property: "og:type",
-				content: "website",
-			},
-			{
-				property: "og:site_name",
-				content: "LinkedFin",
-			},
-			{
-				property: "og:title",
-				content: "LinkedFin - Fish Names Etymology Database",
-			},
-			{
-				property: "og:description",
-				content:
-					"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names.",
-			},
-			{
-				property: "og:url",
-				content: "https://linkedfin.net/",
-			},
-			{
-				property: "og:image",
-				content: "https://linkedfin.net/og-image.png",
-			},
-			{
-				property: "og:image:width",
-				content: "1200",
-			},
-			{
-				property: "og:image:height",
-				content: "630",
-			},
-			{
-				property: "og:locale",
-				content: "en_US",
-			},
-			// Twitter Card
-			{
-				name: "twitter:card",
-				content: "summary_large_image",
-			},
-			{
-				name: "twitter:title",
-				content: "LinkedFin - Fish Names Etymology Database",
-			},
-			{
-				name: "twitter:description",
-				content:
-					"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names.",
-			},
-			{
-				name: "twitter:image",
-				content: "https://linkedfin.net/og-image.png",
-			},
+			// OG + Twitter tags injected by Cloudflare Pages middleware
 			// PWA / Mobile
 			{
 				name: "apple-mobile-web-app-capable",

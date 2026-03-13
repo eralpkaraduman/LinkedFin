@@ -12,16 +12,11 @@ function truncate(str, max) {
 	return `${str.slice(0, cut > 0 ? cut : max)}...`;
 }
 
-// Remove existing OG/Twitter meta tags so we can replace them
-class RemoveOgTags {
-	element(el) {
-		const prop = el.getAttribute("property") || "";
-		const name = el.getAttribute("name") || "";
-		if (prop.startsWith("og:") || name.startsWith("twitter:")) {
-			el.remove();
-		}
-	}
-}
+const GENERIC = {
+	title: "LinkedFin - Fish Names Etymology Database",
+	description:
+		"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names from Turkish, Greek, Arabic, and more.",
+};
 
 class OgTagsHandler {
 	constructor(title, description, url) {
@@ -91,37 +86,37 @@ export async function onRequest(context) {
 
 	if (!accept.includes("text/html")) return next();
 
+	const response = await next();
+
 	// Match /name/$id
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
 	// Match /?species=sp_XXX on homepage
 	const speciesId =
 		url.pathname === "/" ? url.searchParams.get("species") : null;
 
-	if (!nameMatch && !speciesId) return next();
-
-	const response = await next();
-
+	let og = null;
 	try {
-		const og = nameMatch
-			? await lookupName(env.DB, nameMatch[1])
-			: await lookupSpecies(env.DB, speciesId);
-
-		if (!og) return response;
-
-		const rewritten = new HTMLRewriter()
-			.on('meta[property^="og:"]', new RemoveOgTags())
-			.on('meta[name^="twitter:"]', new RemoveOgTags())
-			.on("head", new OgTagsHandler(og.title, og.description, url.href))
-			.transform(response);
-
-		const cached = new Response(rewritten.body, rewritten);
-		cached.headers.set(
-			"Cache-Control",
-			"public, max-age=604800, s-maxage=604800",
-		);
-		return cached;
+		if (nameMatch) {
+			og = await lookupName(env.DB, nameMatch[1]);
+		} else if (speciesId) {
+			og = await lookupSpecies(env.DB, speciesId);
+		}
 	} catch (e) {
-		console.error("OG middleware error:", e);
-		return response;
+		console.error("OG lookup error:", e);
 	}
+
+	if (!og) {
+		og = GENERIC;
+	}
+
+	const rewritten = new HTMLRewriter()
+		.on("head", new OgTagsHandler(og.title, og.description, url.href))
+		.transform(response);
+
+	const cached = new Response(rewritten.body, rewritten);
+	cached.headers.set(
+		"Cache-Control",
+		"public, max-age=604800, s-maxage=604800",
+	);
+	return cached;
 }
