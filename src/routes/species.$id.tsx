@@ -11,9 +11,10 @@ export const Route = createFileRoute("/species/$id")({
 
 function SpeciesPage() {
 	const { id } = Route.useParams();
-	const { getSpeciesInfo } = useDatabase();
+	const { getSpeciesInfo, getNamesBySpecies } = useDatabase();
 
 	const species = getSpeciesInfo(id);
+	const names = getNamesBySpecies(id);
 
 	if (!species) {
 		return (
@@ -45,7 +46,10 @@ function SpeciesPage() {
 							{species.scientific_name}
 						</h1>
 					</div>
-					<ShareActions title={`LinkedFin: ${species.scientific_name}`} />
+					<ShareActions
+						title={`LinkedFin: ${species.scientific_name}`}
+						text={names.map((n) => n.name).join(", ")}
+					/>
 				</div>
 
 				<ErrorBoundary
