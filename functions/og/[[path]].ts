@@ -38,7 +38,7 @@ function buildHtml(title: string, description: string): string {
 		: "";
 
 	return [
-		`<div style="display:flex;flex-direction:column;justify-content:center;gap:24px;width:1200px;height:630px;background:#0f172a;padding:32px 80px;font-family:'Noto Sans';color:#f8fafc">`,
+		`<div style="display:flex;flex-direction:column;justify-content:center;gap:24px;width:1200px;height:630px;background:#0f172a;padding:32px 100px;font-family:'Noto Sans';color:#f8fafc">`,
 		`<div style="display:flex;align-items:center;font-size:32px">`,
 		`<span style="color:#f8fafc;font-weight:700;margin-right:4px">Linked</span>`,
 		`<span style="background:#0891B2;color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">Fin</span>`,
