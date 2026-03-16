@@ -1,0 +1,7 @@
+source_id,source_name,target_id,target_name,relation,evidence_from_note
+nm_0362,أنشوفة,nm_0467,Acciuga,borrowed_from,"nm_0467 note: 'source of Arabic أنشوفة (via Mediterranean trade)'"
+nm_0453,Monkfish,nm_0474,Anglerfish,alternate_of,"nm_0453 note: 'Also called Anglerfish' / nm_0474 note: 'Also called Monkfish'"
+nm_0311,Sea trout,nm_0308,Meritaimen,alternate_of,"nm_0311 note: 'Sea-running anadromous form of brown trout' / nm_0308 note: same"
+nm_0311,Sea trout,nm_0309,Havsöring,alternate_of,"nm_0309 note: 'Sea-run anadromous form of brown trout' — English equivalent"
+nm_0197,Μελανούρι,nm_0011,Σκαθάρι,confused_with,"nm_0197 note: 'Sometimes incorrectly applied to Black seabream (Σκαθάρι) due to similar coloring'"
+nm_0394,κεστρεύς,nm_0372,κέφαλος,alternate_of,"nm_0394 note: 'Alternative ancient name for mullet' — both Ancient Greek for Mugil cephalus"

@@ -6,7 +6,7 @@ import type { NameRelations, Names } from "../db/types";
  * - Adds fields from species JOIN
  * - Adds computed language display name
  */
-export interface FishName extends Omit<Names, "region_id" | "notes"> {
+export interface FishName extends Omit<Names, "region_id"> {
 	region: string; // from regions.name (JOIN)
 	scientific_name: string; // from species.scientific_name (JOIN)
 	species_notes?: string | null; // from species.notes (JOIN)

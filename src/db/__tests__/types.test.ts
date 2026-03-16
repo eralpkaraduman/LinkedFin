@@ -23,7 +23,6 @@ describe("generated database types", () => {
 			measurement_unit: null,
 			measurement_min: null,
 			measurement_max: null,
-			notes: null,
 		};
 		expect(mockName.id).toBe("nm_001");
 		expect(mockName.name).toBe("Test Fish");

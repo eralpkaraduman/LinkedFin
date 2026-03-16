@@ -18,7 +18,6 @@ export interface Names {
 	measurement_min: number | null;
 	measurement_unit: string | null;
 	name: string;
-	notes: string | null;
 	phonetic: string;
 	region_id: string;
 	species_id: string;
