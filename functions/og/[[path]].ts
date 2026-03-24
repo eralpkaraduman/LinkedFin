@@ -1,5 +1,5 @@
 import { ImageResponse } from "workers-og";
-import { namesById, namesBySpeciesId, speciesById } from "../og-data.ts";
+import data from "../og-data.json";
 import {
 	buildNameOg,
 	buildSpeciesOg,
@@ -8,6 +8,16 @@ import {
 	stripArabic,
 	truncate,
 } from "../og-utils.ts";
+
+const namesById = data.namesById as Record<
+	string,
+	(typeof data.namesById)[keyof typeof data.namesById]
+>;
+const speciesById = data.speciesById as Record<
+	string,
+	(typeof data.speciesById)[keyof typeof data.speciesById]
+>;
+const namesBySpeciesId = data.namesBySpeciesId as Record<string, string[]>;
 
 const fontCache: Record<string, ArrayBuffer> = {};
 
