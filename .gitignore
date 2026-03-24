@@ -12,6 +12,9 @@ dist-ssr
 __unconfig*
 todos.json
 
+# Generated OG metadata (build-time from fish.db)
+functions/og-data.ts
+
 # Dictionaries (reference data, not deployed)
 dictionaries/
 

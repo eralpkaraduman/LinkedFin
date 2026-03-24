@@ -1,17 +1,13 @@
 import { ImageResponse } from "workers-og";
+import { namesById, namesBySpeciesId, speciesById } from "../og-data.ts";
 import {
 	buildNameOg,
 	buildSpeciesOg,
 	GENERIC_OG,
 	isArabicLang,
-	type NameRow,
 	stripArabic,
 	truncate,
 } from "../og-utils.ts";
-
-interface Env {
-	DB: D1Database;
-}
 
 const fontCache: Record<string, ArrayBuffer> = {};
 
@@ -68,9 +64,9 @@ function escapeImageHtml(str: string): string {
 }
 
 export async function onRequest(
-	context: EventContext<Env, string, unknown>,
+	context: EventContext<unknown, string, unknown>,
 ): Promise<Response> {
-	const { env, params } = context;
+	const { params } = context;
 	const url = new URL(context.request.url);
 
 	const parts = ((params as { path?: string[] }).path || []).filter(Boolean);
@@ -81,11 +77,7 @@ export async function onRequest(
 
 	try {
 		if (type === "name" && id) {
-			const row = await env.DB.prepare(
-				"SELECT n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id WHERE n.id = ? LIMIT 1",
-			)
-				.bind(id)
-				.first<NameRow>();
+			const row = namesById[id];
 			if (row) {
 				const og = buildNameOg(row);
 				title =
@@ -95,24 +87,18 @@ export async function onRequest(
 				description = og.description;
 			}
 		} else if (type === "species" && id) {
-			const species = await env.DB.prepare(
-				"SELECT scientific_name FROM species WHERE id = ? LIMIT 1",
-			)
-				.bind(id)
-				.first<{ scientific_name: string }>();
+			const species = speciesById[id];
 			if (species) {
-				const { results: names } = await env.DB.prepare(
-					"SELECT name FROM names WHERE species_id = ? ORDER BY id",
-				)
-					.bind(id)
-					.all<{ name: string }>();
+				const names = (namesBySpeciesId[id] ?? []).map((name) => ({
+					name,
+				}));
 				const og = buildSpeciesOg(species, names);
 				title = og.title;
 				description = og.description;
 			}
 		}
 	} catch (e) {
-		console.error("OG image DB lookup error:", e);
+		console.error("OG image lookup error:", e);
 	}
 
 	title = escapeImageHtml(

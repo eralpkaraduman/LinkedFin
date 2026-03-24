@@ -1,15 +1,11 @@
+import { namesById, namesBySpeciesId, speciesById } from "./og-data.ts";
 import {
 	buildNameOg,
 	buildSpeciesOg,
 	GENERIC_META,
-	type NameRow,
 	sanitize,
 	truncate,
 } from "./og-utils.ts";
-
-interface Env {
-	DB: D1Database;
-}
 
 function escapeHtml(str: string): string {
 	return String(str)
@@ -51,16 +47,10 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 	}
 }
 
-async function lookupName(
-	db: D1Database,
+function lookupName(
 	nameId: string,
-): Promise<{ title: string; description: string } | null> {
-	const row = await db
-		.prepare(
-			"SELECT n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id WHERE n.id = ? LIMIT 1",
-		)
-		.bind(nameId)
-		.first<NameRow>();
+): { title: string; description: string } | null {
+	const row = namesById[nameId];
 	if (!row) return null;
 	const og = buildNameOg(row);
 	return {
@@ -69,20 +59,13 @@ async function lookupName(
 	};
 }
 
-async function lookupSpecies(
-	db: D1Database,
+function lookupSpecies(
 	speciesId: string,
-): Promise<{ title: string; description: string } | null> {
-	const species = await db
-		.prepare("SELECT scientific_name FROM species WHERE id = ? LIMIT 1")
-		.bind(speciesId)
-		.first<{ scientific_name: string }>();
+): { title: string; description: string } | null {
+	const species = speciesById[speciesId];
 	if (!species) return null;
 
-	const { results: names } = await db
-		.prepare("SELECT name FROM names WHERE species_id = ? ORDER BY id")
-		.bind(speciesId)
-		.all<{ name: string }>();
+	const names = (namesBySpeciesId[speciesId] ?? []).map((name) => ({ name }));
 
 	const og = buildSpeciesOg(species, names);
 	return {
@@ -92,9 +75,9 @@ async function lookupSpecies(
 }
 
 export async function onRequest(
-	context: EventContext<Env, string, unknown>,
+	context: EventContext<unknown, string, unknown>,
 ): Promise<Response> {
-	const { request, next, env } = context;
+	const { request, next } = context;
 	const url = new URL(request.url);
 
 	const response = await next();
@@ -108,9 +91,9 @@ export async function onRequest(
 	let og: { title: string; description: string } | null = null;
 	try {
 		if (nameMatch) {
-			og = await lookupName(env.DB, nameMatch[1]);
+			og = lookupName(nameMatch[1]);
 		} else if (speciesMatch) {
-			og = await lookupSpecies(env.DB, speciesMatch[1]);
+			og = lookupSpecies(speciesMatch[1]);
 		}
 	} catch (e) {
 		console.error("OG lookup error:", e);
