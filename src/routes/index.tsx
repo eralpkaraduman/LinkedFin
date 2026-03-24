@@ -97,44 +97,44 @@ function WelcomeHero({
 			</div>
 
 			{/* Image + name/species as a connected unit */}
-			<div className="relative">
-				<Link
-					to="/name/$id"
-					params={{ id: nameId }}
-					className="group flex flex-col items-center gap-1.5 rounded-xl p-3"
-				>
-					<div className="relative w-36 aspect-[4/3]">
-						<div className="h-full w-full overflow-hidden rounded-xl ring-2 ring-border transition group-hover:ring-primary">
-							{isLoading ? (
-								<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
-							) : (
-								<SpeciesImage
-									imageUrl={data?.imageUrl}
-									alt={scientificName}
-									large
-									className="h-full w-full"
-								/>
-							)}
-						</div>
+			<Link
+				to="/name/$id"
+				params={{ id: nameId }}
+				className="group flex flex-col items-center gap-1.5 rounded-xl p-3"
+			>
+				<div className="relative w-36 aspect-[4/3]">
+					<div className="h-full w-full overflow-hidden rounded-xl ring-2 ring-border transition group-hover:ring-primary">
+						{isLoading ? (
+							<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
+						) : (
+							<SpeciesImage
+								imageUrl={data?.imageUrl}
+								alt={scientificName}
+								large
+								className="h-full w-full"
+							/>
+						)}
 					</div>
-					<div className="text-xs">
-						<span className="font-medium">{name}</span>
-						<span className="text-muted-foreground"> · </span>
-						<span className="italic text-muted-foreground">
-							{scientificName}
-						</span>
-					</div>
-				</Link>
-				{/* Shuffle button */}
-				<button
-					type="button"
-					onClick={onShuffle}
-					className="absolute bottom-[38px] right-[18px] z-10 cursor-pointer rounded-full bg-background/80 p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-background hover:text-foreground"
-					title="Shuffle"
-				>
-					<ShuffleIcon className="h-3.5 w-3.5" />
-				</button>
-			</div>
+					{/* Shuffle button */}
+					<button
+						type="button"
+						onClick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							onShuffle();
+						}}
+						className="absolute bottom-2 right-2 z-10 cursor-pointer rounded-full bg-background/80 p-1.5 text-muted-foreground ring-1 ring-border transition hover:bg-background hover:text-foreground"
+						title="Shuffle"
+					>
+						<ShuffleIcon className="h-3.5 w-3.5" />
+					</button>
+				</div>
+				<div className="text-xs">
+					<span className="font-medium">{name}</span>
+					<span className="text-muted-foreground"> · </span>
+					<span className="italic text-muted-foreground">{scientificName}</span>
+				</div>
+			</Link>
 		</div>
 	);
 }
