@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Finland-Swedish names (region=finland, lang=swe)
 // These are Swedish names as used in Finland (finlandssvenska)

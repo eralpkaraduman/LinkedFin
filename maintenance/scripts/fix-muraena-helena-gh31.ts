@@ -14,7 +14,7 @@
  */
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing sp_072 Muraena helena (Issue #31) ===\n");
 

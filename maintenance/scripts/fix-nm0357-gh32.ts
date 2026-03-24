@@ -13,7 +13,7 @@
  */
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing nm_0357 region (Issue #32) ===\n");
 

@@ -14,7 +14,7 @@
  */
 import Database from "better-sqlite3";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing nm_0171 Baltic herring etymology (Issue #38) ===\n");
 

@@ -5,7 +5,7 @@
 
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Character replacements for transliteration normalization
 const replacements: Record<string, string> = {

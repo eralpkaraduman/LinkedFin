@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // English common names for the Finnish species (international names)
 // Starting from nm_0160

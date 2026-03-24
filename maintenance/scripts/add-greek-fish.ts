@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // New species to add (starting from sp_065)
 const newSpecies: { id: string; scientific_name: string; family: string; habitat: string; notes: string }[] = [

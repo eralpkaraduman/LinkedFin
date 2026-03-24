@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Fix redundant "meaning X" where X is just the English translation
 const fixes: Record<string, string> = {

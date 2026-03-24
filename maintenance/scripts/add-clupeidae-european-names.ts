@@ -14,7 +14,7 @@
  */
 import Database from "better-sqlite3";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 db.pragma("journal_mode = WAL");
 
 console.log("=== Adding European names for Clupeidae species ===\n");

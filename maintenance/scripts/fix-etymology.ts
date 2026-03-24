@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 const names = db.query(`
   SELECT id, name, lang, etymology FROM names WHERE etymology IS NOT NULL

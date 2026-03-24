@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // borrowed_from: source borrowed from target
 // Turkish ← Greek borrowings (same species, clear etymological connection)

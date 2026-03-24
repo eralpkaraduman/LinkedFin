@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Fix Finnish entries - move cognate info to notes
 const fixes: { name: string; etymology: string; notes?: string }[] = [

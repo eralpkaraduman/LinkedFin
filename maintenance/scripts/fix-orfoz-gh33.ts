@@ -17,7 +17,7 @@
  */
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing sp_007 Orfoz self-confusion (Issue #33) ===\n");
 

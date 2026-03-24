@@ -400,7 +400,7 @@ async function main() {
   console.log("🔍 Validating database integrity...\n")
 
   // Initialize Kysely with better-sqlite3
-  const sqliteDb = new Database("fish.db", { readonly: true })
+  const sqliteDb = new Database("public/fish.db", { readonly: true })
   const db = new Kysely<DB>({
     dialect: new SqliteDialect({ database: sqliteDb }),
   })

@@ -7,15 +7,14 @@
   },
   "scripts": {
     "dev": "vite dev --port 4141",
-    "build": "pnpm db:copy && vite build && cp dist/client/_shell.html dist/client/index.html",
+    "build": "vite build && cp dist/client/_shell.html dist/client/index.html",
     "pipeline": "pnpm rebuild better-sqlite3 && pnpm og:generate && pnpm check && pnpm tsc --noEmit && pnpm tsc --noEmit -p functions/tsconfig.json && pnpm test && pnpm db:validate && pnpm build",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "db:types": "kysely-codegen --dialect sqlite --url ./fish.db --out-file src/db/types.ts",
-    "db:copy": "tsx maintenance/scripts/db-copy.ts",
+    "db:types": "kysely-codegen --dialect sqlite --url ./public/fish.db --out-file src/db/types.ts",
     "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
     "og:generate": "tsx maintenance/scripts/og-data-gen.ts"
   },

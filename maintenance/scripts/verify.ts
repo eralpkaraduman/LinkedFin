@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { readFileSync } from "fs";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Get all data from DB
 const species = db.query("SELECT * FROM species ORDER BY id").all();

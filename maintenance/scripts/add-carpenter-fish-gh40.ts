@@ -18,7 +18,7 @@
  */
 import Database from "better-sqlite3";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Adding carpenter fish species and names (Issue #40) ===\n");
 

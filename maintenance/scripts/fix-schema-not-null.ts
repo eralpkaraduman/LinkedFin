@@ -6,7 +6,7 @@
 
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Disable foreign keys during migration
 db.run("PRAGMA foreign_keys = OFF");

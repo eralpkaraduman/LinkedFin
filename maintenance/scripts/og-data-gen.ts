@@ -13,7 +13,7 @@ import { execSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const DB_PATH = resolve(import.meta.dirname, "../../fish.db");
+const DB_PATH = resolve(import.meta.dirname, "../../public/fish.db");
 const OUT_PATH = resolve(import.meta.dirname, "../../functions/og-data.ts");
 
 const db = new Database(DB_PATH, { readonly: true });

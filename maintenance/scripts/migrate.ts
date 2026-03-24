@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { readFileSync } from "fs";
 
 // Create database
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Create tables
 db.run(`

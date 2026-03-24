@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Fixes: move context to notes, clean up etymology format
 const fixes: { name: string; etymology: string; notes?: string }[] = [

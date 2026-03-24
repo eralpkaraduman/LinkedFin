@@ -6,7 +6,7 @@
  */
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Get next name ID
 const maxIdResult = db.query("SELECT MAX(id) as max FROM names").get() as {

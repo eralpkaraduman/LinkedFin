@@ -13,7 +13,7 @@
  */
 import Database from "better-sqlite3";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing nm_0480 Müren balığı etymology (Issue #39) ===\n");
 

@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Manual fixes for awkward reformatted etymologies
 const fixes: Record<string, string> = {

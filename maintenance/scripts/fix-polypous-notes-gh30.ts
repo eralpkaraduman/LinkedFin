@@ -15,7 +15,7 @@
  */
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing sp_021 species notes (Issue #30) ===\n");
 

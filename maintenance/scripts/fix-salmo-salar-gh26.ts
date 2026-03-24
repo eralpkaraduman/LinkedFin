@@ -16,7 +16,7 @@
  */
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 console.log("=== Fixing sp_015 (Atlantic salmon) species notes ===\n");
 

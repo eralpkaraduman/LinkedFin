@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // ============================================
 // 1. Add sea trout variants (Meritaimen, Havsöring)

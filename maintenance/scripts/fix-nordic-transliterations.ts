@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("fish.db");
+const db = new Database("public/fish.db");
 
 // Finnish transliterations: ä→a, ö→o
 const finnishFixes: { id: string; transliteration: string }[] = [
