@@ -118,10 +118,7 @@ export async function onRequest(
 
 	const cached = new Response(rewritten.body, rewritten);
 	// HTML must revalidate on every visit so users always get the latest
-	// asset references after deployments. CDN (s-maxage) can still cache.
-	cached.headers.set(
-		"Cache-Control",
-		"public, max-age=0, must-revalidate, s-maxage=604800",
-	);
+	// asset references after deployments.
+	cached.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
 	return cached;
 }
