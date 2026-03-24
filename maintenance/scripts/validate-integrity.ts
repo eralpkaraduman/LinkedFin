@@ -335,10 +335,23 @@ export function validateEtymology(names: Names[]): ValidationResult {
 export function validatePageSize(sqliteDb: import("better-sqlite3").Database): ValidationResult {
   const row = sqliteDb.pragma("page_size", { simple: true }) as number
   const errors: string[] = []
-  if (row !== 8192) {
-    errors.push(`page_size is ${row}, expected 8192 (required for sqlite-wasm compatibility)`)
+  // sqlite-wasm >= 3.46 defaults to 8192; older versions use 4096
+  const expected = getWasmExpectedPageSize()
+  if (row !== expected) {
+    errors.push(`page_size is ${row}, expected ${expected} (required for sqlite-wasm compatibility). Run pnpm db:copy to fix.`)
   }
-  return { check: "Database: page_size = 8192", passed: errors.length === 0, errors, warnings: [] }
+  return { check: `Database: page_size = ${expected}`, passed: errors.length === 0, errors, warnings: [] }
+}
+
+function getWasmExpectedPageSize(): number {
+  try {
+    const fs = require("node:fs")
+    const pkg = JSON.parse(fs.readFileSync("node_modules/@sqlite.org/sqlite-wasm/package.json", "utf8"))
+    const minor = Number.parseInt(pkg.version.split(".")[1])
+    return minor >= 46 ? 8192 : 4096
+  } catch {
+    return 8192
+  }
 }
 
 export function runAllValidations(ctx: ValidationContext): ValidationResult[] {

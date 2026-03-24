@@ -15,7 +15,7 @@
     "lint": "biome lint",
     "check": "biome check",
     "db:types": "kysely-codegen --dialect sqlite --url ./fish.db --out-file src/db/types.ts",
-    "db:copy": "cp fish.db public/fish.db",
+    "db:copy": "tsx maintenance/scripts/db-copy.ts",
     "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
     "og:generate": "tsx maintenance/scripts/og-data-gen.ts"
   },
