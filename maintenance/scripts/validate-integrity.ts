@@ -332,6 +332,15 @@ export function validateEtymology(names: Names[]): ValidationResult {
 // RUN ALL VALIDATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
+export function validatePageSize(sqliteDb: import("better-sqlite3").Database): ValidationResult {
+  const row = sqliteDb.pragma("page_size", { simple: true }) as number
+  const errors: string[] = []
+  if (row !== 8192) {
+    errors.push(`page_size is ${row}, expected 8192 (required for sqlite-wasm compatibility)`)
+  }
+  return { check: "Database: page_size = 8192", passed: errors.length === 0, errors, warnings: [] }
+}
+
 export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
   return [
     validateNameIdFormat(ctx.names),
@@ -390,7 +399,7 @@ async function main() {
   const relations = await db.selectFrom("name_relations").selectAll().execute()
 
   const ctx = createValidationContext({ names, species, regions, relations })
-  const results = runAllValidations(ctx)
+  const results = [validatePageSize(sqliteDb), ...runAllValidations(ctx)]
 
   // Print results
   console.log("═".repeat(70))
