@@ -120,11 +120,17 @@ export async function onRequest(
 
 	try {
 		const fonts = await loadFonts(url.origin);
-		return new ImageResponse(buildHtml(title, description), {
+		const imgResponse = new ImageResponse(buildHtml(title, description), {
 			width: 1200,
 			height: 630,
 			fonts,
+		});
+		// Buffer the image so we can set Content-Length — Twitter requires it
+		const body = await imgResponse.arrayBuffer();
+		return new Response(body, {
 			headers: {
+				"Content-Type": "image/png",
+				"Content-Length": String(body.byteLength),
 				"Cache-Control": "public, max-age=604800, s-maxage=604800",
 			},
 		});
