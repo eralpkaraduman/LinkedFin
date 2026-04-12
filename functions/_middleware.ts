@@ -57,21 +57,52 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 	}
 }
 
-function lookupName(
-	nameId: string,
-): { title: string; description: string } | null {
+class TitleHandler implements HTMLRewriterElementContentHandlers {
+	constructor(private suffix: string) {}
+
+	text(chunk: Text) {
+		if (chunk.lastInTextNode) {
+			chunk.after(` | ${escapeHtml(sanitize(this.suffix))}`, { html: true });
+		}
+	}
+}
+
+class MetaDescriptionHandler implements HTMLRewriterElementContentHandlers {
+	constructor(private suffix: string) {}
+
+	element(el: Element) {
+		if (el.getAttribute("name") === "description") {
+			const existing = el.getAttribute("content") ?? "";
+			el.setAttribute(
+				"content",
+				`${existing} | ${sanitize(this.suffix)}`,
+			);
+		}
+	}
+}
+
+interface PageMeta {
+	title: string;
+	description: string;
+	/** Raw dynamic title for appending to existing <title> */
+	dynamicTitle: string;
+	/** Raw dynamic description for appending to existing <meta description> */
+	dynamicDescription: string;
+}
+
+function lookupName(nameId: string): PageMeta | null {
 	const row = namesById[nameId];
 	if (!row) return null;
 	const og = buildNameOg(row);
 	return {
 		title: `LinkedFin: ${og.title}`,
 		description: truncate(og.description, 500),
+		dynamicTitle: og.title,
+		dynamicDescription: truncate(og.description, 500),
 	};
 }
 
-function lookupSpecies(
-	speciesId: string,
-): { title: string; description: string } | null {
+function lookupSpecies(speciesId: string): PageMeta | null {
 	const species = speciesById[speciesId];
 	if (!species) return null;
 
@@ -81,6 +112,8 @@ function lookupSpecies(
 	return {
 		title: `LinkedFin: ${og.title}`,
 		description: truncate(og.description, 500, ", "),
+		dynamicTitle: og.title,
+		dynamicDescription: truncate(og.description, 500, ", "),
 	};
 }
 
@@ -98,20 +131,18 @@ export async function onRequest(
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
 	const speciesMatch = url.pathname.match(/^\/species\/([^/]+)$/);
 
-	let og: { title: string; description: string } | null = null;
+	let pageMeta: PageMeta | null = null;
 	try {
 		if (nameMatch) {
-			og = lookupName(nameMatch[1]);
+			pageMeta = lookupName(nameMatch[1]);
 		} else if (speciesMatch) {
-			og = lookupSpecies(speciesMatch[1]);
+			pageMeta = lookupSpecies(speciesMatch[1]);
 		}
 	} catch (e) {
 		console.error("OG lookup error:", e);
 	}
 
-	if (!og) {
-		og = GENERIC_META;
-	}
+	const og = pageMeta ?? GENERIC_META;
 
 	let imgUrl: string;
 	if (nameMatch) {
@@ -122,9 +153,18 @@ export async function onRequest(
 		imgUrl = `${url.origin}/og/home`;
 	}
 
-	const rewritten = new HTMLRewriter()
-		.on("head", new OgTagsHandler(og.title, og.description, url.href, imgUrl))
-		.transform(response);
+	const rewriter = new HTMLRewriter().on(
+		"head",
+		new OgTagsHandler(og.title, og.description, url.href, imgUrl),
+	);
+
+	if (pageMeta) {
+		rewriter
+			.on("title", new TitleHandler(pageMeta.dynamicTitle))
+			.on("meta", new MetaDescriptionHandler(pageMeta.dynamicDescription));
+	}
+
+	const rewritten = rewriter.transform(response);
 
 	const cached = new Response(rewritten.body, rewritten);
 	// HTML must revalidate on every visit so users always get the latest
