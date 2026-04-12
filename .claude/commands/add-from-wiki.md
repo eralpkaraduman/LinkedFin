@@ -15,19 +15,21 @@ A Wikipedia URL (any language) or fish name to research.
    - Note etymology if mentioned
    - Note habitat (marine/freshwater/brackish)
 
-2. **Research etymology** using web search:
+2. **Check Wikipedia in each target language** for the species — navigate to `XX.wikipedia.org/wiki/Scientific_name` or search on the language-specific Wikipedia. This is the most reliable way to find the correct common name in each language. Do not guess or transliterate names.
+
+3. **Research etymology** using web search:
    - Search: `"[name]" etymology [language]`
    - Search: `"[name]" Wiktionary`
    - For compound words, identify components
 
-3. **Check if species exists**:
+4. **Check if species exists**:
    ```sql
    SELECT id, scientific_name FROM species WHERE scientific_name LIKE '%name%';
    ```
 
-4. **Add species if new** (see /add-species)
+5. **Add species if new** (see /add-species)
 
-5. **For each name found**, follow AGENTS.md format:
+6. **For each name found**, follow AGENTS.md format:
 
    **Etymology format:**
    - Basic: `From [language] word (meaning)`
@@ -44,22 +46,22 @@ A Wikipedia URL (any language) or fish name to research.
    | Estonian (est) | REQUIRED | REQUIRED |
    | English (eng) | not needed | optional |
 
-6. **Add names** using appropriate IDs:
+7. **Add names** using appropriate IDs:
    ```sql
    SELECT 'nm_' || printf('%04d', MAX(CAST(SUBSTR(id, 4) AS INTEGER)) + 1) FROM names;
    ```
 
-7. **Add relations** between names:
+8. **Add relations** between names:
    - Same species, different languages: `alternate_of`
    - Borrowed words: `borrowed_from`
    - Dialectal variants: `alternate_of`
 
-8. **Validate**:
+9. **Validate**:
    ```bash
    pnpm db:copy && pnpm db:validate
    ```
 
-9. **Report** all added entries with IDs.
+10. **Report** all added entries with IDs.
 
 ## Example Usage
 ```

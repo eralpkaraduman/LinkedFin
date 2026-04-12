@@ -53,7 +53,19 @@ $ARGUMENTS
    pnpm db:copy && pnpm db:validate
    ```
 
-8. **Report** the created relation.
+8. **Apply quality control** (see Quality Control section below).
+
+9. **Report** the created relation.
+
+## Quality Control
+
+Before inserting, verify ALL of the following:
+
+- **Relation type correctness**: Choose the right type — `borrowed_from` for linguistic borrowing (not just similarity), `alternate_of` for genuinely different names for the same thing, `confused_with` for different species that are commonly mixed up, `smaller_than` for documented size class progressions.
+- **Direction matters for `borrowed_from`**: Source is the borrower, target is the origin. Verify direction with etymological evidence.
+- **Same-species constraint**: `borrowed_from`, `alternate_of`, `smaller_than` must link names of the same species. `confused_with` can cross species.
+- **Supporting evidence**: Relations must be backed by etymological or documented evidence. Do not add speculative relations.
+- **Etymology consistency**: If adding `borrowed_from`, verify the source name's etymology actually documents this borrowing. If not, update the etymology first using /update-name.
 
 ## Relation Usage Guide
 

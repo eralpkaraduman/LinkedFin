@@ -34,7 +34,18 @@ $ARGUMENTS
    pnpm db:copy && pnpm db:validate
    ```
 
-6. **Report** the new species ID and details.
+6. **Apply quality control** (see Quality Control section below).
+
+7. **Report** the new species ID and details.
+
+## Quality Control
+
+Before inserting, verify ALL of the following:
+
+- **Scientific name accuracy**: Verify against FishBase or Wikipedia. Use the currently accepted name, not synonyms or outdated classifications.
+- **Notes must describe the species itself**: What kind of animal it is, key physical characteristics, size range, habitat. Do not mention names in specific languages.
+- **Notes must be informative**: Vague notes like "A type of fish" are not acceptable. Include distinguishing features that help identify the species.
+- **No duplicate species**: Verify the species doesn't already exist under a different ID or synonym.
 
 ## Example Usage
 ```

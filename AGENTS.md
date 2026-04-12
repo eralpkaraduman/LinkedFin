@@ -1,5 +1,31 @@
 # LinkedFin Agent Guidelines
 
+## Required Skills
+
+**You MUST use the project's slash command skills for all data operations.** Do not write raw SQL for adding or updating data — use the appropriate skill instead:
+
+| Operation | Skill |
+|-----------|-------|
+| Add a new species | `/add-species` |
+| Add a new name | `/add-name` |
+| Add a relation | `/add-relation` |
+| Add species + names from Wikipedia | `/add-from-wiki` |
+| Update an existing name | `/update-name` |
+| Update an existing species | `/update-species` |
+| Update or delete a relation | `/update-relation` |
+| Search/inspect existing data | `/lookup` |
+| Scan for quality problems | `/audit` |
+| Process GitHub issues | `/process-issues` |
+
+These skills enforce quality control checks that must not be bypassed. Every skill validates that:
+- Etymologies are complete (every foreign word explained with meaning)
+- Borrowing chains are fully traced (no unexplained intermediate languages)
+- Discovered borrowings and misnomers are added as relations
+- Transliterations and phonetics meet language-specific requirements
+- Species notes describe the species itself, not language-specific names
+
+---
+
 ## Database Commands
 
 Run these from the project root:
@@ -241,7 +267,18 @@ JOIN names n2 ON r.target_id = n2.id
 WHERE n1.region_id = 'norway' OR n2.region_id = 'norway';
 ```
 
-### Research Sources by Region
+### Research Sources
+
+**Always research before adding or updating data.** Use these sources in order of preference:
+
+| Priority | Source | Best for |
+|----------|--------|----------|
+| 1 | **Wiktionary** (all languages) | Etymology chains, borrowing history, cognates, word components |
+| 2 | **FishBase** (fishbase.org) | Species data, scientific names, habitat, accepted taxonomy |
+| 3 | **Wikipedia** (all languages) | Common names, regional usage, species descriptions |
+| 4 | **Academic sources / Google Scholar** | Disputed etymologies, rare species, historical linguistics |
+
+**Regional sources:**
 
 | Region | Recommended Sources |
 |--------|---------------------|
@@ -249,7 +286,8 @@ WHERE n1.region_id = 'norway' OR n2.region_id = 'norway';
 | Mediterranean | fishbase.org, FAO species catalogs |
 | Japan | fishbase.org, Japanese Fisheries Agency |
 | Russia | fishbase.org, academic sources |
-| General | Wikipedia (cross-reference), Wiktionary (etymology) |
+
+**Research each component separately** for compound words. For borrowing chains, check Wiktionary in both the source and target languages.
 
 ---
 
