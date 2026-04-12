@@ -73,10 +73,7 @@ class MetaDescriptionHandler implements HTMLRewriterElementContentHandlers {
 	element(el: Element) {
 		if (el.getAttribute("name") === "description") {
 			const existing = el.getAttribute("content") ?? "";
-			el.setAttribute(
-				"content",
-				`${existing} | ${sanitize(this.suffix)}`,
-			);
+			el.setAttribute("content", `${existing} | ${sanitize(this.suffix)}`);
 		}
 	}
 }
