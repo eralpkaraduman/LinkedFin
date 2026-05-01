@@ -1,2 +1,5 @@
-// Vitest test setup
-// Add test utilities here as needed
+import "@testing-library/jest-dom/vitest";
+
+if (typeof window !== "undefined") {
+	window.scrollTo = () => {};
+}

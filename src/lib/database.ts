@@ -112,10 +112,3 @@ export function getSpeciesInfo(
 		notes: name.species_notes ?? undefined,
 	};
 }
-
-/**
- * Get the Kysely database instance for advanced queries
- */
-export function getDb(): Kysely<DB> | null {
-	return db;
-}

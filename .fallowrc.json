@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": [
+    "maintenance/**",
+    "src/routeTree.gen.ts",
+    "src/db/types.ts"
+  ],
+  "ignoreDependencies": [
+    "better-sqlite3",
+    "@tailwindcss/vite",
+    "@tanstack/react-start"
+  ],
+  "rules": {
+    "unused-files": "warn",
+    "unused-exports": "warn",
+    "unused-types": "off",
+    "unused-dependencies": "warn",
+    "unused-dev-dependencies": "warn",
+    "unused-optional-dependencies": "warn",
+    "unused-enum-members": "off",
+    "unused-class-members": "off",
+    "test-only-dependencies": "warn",
+    "duplicate-exports": "warn",
+    "type-only-dependencies": "warn",
+    "unresolved-imports": "error",
+    "unlisted-dependencies": "error",
+    "circular-dependencies": "error",
+    "boundary-violation": "error"
+  },
+  "regression": {
+    "baseline": {
+      "totalIssues": 0,
+      "unusedFiles": 0,
+      "unusedExports": 0,
+      "unusedTypes": 0,
+      "unusedDependencies": 0,
+      "unusedDevDependencies": 0,
+      "unusedOptionalDependencies": 0,
+      "unusedEnumMembers": 0,
+      "unusedClassMembers": 0,
+      "unresolvedImports": 0,
+      "unlistedDependencies": 0,
+      "duplicateExports": 0,
+      "circularDependencies": 0,
+      "typeOnlyDependencies": 0,
+      "testOnlyDependencies": 0,
+      "boundaryViolations": 0
+    }
+  }
+}

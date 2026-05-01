@@ -36,9 +36,7 @@ export function useSearch(query: string): FishName[] | SearchResult[] {
 	}, [query, fuse, names]);
 }
 
-export function isSearchResult(
-	item: FishName | SearchResult,
-): item is SearchResult {
+function isSearchResult(item: FishName | SearchResult): item is SearchResult {
 	return "item" in item && "score" in item;
 }
 

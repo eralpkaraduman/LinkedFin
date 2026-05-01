@@ -16,7 +16,7 @@ import {
 } from "./database";
 import type { DatabaseState, FishName } from "./types";
 
-interface DatabaseContextValue extends DatabaseState {
+export interface DatabaseContextValue extends DatabaseState {
 	getNameById: (id: string) => FishName | undefined;
 	getNamesBySpecies: (speciesId: string) => FishName[];
 	getSpeciesInfo: (
@@ -24,7 +24,7 @@ interface DatabaseContextValue extends DatabaseState {
 	) => { scientific_name: string; notes?: string } | undefined;
 }
 
-const DatabaseContext = createContext<DatabaseContextValue | null>(null);
+export const DatabaseContext = createContext<DatabaseContextValue | null>(null);
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
 	const [state, setState] = useState<DatabaseState>({

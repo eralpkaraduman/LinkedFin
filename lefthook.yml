@@ -5,3 +5,11 @@ pre-commit:
       run: pnpm check
     db-integrity:
       run: pnpm db:validate
+
+pre-push:
+  parallel: true
+  commands:
+    fallow:
+      run: pnpm fallow
+    test:
+      run: pnpm test:coverage

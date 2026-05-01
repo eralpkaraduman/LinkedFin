@@ -6,14 +6,7 @@ import sqlite3InitModule, { type Database } from "@sqlite.org/sqlite-wasm";
 import type { IGenericSqlite } from "kysely-generic-sqlite";
 import { GenericSqliteDialect, parseBigInt } from "kysely-generic-sqlite";
 
-export type SqliteWasmDatabase = Database;
-
-/**
- * Create a SQLite executor compatible with kysely-generic-sqlite
- */
-export function createSqliteWasmExecutor(
-	db: Database,
-): IGenericSqlite<Database> {
+function createSqliteWasmExecutor(db: Database): IGenericSqlite<Database> {
 	return {
 		db,
 		query: (_isSelect, sql, parameters) => {
