@@ -18,8 +18,8 @@
     "db:types": "kysely-codegen --dialect sqlite --url ./public/fish.db --out-file src/db/types.ts",
     "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
     "og:generate": "tsx maintenance/scripts/og-data-gen.ts",
-    "fallow": "fallow dead-code --fail-on-regression --tolerance 0 --quiet",
-    "fallow:report": "fallow",
+    "fallow": "pnpm og:generate && fallow dead-code --fail-on-regression --tolerance 0 --quiet",
+    "fallow:report": "pnpm og:generate && fallow",
     "fallow:fix": "fallow fix --dry-run",
     "fallow:baseline": "fallow dead-code --save-regression-baseline --quiet",
     "fallow:gaps": "fallow health --coverage-gaps",
@@ -84,7 +84,11 @@
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "esbuild",
-      "lightningcss"
+      "fallow",
+      "lefthook",
+      "lightningcss",
+      "sharp",
+      "workerd"
     ]
   }
 }
