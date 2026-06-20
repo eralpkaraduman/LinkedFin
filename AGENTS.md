@@ -33,22 +33,23 @@ Run these from the project root:
 | Command | Purpose |
 |---------|---------|
 | `pnpm db:types` | Regenerate TypeScript types from database schema |
-| `pnpm db:verify` | Verify database integrity |
-| `pnpm db:copy` | Copy database to public folder for deployment |
+| `pnpm db:validate` | Validate database integrity against the schema |
+
+**Single source of truth:** `public/fish.db` is the canonical database. Every maintenance script, the OG generator, the validator, type generation, and the runtime app all read/write `public/fish.db` directly. There is no separate "source" copy — edit `public/fish.db` in place.
 
 ### Schema Change Workflow
 
 When modifying the database schema or adding data via scripts:
 
 ```bash
-# 1. Run your migration/data script
+# 1. Run your migration/data script (operates on public/fish.db)
 bun maintenance/scripts/your-migration.ts
 
 # 2. Regenerate types to match new schema
 pnpm db:types
 
-# 3. Copy updated database to public folder
-pnpm db:copy
+# 3. Validate integrity
+pnpm db:validate
 ```
 
 **Important:** Always regenerate types after schema changes to keep TypeScript in sync with the database.
@@ -407,7 +408,7 @@ Use `↳` to chain deeper derivations. Mark uncertain etymologies with "possibly
 Export and review all etymologies:
 
 ```bash
-sqlite3 fish.db "SELECT name || '|' || COALESCE(etymology, '') || '|' || COALESCE(notes, '') FROM names" > /tmp/etymologies.txt
+sqlite3 public/fish.db "SELECT name || '|' || COALESCE(etymology, '') FROM names" > /tmp/etymologies.txt
 ```
 
 ---
