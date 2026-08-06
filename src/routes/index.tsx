@@ -1,19 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ShuffleIcon, XIcon } from "lucide-react";
+import { ShuffleIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { NamesTable } from "#/components/NamesTable";
 import { SpeciesImage } from "#/components/SpeciesImage";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "#/components/ui/table";
 import { getItem, useSearch } from "#/hooks/useSearch";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
+import { nextSeed } from "#/lib/randomOrder";
 
 interface SearchParams {
 	q?: string;
@@ -21,7 +15,7 @@ interface SearchParams {
 
 // Session storage keys (persists across HMR/deep links)
 const STORAGE_KEYS = {
-	shuffleKey: "linkedfin_shuffle_key",
+	shuffleSeed: "linkedfin_shuffle_seed",
 	heroShuffleKey: "linkedfin_hero_shuffle_key",
 } as const;
 
@@ -41,25 +35,13 @@ function setStoredValue(key: keyof typeof STORAGE_KEYS, value: string) {
 	}
 }
 
-function getInitialShuffleKey(): number {
-	const stored = getStoredValue("shuffleKey");
-	return stored ? Number.parseInt(stored, 10) || 0 : 0;
-}
-
-const RANDOM_SAMPLE_SIZE = 10;
-
 /**
- * Fisher-Yates shuffle to get random sample.
- * Returns a new array with `count` random elements.
+ * Initial random-order seed. Deterministic on the server (0) so SSR markup
+ * matches hydration; a real seed is drawn in an effect after mount.
  */
-function getRandomSample<T>(array: T[], count: number): T[] {
-	if (array.length <= count) return array;
-	const shuffled = [...array];
-	for (let i = shuffled.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-	}
-	return shuffled.slice(0, count);
+function getInitialShuffleSeed(): number {
+	const stored = getStoredValue("shuffleSeed");
+	return stored ? Number.parseInt(stored, 10) || 0 : 0;
 }
 
 export const Route = createFileRoute("/")({
@@ -148,20 +130,29 @@ function HomePage() {
 	const deferredQuery = useDeferredValue(q);
 	const searchResults = useSearch(deferredQuery);
 
-	// Shuffle keys to force re-randomization (persisted across HMR)
-	const [shuffleKey, setShuffleKey] = useState(getInitialShuffleKey);
+	// Seed for the table's random order. Stable for the whole session (and across
+	// pagination) until the user presses Shuffle.
+	const [shuffleSeed, setShuffleSeed] = useState(getInitialShuffleSeed);
 	const [heroShuffleKey, setHeroShuffleKey] = useState(() => {
 		const stored = getStoredValue("heroShuffleKey");
 		return stored ? Number.parseInt(stored, 10) || 0 : 0;
 	});
 
 	const shuffleTable = () => {
-		setShuffleKey((k) => {
-			const next = k + 1;
-			setStoredValue("shuffleKey", String(next));
-			return next;
-		});
+		const next = nextSeed();
+		setStoredValue("shuffleSeed", String(next));
+		setShuffleSeed(next);
 	};
+
+	// Draw a real seed once after mount so the first render is SSR-stable but the
+	// order still varies between sessions.
+	useEffect(() => {
+		if (shuffleSeed === 0) {
+			const next = nextSeed();
+			setStoredValue("shuffleSeed", String(next));
+			setShuffleSeed(next);
+		}
+	}, [shuffleSeed]);
 
 	const shuffleHero = () => {
 		setHeroShuffleKey((k) => {
@@ -170,13 +161,6 @@ function HomePage() {
 			return next;
 		});
 	};
-
-	// Random sample for table (stable until shuffle or page refresh)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: shuffleKey triggers reshuffle intentionally
-	const randomSample = useMemo(
-		() => getRandomSample(names, RANDOM_SAMPLE_SIZE),
-		[names, shuffleKey],
-	);
 
 	// Independent hero item (separate from table)
 	// Use state + effect to avoid SSR hydration mismatch from Math.random()
@@ -190,9 +174,9 @@ function HomePage() {
 		}
 	}, [names, heroShuffleKey]);
 
-	// Use search results if query is 2+ chars, otherwise show random sample
+	// Use search results if query is 2+ chars, otherwise show every name
 	const isValidSearch = deferredQuery.trim().length >= 2;
-	const results = isValidSearch ? searchResults : randomSample;
+	const results = isValidSearch ? searchResults : names;
 
 	// Track searches (debounced 1s to avoid spam)
 	const searchTrackingTimeout = useRef<ReturnType<typeof setTimeout> | null>(
@@ -214,7 +198,7 @@ function HomePage() {
 		};
 	}, [deferredQuery, searchResults.length]);
 
-	const displayResults = results.map(getItem);
+	const displayResults = useMemo(() => results.map(getItem), [results]);
 
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
@@ -228,69 +212,22 @@ function HomePage() {
 				/>
 			)}
 
-			<div className="my-3 flex items-center gap-2 text-xs text-muted-foreground">
-				<span>
-					{isValidSearch
-						? `${displayResults.length} results`
-						: `${RANDOM_SAMPLE_SIZE} random from ${names.length} names`}
-				</span>
-				{isValidSearch && (
-					<button
-						type="button"
-						onClick={() => navigate({ search: { q: undefined } })}
-						className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground"
-						title="Clear search"
-					>
-						<XIcon className="h-3 w-3" />
-						<span>Clear</span>
-					</button>
-				)}
-				{!isValidSearch && (
-					<button
-						type="button"
-						onClick={shuffleTable}
-						className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 transition hover:bg-muted hover:text-foreground"
-						title="Shuffle"
-					>
-						<ShuffleIcon className="h-3 w-3" />
-						<span>Shuffle</span>
-					</button>
-				)}
-			</div>
-
-			<div className="-mx-4 overflow-x-auto px-4">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Name</TableHead>
-							<TableHead>Transliteration</TableHead>
-							<TableHead>Region</TableHead>
-							<TableHead className="text-right">Species</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{displayResults.map((item) => (
-							<TableRow
-								key={item.id}
-								className="cursor-pointer"
-								onClick={() => {
-									trackDetailView(item.id, item.name);
-									navigate({
-										to: "/name/$id",
-										params: { id: item.id },
-									});
-								}}
-							>
-								<TableCell className="font-medium">{item.name}</TableCell>
-								<TableCell>{item.transliteration || ""}</TableCell>
-								<TableCell>{item.region}</TableCell>
-								<TableCell className="text-right italic">
-									{item.scientific_name}
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
+			<div className="my-3">
+				<NamesTable
+					data={displayResults}
+					isSearch={isValidSearch}
+					randomSeed={shuffleSeed}
+					onShuffle={shuffleTable}
+					onClearSearch={
+						isValidSearch
+							? () => navigate({ search: { q: undefined } })
+							: undefined
+					}
+					onRowSelect={(item) => {
+						trackDetailView(item.id, item.name);
+						navigate({ to: "/name/$id", params: { id: item.id } });
+					}}
+				/>
 			</div>
 		</main>
 	);
