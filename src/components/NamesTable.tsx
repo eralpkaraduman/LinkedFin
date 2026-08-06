@@ -46,7 +46,7 @@ import { getPageItems, getPageRange } from "#/lib/pagination";
 import { shuffleWithSeed } from "#/lib/randomOrder";
 import type { FishName } from "#/lib/types";
 
-export const DEFAULT_PAGE_SIZE = 25;
+export const DEFAULT_PAGE_SIZE = 10;
 
 /** Sort mode value used when no column sort is active. */
 export const DEFAULT_SORT_VALUE = "default";
@@ -58,7 +58,29 @@ const SORTABLE_COLUMNS = [
 	{ id: "species", label: "Species" },
 ] as const;
 
+/** Column ids accepted by the `sort` prop / URL search param. */
+export const SORT_VALUES: readonly string[] = SORTABLE_COLUMNS.map((c) => c.id);
+
 const RIGHT_ALIGNED = new Set<string>(["species"]);
+
+/**
+ * Columns dropped on narrow viewports. Transliteration is the least useful of
+ * the four — for Latin-script names it just repeats the name column.
+ */
+const HIDE_ON_MOBILE = new Set<string>(["transliteration"]);
+
+function columnClasses(columnId: string): string | undefined {
+	const classes = [
+		RIGHT_ALIGNED.has(columnId) ? "text-right" : "",
+		HIDE_ON_MOBILE.has(columnId) ? "hidden sm:table-cell" : "",
+		// Long scientific names wrap on phones rather than pushing the column
+		// off-screen; on wider viewports they stay on one line.
+		columnId === "species" ? "whitespace-normal sm:whitespace-nowrap" : "",
+	]
+		.filter(Boolean)
+		.join(" ");
+	return classes || undefined;
+}
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -109,6 +131,16 @@ export interface NamesTableProps {
 	/** When provided, a "Clear" button is shown in the toolbar. */
 	onClearSearch?: () => void;
 	pageSize?: number;
+	/**
+	 * Current page, 1-based. Pass together with `onPageChange` to control paging
+	 * from the URL so browser back/forward restores the reader's position.
+	 */
+	page?: number;
+	onPageChange?: (page: number) => void;
+	/** Active sort column id, or {@link DEFAULT_SORT_VALUE}. Needs `onSortChange`. */
+	sort?: string;
+	sortDesc?: boolean;
+	onSortChange?: (sort: string, desc: boolean) => void;
 }
 
 export function NamesTable({
@@ -119,12 +151,28 @@ export function NamesTable({
 	onRowSelect,
 	onClearSearch,
 	pageSize = DEFAULT_PAGE_SIZE,
+	page,
+	onPageChange,
+	sort,
+	sortDesc = false,
+	onSortChange,
 }: NamesTableProps) {
-	const [sorting, setSorting] = useState<SortingState>([]);
-	const [pagination, setPagination] = useState<PaginationState>({
-		pageIndex: 0,
-		pageSize,
-	});
+	const [internalSorting, setInternalSorting] = useState<SortingState>([]);
+	const [internalPageIndex, setInternalPageIndex] = useState(0);
+
+	// Paging and sorting are controlled when the parent supplies both the value
+	// and its setter; otherwise the table keeps the state itself.
+	const isPageControlled = page !== undefined && onPageChange !== undefined;
+	const isSortControlled = sort !== undefined && onSortChange !== undefined;
+
+	const requestedPageIndex = isPageControlled
+		? Math.max(0, page - 1)
+		: internalPageIndex;
+
+	const sorting: SortingState = useMemo(() => {
+		if (!isSortControlled) return internalSorting;
+		return sort === DEFAULT_SORT_VALUE ? [] : [{ id: sort, desc: sortDesc }];
+	}, [isSortControlled, internalSorting, sort, sortDesc]);
 
 	const isDefaultOrder = sorting.length === 0;
 	// The default order is random when browsing and fuse.js relevance when searching.
@@ -139,35 +187,67 @@ export function NamesTable({
 		[data, randomSeed, isRandomOrder],
 	);
 
+	const totalRows = orderedData.length;
+	const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+	// Clamp so a stale URL page (or a search that shrank the result set) still
+	// renders rows instead of an empty page.
+	const pageIndex = Math.min(requestedPageIndex, pageCount - 1);
+
+	const pagination = useMemo<PaginationState>(
+		() => ({ pageIndex, pageSize }),
+		[pageIndex, pageSize],
+	);
+
+	const goToPage = useCallback(
+		(nextPage: number) => {
+			if (isPageControlled) onPageChange(nextPage);
+			else setInternalPageIndex(nextPage - 1);
+		},
+		[isPageControlled, onPageChange],
+	);
+
+	const applySorting = useCallback(
+		(next: SortingState) => {
+			const first = next[0];
+			if (isSortControlled) {
+				// The parent owns the reset back to page 1 so sorting only
+				// produces a single navigation.
+				onSortChange(
+					first ? first.id : DEFAULT_SORT_VALUE,
+					first?.desc ?? false,
+				);
+				return;
+			}
+			setInternalSorting(next);
+			setInternalPageIndex(0);
+		},
+		[isSortControlled, onSortChange],
+	);
+
 	const table = useTable({
 		features,
 		columns,
 		data: orderedData,
 		getRowId: (row) => row.id,
 		state: { sorting, pagination },
-		onSortingChange: setSorting,
-		onPaginationChange: setPagination,
+		onSortingChange: (updater) =>
+			applySorting(typeof updater === "function" ? updater(sorting) : updater),
+		onPaginationChange: (updater) => {
+			const next =
+				typeof updater === "function" ? updater(pagination) : updater;
+			goToPage(next.pageIndex + 1);
+		},
 		enableSortingRemoval: true,
 		enableMultiSort: false,
 	});
 
 	const rows = table.getRowModel().rows;
-	const totalRows = orderedData.length;
-	const pageCount = Math.max(1, Math.ceil(totalRows / pagination.pageSize));
-	const currentPage = Math.min(pagination.pageIndex, pageCount - 1) + 1;
-	const { from, to } = getPageRange(
-		currentPage - 1,
-		pagination.pageSize,
-		totalRows,
-	);
+	const currentPage = pageIndex + 1;
+	const { from, to } = getPageRange(pageIndex, pageSize, totalRows);
 	const pageItems = useMemo(
 		() => getPageItems(currentPage, pageCount),
 		[currentPage, pageCount],
 	);
-
-	const goToPage = useCallback((page: number) => {
-		setPagination((prev) => ({ ...prev, pageIndex: page - 1 }));
-	}, []);
 
 	const sortValue = sorting[0]?.id ?? DEFAULT_SORT_VALUE;
 	const defaultSortLabel = isSearch ? "Relevance" : "Random";
@@ -180,11 +260,15 @@ export function NamesTable({
 		[defaultSortLabel],
 	);
 
-	const handleSortModeChange = useCallback((value: unknown) => {
-		const next = String(value);
-		setSorting(next === DEFAULT_SORT_VALUE ? [] : [{ id: next, desc: false }]);
-		setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-	}, []);
+	const handleSortModeChange = useCallback(
+		(value: unknown) => {
+			const next = String(value);
+			applySorting(
+				next === DEFAULT_SORT_VALUE ? [] : [{ id: next, desc: false }],
+			);
+		},
+		[applySorting],
+	);
 
 	return (
 		<div className="flex flex-col gap-3">
@@ -244,8 +328,11 @@ export function NamesTable({
 				</div>
 			</div>
 
-			<div className="-mx-4 overflow-x-auto px-4">
-				<Table>
+			{/* On phones the table stays within the viewport (species wraps); from
+			    `sm` up it sizes to its content and scrolls inside its own
+			    container, so the page itself never scrolls sideways. */}
+			<div className="-mx-4 px-4">
+				<Table className="sm:min-w-max">
 					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
@@ -262,7 +349,7 @@ export function NamesTable({
 														? "descending"
 														: "none"
 											}
-											className={alignRight ? "text-right" : undefined}
+											className={columnClasses(header.column.id)}
 										>
 											<button
 												type="button"
@@ -306,11 +393,7 @@ export function NamesTable({
 									{row.getAllCells().map((cell) => (
 										<TableCell
 											key={cell.id}
-											className={
-												RIGHT_ALIGNED.has(cell.column.id)
-													? "text-right"
-													: undefined
-											}
+											className={columnClasses(cell.column.id)}
 										>
 											<table.FlexRender cell={cell} />
 										</TableCell>

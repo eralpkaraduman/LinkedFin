@@ -27,6 +27,12 @@ function makeName(index: number): FishName {
 
 const rows = Array.from({ length: 60 }, (_, i) => makeName(i + 1));
 
+/**
+ * Pagination behaviour is asserted against a pinned page size so these tests
+ * stay meaningful if the product default changes.
+ */
+const TEST_PAGE_SIZE = 25;
+
 function renderTable(props: Partial<Parameters<typeof NamesTable>[0]> = {}) {
 	const onShuffle = vi.fn();
 	const onRowSelect = vi.fn();
@@ -37,6 +43,7 @@ function renderTable(props: Partial<Parameters<typeof NamesTable>[0]> = {}) {
 			randomSeed={1234}
 			onShuffle={onShuffle}
 			onRowSelect={onRowSelect}
+			pageSize={TEST_PAGE_SIZE}
 			{...props}
 		/>,
 	);
@@ -172,6 +179,7 @@ describe("pagination", () => {
 						randomSeed={1234}
 						onShuffle={() => {}}
 						onRowSelect={() => {}}
+						pageSize={TEST_PAGE_SIZE}
 					/>
 				</>
 			);
@@ -188,6 +196,45 @@ describe("pagination", () => {
 			"1–25 of 30 names",
 		);
 		expect(visibleNames()).toHaveLength(25);
+	});
+
+	test("renders the page given by the controlled `page` prop", async () => {
+		renderTable({ page: 3, onPageChange: vi.fn() });
+		expect(await screen.findByTestId("result-count")).toHaveTextContent(
+			"51–60 of 60 names",
+		);
+	});
+
+	test("reports page changes to the parent instead of paging itself", async () => {
+		const user = userEvent.setup();
+		const onPageChange = vi.fn();
+		renderTable({ page: 1, onPageChange });
+
+		const nav = await screen.findByRole("navigation", { name: "pagination" });
+		await user.click(within(nav).getByRole("button", { name: "2" }));
+
+		expect(onPageChange).toHaveBeenCalledWith(2);
+		// Still on page 1 — the parent owns the state (here, the URL).
+		expect(screen.getByTestId("result-count")).toHaveTextContent("1–25");
+	});
+
+	test("clamps an out-of-range controlled page onto the last page", async () => {
+		renderTable({ page: 99, onPageChange: vi.fn() });
+		expect(await screen.findByTestId("result-count")).toHaveTextContent(
+			"51–60 of 60 names",
+		);
+		expect(visibleNames()).toHaveLength(10);
+	});
+
+	test("reports sort changes to the parent instead of sorting itself", async () => {
+		const user = userEvent.setup();
+		const onSortChange = vi.fn();
+		renderTable({ sort: "default", onSortChange });
+
+		await screen.findByTestId("result-count");
+		await user.click(screen.getByRole("button", { name: /^Region/ }));
+
+		expect(onSortChange).toHaveBeenCalledWith("region", false);
 	});
 
 	test("random order is identical for the same seed across mounts", async () => {

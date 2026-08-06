@@ -12,6 +12,10 @@ export type PageItem = number | "ellipsis-start" | "ellipsis-end";
  *
  * Always includes the first and last page, plus `siblingCount` pages either
  * side of the current page. Gaps are collapsed into ellipsis markers.
+ *
+ * The window of numbered pages keeps a constant width, so near the first or
+ * last page it extends inwards rather than collapsing — otherwise page 1 of 52
+ * would offer no way to reach page 3 except one step at a time.
  */
 export function getPageItems(
 	currentPage: number,
@@ -28,8 +32,14 @@ export function getPageItems(
 		return Array.from({ length: pageCount }, (_, i) => i + 1);
 	}
 
-	const left = Math.max(current - siblingCount, 1);
-	const right = Math.min(current + siblingCount, pageCount);
+	// Width of the numbered run between the first and last page.
+	const windowSize = siblingCount * 2 + 1;
+	// Slide the window so it stays fully inside 2..pageCount-1 at both ends.
+	const left = Math.min(
+		Math.max(current - siblingCount, 2),
+		pageCount - windowSize,
+	);
+	const right = left + windowSize - 1;
 
 	const items: PageItem[] = [1];
 
@@ -37,11 +47,7 @@ export function getPageItems(
 		items.push("ellipsis-start");
 	}
 
-	for (
-		let page = Math.max(left, 2);
-		page <= Math.min(right, pageCount - 1);
-		page++
-	) {
+	for (let page = left; page <= right; page++) {
 		items.push(page);
 	}
 

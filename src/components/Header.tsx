@@ -26,7 +26,9 @@ export default function Header() {
 		(value: string) => {
 			navigate({
 				to: "/",
-				search: (prev) => ({ ...prev, q: value || undefined }),
+				// A new query means a new result set, so drop the table back to
+				// page 1 instead of leaving a stale page in the URL.
+				search: (prev) => ({ ...prev, q: value || undefined, page: undefined }),
 				replace: true,
 			});
 		},

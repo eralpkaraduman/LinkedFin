@@ -10,11 +10,28 @@ describe("getPageItems", () => {
 	});
 
 	test("elides the tail when near the first page", () => {
-		expect(getPageItems(1, 20)).toEqual([1, 2, "ellipsis-end", 20]);
+		expect(getPageItems(1, 20)).toEqual([1, 2, 3, 4, "ellipsis-end", 20]);
 	});
 
 	test("elides the head when near the last page", () => {
-		expect(getPageItems(20, 20)).toEqual([1, "ellipsis-start", 19, 20]);
+		expect(getPageItems(20, 20)).toEqual([1, "ellipsis-start", 17, 18, 19, 20]);
+	});
+
+	test("offers the same number of page buttons on every page", () => {
+		const counts = new Set<number>();
+		for (let page = 1; page <= 52; page++) {
+			counts.add(
+				getPageItems(page, 52).filter((item) => typeof item === "number")
+					.length,
+			);
+		}
+		expect([...counts]).toEqual([5]);
+	});
+
+	test("offers a jump target beyond the immediate neighbour on page 1", () => {
+		// Regression: the window used to collapse to [1, 2, …, 52] on page 1,
+		// leaving no way to reach page 3 other than stepping.
+		expect(getPageItems(1, 52)).toContain(3);
 	});
 
 	test("elides both sides in the middle", () => {

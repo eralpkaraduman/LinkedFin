@@ -1,7 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ShuffleIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { NamesTable } from "#/components/NamesTable";
+import {
+	DEFAULT_SORT_VALUE,
+	NamesTable,
+	SORT_VALUES,
+} from "#/components/NamesTable";
 import { SpeciesImage } from "#/components/SpeciesImage";
 import { getItem, useSearch } from "#/hooks/useSearch";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
@@ -11,6 +15,16 @@ import { nextSeed } from "#/lib/randomOrder";
 
 interface SearchParams {
 	q?: string;
+	/** 1-based table page. Omitted (not `1`) so the default URL stays clean. */
+	page?: number;
+	sort?: string;
+	dir?: "desc";
+}
+
+function parsePage(value: unknown): number | undefined {
+	const page =
+		typeof value === "number" ? value : Number.parseInt(String(value), 10);
+	return Number.isFinite(page) && page > 1 ? page : undefined;
 }
 
 // Session storage keys (persists across HMR/deep links)
@@ -47,6 +61,11 @@ function getInitialShuffleSeed(): number {
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>): SearchParams => ({
 		q: typeof search.q === "string" ? search.q : undefined,
+		page: parsePage(search.page),
+		sort: SORT_VALUES.includes(String(search.sort))
+			? String(search.sort)
+			: undefined,
+		dir: search.dir === "desc" ? "desc" : undefined,
 	}),
 	component: HomePage,
 });
@@ -122,7 +141,7 @@ function WelcomeHero({
 }
 
 function HomePage() {
-	const { q = "" } = Route.useSearch();
+	const { q = "", page = 1, sort, dir } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
 	const { names } = useDatabase();
 
@@ -222,6 +241,27 @@ function HomePage() {
 						isValidSearch
 							? () => navigate({ search: { q: undefined } })
 							: undefined
+					}
+					page={page}
+					onPageChange={(nextPage) =>
+						navigate({
+							search: (prev) => ({
+								...prev,
+								page: nextPage > 1 ? nextPage : undefined,
+							}),
+						})
+					}
+					sort={sort ?? DEFAULT_SORT_VALUE}
+					sortDesc={dir === "desc"}
+					onSortChange={(nextSort, desc) =>
+						navigate({
+							search: (prev) => ({
+								...prev,
+								sort: nextSort === DEFAULT_SORT_VALUE ? undefined : nextSort,
+								dir: desc ? "desc" : undefined,
+								page: undefined,
+							}),
+						})
 					}
 					onRowSelect={(item) => {
 						trackDetailView(item.id, item.name);

@@ -5,8 +5,13 @@ import {
 	useRouter,
 } from "@tanstack/react-router";
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { Button } from "#/components/ui/button";
+import { Button, buttonVariants } from "#/components/ui/button";
 import type { Sibling } from "#/hooks/useSiblingNavigation";
+
+const siblingLinkClass = buttonVariants({
+	variant: "outline",
+	size: "icon-sm",
+});
 
 /**
  * Goes back in browser history, falling back to the search page when there is
@@ -53,27 +58,29 @@ export function SiblingNav({ to, prev, next, itemLabel }: SiblingNavProps) {
 			aria-label={`Previous and next ${itemLabel}`}
 			className="flex items-center gap-1"
 		>
+			{/* Real links styled as buttons: these navigate to a URL, so they must
+			    keep link semantics (and middle-click / open-in-new-tab). */}
 			{prev && (
-				<Button
-					variant="outline"
-					size="icon-sm"
+				<Link
+					to={to}
+					params={{ id: prev.id }}
 					aria-label={`Previous ${itemLabel}: ${prev.label}`}
 					title={prev.label}
-					render={<Link to={to} params={{ id: prev.id }} />}
+					className={siblingLinkClass}
 				>
 					<ChevronLeftIcon className="h-4 w-4" />
-				</Button>
+				</Link>
 			)}
 			{next && (
-				<Button
-					variant="outline"
-					size="icon-sm"
+				<Link
+					to={to}
+					params={{ id: next.id }}
 					aria-label={`Next ${itemLabel}: ${next.label}`}
 					title={next.label}
-					render={<Link to={to} params={{ id: next.id }} />}
+					className={siblingLinkClass}
 				>
 					<ChevronRightIcon className="h-4 w-4" />
-				</Button>
+				</Link>
 			)}
 		</nav>
 	);
