@@ -6,6 +6,7 @@ import {
 	sanitize,
 	truncate,
 } from "./og-utils.ts";
+import { canonicalUrl, isIndexable } from "./seo-utils.ts";
 
 const namesById = data.namesById as Record<
 	string,
@@ -31,6 +32,8 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 		private description: string,
 		private url: string,
 		private imgUrl: string,
+		private canonical: string,
+		private indexable: boolean,
 	) {}
 
 	element(el: Element) {
@@ -38,8 +41,12 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 		const d = escapeHtml(sanitize(this.description));
 		const u = escapeHtml(this.url);
 		const img = escapeHtml(this.imgUrl);
+		const canonical = escapeHtml(this.canonical);
 		el.append(
-			`<meta name="robots" content="index, follow" />` +
+			`<link rel="canonical" href="${canonical}" />` +
+				`<meta name="robots" content="${
+					this.indexable ? "index, follow" : "noindex, follow"
+				}" />` +
 				`<meta property="og:type" content="website" />` +
 				`<meta property="og:url" content="${u}" />` +
 				`<meta property="og:title" content="${t}" />` +
@@ -141,6 +148,9 @@ export async function onRequest(
 
 	const og = pageMeta ?? GENERIC_META;
 
+	const canonical = canonicalUrl(url);
+	const indexable = isIndexable(url.pathname, pageMeta !== null);
+
 	let imgUrl: string;
 	if (nameMatch) {
 		imgUrl = `${url.origin}/og/name/${nameMatch[1]}`;
@@ -152,7 +162,14 @@ export async function onRequest(
 
 	const rewriter = new HTMLRewriter().on(
 		"head",
-		new OgTagsHandler(og.title, og.description, url.href, imgUrl),
+		new OgTagsHandler(
+			og.title,
+			og.description,
+			url.href,
+			imgUrl,
+			canonical,
+			indexable,
+		),
 	);
 
 	if (pageMeta) {

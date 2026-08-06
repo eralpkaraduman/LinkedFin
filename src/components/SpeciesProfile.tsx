@@ -13,6 +13,7 @@ import {
 } from "#/components/ui/carousel";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { useDatabase } from "#/lib/DatabaseContext";
+import { toBcp47 } from "#/lib/language";
 
 interface SpeciesProfileProps {
 	speciesId: string;
@@ -183,7 +184,13 @@ export function SpeciesProfile({
 								params={{ id: name.id }}
 								className="rounded-lg bg-muted/50 px-3 py-2 text-left transition hover:bg-muted"
 							>
-								<span className="block text-sm font-medium">{name.name}</span>
+								<span
+									className="block text-sm font-medium"
+									lang={toBcp47(name.lang)}
+									dir="auto"
+								>
+									{name.name}
+								</span>
 								<span className="block text-xs text-muted-foreground">
 									{name.region}
 								</span>

@@ -42,6 +42,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { toBcp47 } from "#/lib/language";
 import { getPageItems, getPageRange } from "#/lib/pagination";
 import { shuffleWithSeed } from "#/lib/randomOrder";
 import type { FishName } from "#/lib/types";
@@ -97,7 +98,16 @@ const columns = columnHelper.columns([
 		id: "name",
 		header: "Name",
 		sortFn: "text",
-		cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+		cell: (info) => (
+			// The name is in the entry's own language, not the page's.
+			<span
+				className="font-medium"
+				lang={toBcp47(info.row.original.lang)}
+				dir="auto"
+			>
+				{info.getValue()}
+			</span>
+		),
 	}),
 	columnHelper.accessor((row) => row.transliteration ?? "", {
 		id: "transliteration",

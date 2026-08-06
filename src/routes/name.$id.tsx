@@ -5,6 +5,7 @@ import { ShareActions } from "#/components/ShareActions";
 import { SpeciesCard } from "#/components/SpeciesCard";
 import { useNameSiblings } from "#/hooks/useSiblingNavigation";
 import { useDatabase } from "#/lib/DatabaseContext";
+import { toBcp47 } from "#/lib/language";
 
 export const Route = createFileRoute("/name/$id")({
 	component: DetailPage,
@@ -38,7 +39,15 @@ function DetailPage() {
 					<SiblingNav to="/name/$id" prev={prev} next={next} itemLabel="name" />
 				</div>
 				<div className="mb-6 flex items-start justify-between gap-4">
-					<h1 className="text-2xl font-bold">{name.name}</h1>
+					{/* The heading is the name itself, in its own language — the rest
+					    of the page (chrome, labels, etymology prose) stays English. */}
+					<h1
+						className="text-2xl font-bold"
+						lang={toBcp47(name.lang)}
+						dir="auto"
+					>
+						{name.name}
+					</h1>
 					<ShareActions />
 				</div>
 

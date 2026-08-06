@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useDatabase } from "#/lib/DatabaseContext";
+import { toBcp47 } from "#/lib/language";
 import { buildChain, getRelationsForName } from "#/lib/relations";
 import type { FishName } from "#/lib/types";
 
@@ -54,7 +55,13 @@ export function NameDetail({ name }: NameDetailProps) {
 						: "bg-muted/50 hover:bg-muted"
 				}`}
 			>
-				<span className="text-sm font-medium">{item.name}</span>
+				<span
+					className="text-sm font-medium"
+					lang={toBcp47(item.lang)}
+					dir="auto"
+				>
+					{item.name}
+				</span>
 				<span className="text-xs text-muted-foreground">{subtitle}</span>
 			</div>
 		);

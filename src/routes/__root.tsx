@@ -66,10 +66,13 @@ export const Route = createRootRoute({
 				rel: "stylesheet",
 				href: appCss,
 			},
-			{
-				rel: "canonical",
-				href: "https://linkedfin.net/",
-			},
+			// No canonical here. A root-level tag declared every /name/* and
+			// /species/* page a duplicate of the homepage. It is injected
+			// per-URL by functions/_middleware.ts, the only place that reaches
+			// the HTML a crawler actually fetches — head() links do not make it
+			// into the served shell. Move it into each route's head() once pages
+			// are prerendered, and drop it from the middleware at the same time:
+			// two canonical sources is worse than none.
 			{
 				rel: "icon",
 				type: "image/x-icon",

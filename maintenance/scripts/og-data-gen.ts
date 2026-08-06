@@ -14,6 +14,11 @@ import { resolve } from "node:path";
 
 const DB_PATH = resolve(import.meta.dirname, "../../public/fish.db");
 const OUT_PATH = resolve(import.meta.dirname, "../../functions/og-data.json");
+const SITEMAP_PATH = resolve(import.meta.dirname, "../../public/sitemap.xml");
+
+const SITE_ORIGIN = "https://linkedfin.net";
+/** Routes that exist independently of the database. */
+const STATIC_PATHS = ["/", "/about"];
 
 const db = new Database(DB_PATH, { readonly: true });
 
@@ -91,3 +96,28 @@ writeFileSync(OUT_PATH, JSON.stringify(data));
 console.log(
 	`Generated ${OUT_PATH} (${names.length} names, ${species.length} species)`,
 );
+
+/**
+ * sitemap.xml — <loc> only, deliberately.
+ *
+ * Google ignores <priority> and <changefreq> outright, and honours <lastmod>
+ * only when it is reliable. Neither table carries a real per-row timestamp, so
+ * the only lastmod available would be the build time, identical across every
+ * URL on every deploy — the classic way to get lastmod distrusted site-wide.
+ * Omitting it is better than faking it. Add real values once names/species
+ * carry updated_at.
+ */
+const sitemapPaths = [
+	...STATIC_PATHS,
+	...names.map((n) => `/name/${n.id}`),
+	...species.map((s) => `/species/${s.id}`),
+];
+
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapPaths.map((path) => `\t<url><loc>${SITE_ORIGIN}${path}</loc></url>`).join("\n")}
+</urlset>
+`;
+
+writeFileSync(SITEMAP_PATH, sitemap);
+console.log(`Generated ${SITEMAP_PATH} (${sitemapPaths.length} URLs)`);
