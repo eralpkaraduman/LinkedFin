@@ -7,6 +7,26 @@ import type { DB } from "../db/types";
 import { getLanguageName } from "./language";
 import type { FishName, Relation } from "./types";
 
+/**
+ * Injected by `define` in vite.config.ts as a string literal: the
+ * content-addressed database filename (`fish-<hash>.db`) that `og:generate`
+ * copied into `public/`. That URL's bytes can never change, so it is served
+ * `max-age=31536000, immutable` — see the `/fish-*.db` rules in
+ * `public/_headers` and `public/_routes.json`, which must both be present for
+ * the header to survive the Pages Function.
+ *
+ * Declared as possibly-undefined on purpose. Under vitest there is no `define`
+ * (this module is pulled in transitively by `DatabaseContext`), and a build on
+ * a clone that never ran `og:generate` has no manifest either. `typeof` on an
+ * undeclared identifier is legal JavaScript, so both cases fall back to the
+ * unhashed `fish.db`, which is still deployed and still correct — merely
+ * revalidated on each visit instead of cached forever.
+ */
+declare const __FISH_DB_FILE__: string | undefined;
+
+const FISH_DB_FILE =
+	typeof __FISH_DB_FILE__ === "string" ? __FISH_DB_FILE__ : "fish.db";
+
 let db: Kysely<DB> | null = null;
 let allNames: FishName[] = [];
 let allRelations: Relation[] = [];
@@ -20,7 +40,7 @@ export async function initDatabase(
 	const report = onProgress || (() => {});
 
 	// Initialize SQLite WASM and create Kysely instance
-	const dbPath = `${import.meta.env.BASE_URL}fish.db`;
+	const dbPath = `${import.meta.env.BASE_URL}${FISH_DB_FILE}`;
 	const sqliteDb = await initSqliteWasm(dbPath, report);
 	const dialect = createSqliteWasmDialect(sqliteDb);
 	db = new Kysely<DB>({ dialect });

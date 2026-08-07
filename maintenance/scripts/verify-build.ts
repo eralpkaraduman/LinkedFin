@@ -15,7 +15,8 @@
  */
 
 import Database from "better-sqlite3";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "../..");
@@ -116,6 +117,69 @@ if (!existsSync(sitemapPath)) {
 	}
 }
 
+// --- Content-addressed database ------------------------------------------
+// `og:generate` copies public/fish.db to public/fish-<hash>.db and bakes that
+// filename into the bundle (`__FISH_DB_FILE__` in vite.config.ts). If the two
+// ever disagree — a stale .generated/fish-db.json, a build that skipped
+// og:generate, a pruning bug that deleted the copy — the browser fetches a URL
+// that is not there, `initSqliteWasm` throws, and search is dead site-wide
+// while every prerendered page still renders perfectly from the baked dataset.
+// That is a total failure that looks like a healthy build, so the hash is
+// recomputed here from the database itself rather than read back from the
+// generator's own manifest.
+const expectedHash = createHash("sha256")
+	.update(readFileSync(DB_PATH))
+	.digest("hex")
+	.slice(0, 8);
+const expectedDbFile = `fish-${expectedHash}.db`;
+const hashedDbPath = resolve(DIST, expectedDbFile);
+
+if (!existsSync(hashedDbPath)) {
+	fail(
+		`missing ${expectedDbFile} in dist/client — run \`pnpm og:generate\`; ` +
+			`the browser has nowhere to fetch the database from`,
+	);
+} else if (statSync(hashedDbPath).size !== statSync(DB_PATH).size) {
+	fail(
+		`${expectedDbFile} does not match public/fish.db — the hashed copy is stale, ` +
+			`and it is served \`immutable\` so readers would be stuck with it`,
+	);
+}
+
+// Stale copies from an earlier data revision would ship, be cached forever, and
+// waste 300 KB of the deploy each.
+for (const entry of readdirSync(DIST)) {
+	if (/^fish-[0-9a-f]+\.db$/.test(entry) && entry !== expectedDbFile) {
+		fail(`stale ${entry} in dist/client — only ${expectedDbFile} should ship`);
+	}
+}
+
+/** Every .js file under dist/client, at any depth. */
+function collectScripts(dir: string, out: string[] = []): string[] {
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const path = resolve(dir, entry.name);
+		if (entry.isDirectory()) collectScripts(path, out);
+		else if (entry.name.endsWith(".js")) out.push(path);
+	}
+	return out;
+}
+
+const scripts = collectScripts(DIST);
+const referencingScripts = scripts.filter((path) =>
+	readFileSync(path, "utf-8").includes(expectedDbFile),
+);
+
+if (referencingScripts.length === 0) {
+	const otherHash = scripts.some((path) =>
+		/fish-[0-9a-f]{8}\.db/.test(readFileSync(path, "utf-8")),
+	);
+	fail(
+		otherHash
+			? `the client bundle references a different fish-*.db than the ${expectedDbFile} that was emitted — search would 404`
+			: `no client script references ${expectedDbFile} — the \`__FISH_DB_FILE__\` define did not reach the bundle, so the app is still fetching the unhashed /fish.db`,
+	);
+}
+
 // --- Caching config ------------------------------------------------------
 // `_headers` is ignored on any route a Pages Function handles, and
 // `functions/_middleware.ts` matches `/*`. So a rule in `_headers` only does
@@ -177,6 +241,52 @@ if (existsSync(headersPath) && existsSync(routesPath)) {
 			);
 		}
 	}
+
+	// The hashed database is the one path whose rules are written as a wildcard
+	// (`/fish-*.db`) rather than the literal URL, because the literal changes on
+	// every data deploy. The exact-string check above only proves the two files
+	// agree with each other; it cannot see that the pattern still matches the
+	// filename actually emitted. A rename on either side would silently drop the
+	// URL back onto the Function — uncached, and `cf-cache-status: DYNAMIC`.
+	// Cloudflare wildcards match any number of characters, path separators
+	// included.
+	const matches = (rule: string) =>
+		new RegExp(
+			`^${rule.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`,
+		).test(`/${expectedDbFile}`);
+
+	if (!(routes.exclude ?? []).some(matches)) {
+		fail(
+			`no _routes.json exclude rule matches /${expectedDbFile} — the Function ` +
+				`would serve the database and drop its Cache-Control header`,
+		);
+	}
+
+	// Directives that `_headers` would apply to the hashed URL: the indented
+	// lines under every rule whose pattern matches it. Comments are ignored so a
+	// neighbouring rule's explanatory text cannot satisfy the assertion.
+	const applied: string[] = [];
+	let ruleMatches = false;
+	for (const raw of readFileSync(headersPath, "utf-8").split("\n")) {
+		if (raw.startsWith("#") || raw.trim() === "") continue;
+		if (raw.startsWith("/")) ruleMatches = matches(raw.trimEnd());
+		else if (ruleMatches) applied.push(raw.trim());
+	}
+
+	const cacheControl = applied.find((line) =>
+		line.toLowerCase().startsWith("cache-control:"),
+	);
+	if (!cacheControl) {
+		fail(`no _headers rule matches /${expectedDbFile}`);
+	} else if (
+		!cacheControl.includes("max-age=31536000") ||
+		!cacheControl.includes("immutable")
+	) {
+		fail(
+			`_headers gives /${expectedDbFile} "${cacheControl}" — the whole point of ` +
+				`hashing the filename is that it can be immutable`,
+		);
+	}
 }
 
 // --- Report --------------------------------------------------------------
@@ -193,5 +303,6 @@ if (errors.length > 0) {
 console.log(
 	`✅ Build verified: ${namePages} name pages, ${speciesPages} species pages, ` +
 		`index/about/404 present, sitemap complete, sample page carries real content, ` +
-		`_headers and _routes.json agree`,
+		`_headers and _routes.json agree, ` +
+		`${expectedDbFile} shipped and referenced by the bundle`,
 );
