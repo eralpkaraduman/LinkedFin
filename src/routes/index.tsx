@@ -304,10 +304,9 @@ function HomePage() {
 							}),
 						})
 					}
-					onRowSelect={(item) => {
-						trackDetailView(item.id, item.name);
-						navigate({ to: "/name/$id", params: { id: item.id } });
-					}}
+					// The row's name cell is a real link now, so it does the
+					// navigating; this only records the visit.
+					onRowSelect={(item) => trackDetailView(item.id, item.name)}
 				/>
 			</div>
 		</main>
