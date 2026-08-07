@@ -25,6 +25,9 @@ export default defineConfig({
         "src/lib/types.ts",
         // Module-state populated by initDatabase (WASM fetch); helpers untestable without it
         "src/lib/database.ts",
+        // Branches on import.meta.env.SSR: one side is a build-time virtual
+        // module, the other is the WASM database. Neither exists under vitest.
+        "src/lib/fishData.ts",
         // Fetches WASM SQLite over HTTP at runtime — not testable in node
         "src/lib/DatabaseContext.tsx",
         // WASM init wrapper around @sqlite.org/sqlite-wasm — not testable in node

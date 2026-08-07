@@ -3,21 +3,34 @@ import { BackButton, SiblingNav } from "#/components/DetailNav";
 import { ErrorBoundary } from "#/components/ErrorBoundary";
 import { ShareActions } from "#/components/ShareActions";
 import { SpeciesProfile } from "#/components/SpeciesProfile";
-import { useSpeciesSiblings } from "#/hooks/useSiblingNavigation";
-import { useDatabase } from "#/lib/DatabaseContext";
+import { loadFishData } from "#/lib/fishData";
+import { selectSpeciesPage, speciesPageMeta } from "#/lib/pageData";
+import { canonical } from "#/lib/site";
 
 export const Route = createFileRoute("/species/$id")({
+	/** See the sibling comment on `/name/$id` — same isomorphic loader story. */
+	loader: async ({ params }) =>
+		selectSpeciesPage(await loadFishData(), params.id),
+	staleTime: Number.POSITIVE_INFINITY,
+	head: ({ loaderData, params }) => {
+		const links = [
+			{ rel: "canonical", href: canonical(`/species/${params.id}`) },
+		];
+		if (!loaderData) return { links };
+		const { title, description } = speciesPageMeta(loaderData);
+		return {
+			meta: [{ title }, { name: "description", content: description }],
+			links,
+		};
+	},
 	component: SpeciesPage,
 });
 
 function SpeciesPage() {
 	const { id } = Route.useParams();
-	const { getSpeciesInfo } = useDatabase();
-	const { prev, next } = useSpeciesSiblings(id);
+	const page = Route.useLoaderData();
 
-	const species = getSpeciesInfo(id);
-
-	if (!species) {
+	if (!page) {
 		return (
 			<main className="page-wrap px-4 py-8">
 				<div className="text-center">
@@ -37,15 +50,13 @@ function SpeciesPage() {
 					<BackButton />
 					<SiblingNav
 						to="/species/$id"
-						prev={prev}
-						next={next}
+						prev={page.prev}
+						next={page.next}
 						itemLabel="species"
 					/>
 				</div>
 				<div className="mb-6 flex items-start justify-between gap-4">
-					<h1 className="text-2xl font-bold italic">
-						{species.scientific_name}
-					</h1>
+					<h1 className="text-2xl font-bold italic">{page.scientificName}</h1>
 					<ShareActions />
 				</div>
 
@@ -60,8 +71,9 @@ function SpeciesPage() {
 				>
 					<SpeciesProfile
 						speciesId={id}
-						scientificName={species.scientific_name}
-						speciesNotes={species.notes}
+						scientificName={page.scientificName}
+						speciesNotes={page.notes}
+						names={page.names}
 					/>
 				</ErrorBoundary>
 			</div>

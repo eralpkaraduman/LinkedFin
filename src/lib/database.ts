@@ -4,26 +4,13 @@ import {
 	initSqliteWasm,
 } from "../db/sqlite-wasm-dialect";
 import type { DB } from "../db/types";
+import { getLanguageName } from "./language";
 import type { FishName, Relation } from "./types";
 
 let db: Kysely<DB> | null = null;
 let allNames: FishName[] = [];
 let allRelations: Relation[] = [];
 let initialized = false;
-
-// Language display names with overrides for Intl.DisplayNames gaps
-const langDisplayNames = new Intl.DisplayNames(["en"], { type: "language" });
-const langOverrides: Record<string, string> = {
-	arb: "Standard Arabic",
-	apc: "Levantine Arabic",
-	arz: "Egyptian Arabic",
-	grc: "Ancient Greek",
-	sme: "Northern Sami",
-};
-
-function getLangName(code: string): string {
-	return langOverrides[code] || langDisplayNames.of(code) || code;
-}
 
 export async function initDatabase(
 	onProgress?: (message: string) => void,
@@ -66,7 +53,7 @@ export async function initDatabase(
 	// Add computed language field
 	allNames = rawNames.map((n) => ({
 		...n,
-		language: getLangName(n.lang),
+		language: getLanguageName(n.lang),
 	}));
 
 	// Load all relations using Kysely query builder

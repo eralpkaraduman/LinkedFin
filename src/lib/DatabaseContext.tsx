@@ -17,6 +17,8 @@ import {
 import type { DatabaseState, FishName } from "./types";
 
 export interface DatabaseContextValue extends DatabaseState {
+	/** Human-readable progress while the WASM database loads. */
+	status: string;
 	getNameById: (id: string) => FishName | undefined;
 	getNamesBySpecies: (speciesId: string) => FishName[];
 	getSpeciesInfo: (
@@ -26,6 +28,17 @@ export interface DatabaseContextValue extends DatabaseState {
 
 export const DatabaseContext = createContext<DatabaseContextValue | null>(null);
 
+/**
+ * Holds the client-side sqlite-wasm database.
+ *
+ * It deliberately does **not** gate `children` on the database being ready.
+ * It used to, and that single early return was what made prerendering
+ * pointless: the effect below never runs on the server, so all 620 pages
+ * rendered the same "Initializing…" div and no route component ever mounted.
+ * Detail routes now take their data from route loaders instead; the only screen
+ * that still needs this context is the search on `/`, which renders its own
+ * loading state from `isLoading`/`error`.
+ */
 export function DatabaseProvider({ children }: { children: ReactNode }) {
 	const [state, setState] = useState<DatabaseState>({
 		names: [],
@@ -67,32 +80,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
 	const value: DatabaseContextValue = {
 		...state,
+		status,
 		getNameById,
 		getNamesBySpecies,
 		getSpeciesInfo,
 	};
-
-	if (state.isLoading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 text-4xl">🐟</div>
-					<div className="text-muted-foreground">{status}</div>
-				</div>
-			</div>
-		);
-	}
-
-	if (state.error) {
-		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-center text-destructive">
-					<div className="mb-4 text-4xl">❌</div>
-					<div>Error: {state.error}</div>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<DatabaseContext.Provider value={value}>

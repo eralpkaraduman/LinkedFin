@@ -24,6 +24,7 @@ const defaultDb: DatabaseContextValue = {
 	relations: [],
 	isLoading: false,
 	error: null,
+	status: "",
 	getNameById: () => undefined,
 	getNamesBySpecies: () => [],
 	getSpeciesInfo: () => undefined,
