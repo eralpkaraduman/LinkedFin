@@ -33,7 +33,10 @@ const rows = Array.from({ length: 60 }, (_, i) => makeName(i + 1));
  */
 const TEST_PAGE_SIZE = 25;
 
-function renderTable(props: Partial<Parameters<typeof NamesTable>[0]> = {}) {
+function renderTable(
+	props: Partial<Parameters<typeof NamesTable>[0]> = {},
+	initialPath?: string,
+) {
 	const onShuffle = vi.fn();
 	const onRowSelect = vi.fn();
 	const utils = renderWithProviders(
@@ -46,6 +49,7 @@ function renderTable(props: Partial<Parameters<typeof NamesTable>[0]> = {}) {
 			pageSize={TEST_PAGE_SIZE}
 			{...props}
 		/>,
+		initialPath ? { initialPath } : undefined,
 	);
 	return { ...utils, onShuffle, onRowSelect };
 }
@@ -116,7 +120,7 @@ describe("pagination", () => {
 		const user = userEvent.setup();
 		renderTable();
 		const nav = await screen.findByRole("navigation", { name: "pagination" });
-		await user.click(within(nav).getByRole("button", { name: "3" }));
+		await user.click(within(nav).getByRole("link", { name: "3" }));
 
 		expect(screen.getByTestId("result-count")).toHaveTextContent(
 			"51–60 of 60 names",
@@ -130,7 +134,7 @@ describe("pagination", () => {
 		renderTable();
 		const nav = await screen.findByRole("navigation", { name: "pagination" });
 
-		await user.click(within(nav).getByRole("button", { name: "3" }));
+		await user.click(within(nav).getByRole("link", { name: "3" }));
 		expect(screen.getByLabelText("Go to next page")).toHaveAttribute(
 			"aria-disabled",
 			"true",
@@ -187,7 +191,7 @@ describe("pagination", () => {
 
 		renderWithProviders(<Harness />);
 		const nav = await screen.findByRole("navigation", { name: "pagination" });
-		await user.click(within(nav).getByRole("button", { name: "3" }));
+		await user.click(within(nav).getByRole("link", { name: "3" }));
 		expect(screen.getByTestId("result-count")).toHaveTextContent("51–60");
 
 		await user.click(screen.getByRole("button", { name: "shrink" }));
@@ -211,7 +215,7 @@ describe("pagination", () => {
 		renderTable({ page: 1, onPageChange });
 
 		const nav = await screen.findByRole("navigation", { name: "pagination" });
-		await user.click(within(nav).getByRole("button", { name: "2" }));
+		await user.click(within(nav).getByRole("link", { name: "2" }));
 
 		expect(onPageChange).toHaveBeenCalledWith(2);
 		// Still on page 1 — the parent owns the state (here, the URL).
@@ -224,6 +228,52 @@ describe("pagination", () => {
 			"51–60 of 60 names",
 		);
 		expect(visibleNames()).toHaveLength(10);
+	});
+
+	test("page links carry a real href that keeps the other search params", async () => {
+		renderTable(
+			{ page: 2, onPageChange: vi.fn() },
+			"/?q=perch&sort=region&dir=desc",
+		);
+		const nav = await screen.findByRole("navigation", { name: "pagination" });
+
+		expect(within(nav).getByRole("link", { name: "3" })).toHaveAttribute(
+			"href",
+			"/?q=perch&sort=region&dir=desc&page=3",
+		);
+		expect(screen.getByLabelText("Go to next page")).toHaveAttribute(
+			"href",
+			"/?q=perch&sort=region&dir=desc&page=3",
+		);
+		// Page 1 is the bare URL, matching what the router navigates to.
+		expect(screen.getByLabelText("Go to previous page")).toHaveAttribute(
+			"href",
+			"/?q=perch&sort=region&dir=desc",
+		);
+	});
+
+	test("clicking a page link navigates in-app rather than following the href", async () => {
+		const onPageChange = vi.fn();
+		renderTable({ page: 1, onPageChange });
+		const nav = await screen.findByRole("navigation", { name: "pagination" });
+
+		const link = within(nav).getByRole("link", { name: "2" });
+		const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+		link.dispatchEvent(click);
+
+		expect(click.defaultPrevented).toBe(true);
+		expect(onPageChange).toHaveBeenCalledWith(2);
+	});
+
+	test("keeps a dead href when the table pages itself", async () => {
+		renderTable();
+		const nav = await screen.findByRole("navigation", { name: "pagination" });
+		// Uncontrolled: the page lives in component state, so `?page=` would not
+		// restore it and there is nothing honest to link to.
+		expect(within(nav).getByRole("link", { name: "2" })).toHaveAttribute(
+			"href",
+			"#",
+		);
 	});
 
 	test("reports sort changes to the parent instead of sorting itself", async () => {
@@ -301,7 +351,7 @@ describe("sort mode", () => {
 		const user = userEvent.setup();
 		renderTable();
 		const nav = await screen.findByRole("navigation", { name: "pagination" });
-		await user.click(within(nav).getByRole("button", { name: "3" }));
+		await user.click(within(nav).getByRole("link", { name: "3" }));
 
 		await user.click(screen.getByLabelText("Sort order"));
 		await user.click(await screen.findByRole("option", { name: "Name" }));
@@ -351,7 +401,7 @@ describe("sort mode", () => {
 		const user = userEvent.setup();
 		renderTable();
 		const nav = await screen.findByRole("navigation", { name: "pagination" });
-		await user.click(within(nav).getByRole("button", { name: "3" }));
+		await user.click(within(nav).getByRole("link", { name: "3" }));
 		expect(screen.getByTestId("result-count")).toHaveTextContent("51–60");
 
 		await user.click(screen.getByRole("button", { name: /^Region/ }));
@@ -406,6 +456,45 @@ describe("rows", () => {
 
 		expect(onRowSelect).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "nm_0001", name: "Name 0001" }),
+		);
+	});
+
+	test("the name cell is a real link to the detail page", async () => {
+		const user = userEvent.setup();
+		renderTable();
+		await user.click(await screen.findByRole("button", { name: /^Name/ }));
+
+		const link = screen.getByRole("link", { name: "Name 0001" });
+		expect(link).toHaveAttribute("href", "/name/nm_0001");
+		// Stretched over the row, so the whole row is still clickable without
+		// putting interactive elements in the other cells.
+		expect(link.className).toContain("after:inset-0");
+		expect(
+			document.querySelectorAll(
+				"[data-slot='table-body'] [data-slot='table-row'] a[href^='/name/']",
+			),
+		).toHaveLength(25);
+	});
+
+	test("Tab reaches a row link and Enter activates it", async () => {
+		const user = userEvent.setup();
+		const { onRowSelect } = renderTable();
+		await user.click(await screen.findByRole("button", { name: /^Name/ }));
+
+		const link = screen.getByRole("link", { name: "Name 0001" });
+		link.focus();
+		expect(document.activeElement).toBe(link);
+
+		// Tab moves on to the next row's link rather than skipping the body.
+		await user.tab();
+		expect(document.activeElement).toBe(
+			screen.getByRole("link", { name: "Name 0002" }),
+		);
+
+		await user.tab({ shift: true });
+		await user.keyboard("{Enter}");
+		expect(onRowSelect).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "nm_0001" }),
 		);
 	});
 

@@ -1,10 +1,11 @@
+import type { VariantProps } from "class-variance-authority";
 import {
 	ChevronLeftIcon,
 	ChevronRightIcon,
 	MoreHorizontalIcon,
 } from "lucide-react";
 import type * as React from "react";
-import { Button } from "#/components/ui/button.tsx";
+import { buttonVariants } from "#/components/ui/button.tsx";
 import { cn } from "#/lib/utils.ts";
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
@@ -37,29 +38,34 @@ function PaginationItem({ ...props }: React.ComponentProps<"li">) {
 
 type PaginationLinkProps = {
 	isActive?: boolean;
-} & Pick<React.ComponentProps<typeof Button>, "size"> &
+} & VariantProps<typeof buttonVariants> &
 	React.ComponentProps<"a">;
 
+/**
+ * A page link. It is styled like a button but stays a plain anchor: pages are
+ * real addresses, so this must expose link semantics (and native middle-click /
+ * open-in-new-tab) rather than `role="button"`.
+ */
 function PaginationLink({
 	className,
 	isActive,
 	size = "icon",
+	variant,
 	...props
 }: PaginationLinkProps) {
 	return (
-		<Button
-			variant={isActive ? "outline" : "ghost"}
-			size={size}
-			className={cn(className)}
-			nativeButton={false}
-			render={
-				<a
-					aria-current={isActive ? "page" : undefined}
-					data-slot="pagination-link"
-					data-active={isActive}
-					{...props}
-				/>
-			}
+		<a
+			aria-current={isActive ? "page" : undefined}
+			data-slot="pagination-link"
+			data-active={isActive}
+			className={cn(
+				buttonVariants({
+					variant: variant ?? (isActive ? "outline" : "ghost"),
+					size,
+				}),
+				className,
+			)}
+			{...props}
 		/>
 	);
 }

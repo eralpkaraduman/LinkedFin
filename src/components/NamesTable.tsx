@@ -1,3 +1,4 @@
+import { Link, useLocation } from "@tanstack/react-router";
 import {
 	createColumnHelper,
 	createPaginatedRowModel,
@@ -99,14 +100,20 @@ const columns = columnHelper.columns([
 		header: "Name",
 		sortFn: "text",
 		cell: (info) => (
+			// The row's link. The `after:` overlay stretches it across the whole
+			// row so the entire row stays clickable, without nesting interactive
+			// elements inside the other `<td>`s (and without the invalid
+			// `<a><tr></tr></a>` markup that would otherwise be required).
 			// The name is in the entry's own language, not the page's.
-			<span
-				className="font-medium"
+			<Link
+				to="/name/$id"
+				params={{ id: info.row.original.id }}
+				className="font-medium after:absolute after:inset-0 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 				lang={toBcp47(info.row.original.lang)}
 				dir="auto"
 			>
 				{info.getValue()}
-			</span>
+			</Link>
 		),
 	}),
 	columnHelper.accessor((row) => row.transliteration ?? "", {
@@ -137,6 +144,13 @@ export interface NamesTableProps {
 	/** Seed driving the random order. Change it to reshuffle. */
 	randomSeed: number;
 	onShuffle: () => void;
+	/**
+	 * Called when a row is activated (click, or Enter on the row's link).
+	 * Navigation is **not** its job any more: each row's name cell is a real
+	 * `<Link to="/name/$id">`, so the router handles that — and must, for
+	 * middle-click and open-in-new-tab to work. What is left here is the
+	 * side effect that the link cannot express: the analytics event.
+	 */
 	onRowSelect: (item: FishName) => void;
 	/** When provided, a "Clear" button is shown in the toolbar. */
 	onClearSearch?: () => void;
@@ -206,6 +220,26 @@ export function NamesTable({
 	const pagination = useMemo<PaginationState>(
 		() => ({ pageIndex, pageSize }),
 		[pageIndex, pageSize],
+	);
+
+	// Paging lives in the URL, so every page is a real address. The links carry
+	// it in `href` (keeping the current q/sort/dir) and only preventDefault to
+	// hand the navigation to the router — middle-click and open-in-new-tab
+	// therefore work, and crawlers see somewhere to go.
+	const location = useLocation();
+	const pageHref = useCallback(
+		(target: number) => {
+			// Uncontrolled tables keep the page in component state, so a `?page=`
+			// URL would not restore it. Nothing to link to in that case.
+			if (!isPageControlled) return "#";
+			const params = new URLSearchParams(location.searchStr);
+			// Page 1 is the bare URL, matching what the router navigates to.
+			if (target > 1) params.set("page", String(target));
+			else params.delete("page");
+			const query = params.toString();
+			return query ? `${location.pathname}?${query}` : location.pathname;
+		},
+		[isPageControlled, location.pathname, location.searchStr],
 	);
 
 	const goToPage = useCallback(
@@ -397,7 +431,13 @@ export function NamesTable({
 							rows.map((row) => (
 								<TableRow
 									key={row.id}
-									className="cursor-pointer"
+									// `relative` makes the row the containing block for the
+									// name link's stretched `::after`; without it the overlay
+									// would size itself against the table container.
+									className="relative cursor-pointer"
+									// Notification only — the link in the name cell performs
+									// the navigation, including for keyboard Enter (which
+									// dispatches a click that bubbles to here).
 									onClick={() => onRowSelect(row.original)}
 								>
 									{row.getAllCells().map((cell) => (
@@ -420,7 +460,7 @@ export function NamesTable({
 					<PaginationContent>
 						<PaginationItem>
 							<PaginationPrevious
-								href="#"
+								href={pageHref(Math.max(1, currentPage - 1))}
 								aria-disabled={currentPage === 1}
 								tabIndex={currentPage === 1 ? -1 : undefined}
 								className={
@@ -437,7 +477,7 @@ export function NamesTable({
 							typeof item === "number" ? (
 								<PaginationItem key={item}>
 									<PaginationLink
-										href="#"
+										href={pageHref(item)}
 										isActive={item === currentPage}
 										onClick={(event) => {
 											event.preventDefault();
@@ -456,7 +496,7 @@ export function NamesTable({
 
 						<PaginationItem>
 							<PaginationNext
-								href="#"
+								href={pageHref(Math.min(pageCount, currentPage + 1))}
 								aria-disabled={currentPage === pageCount}
 								tabIndex={currentPage === pageCount ? -1 : undefined}
 								className={
