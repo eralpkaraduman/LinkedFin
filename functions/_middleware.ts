@@ -1,3 +1,9 @@
+import {
+	buildNameJsonLd,
+	buildSpeciesJsonLd,
+	buildWebSiteJsonLd,
+	jsonLdScript,
+} from "./jsonld.ts";
 import data from "./og-data.json";
 import {
 	buildNameOg,
@@ -6,7 +12,7 @@ import {
 	sanitize,
 	truncate,
 } from "./og-utils.ts";
-import { isIndexable } from "./seo-utils.ts";
+import { isIndexable, normalizePath } from "./seo-utils.ts";
 
 const namesById = data.namesById as Record<
 	string,
@@ -33,6 +39,8 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 		private url: string,
 		private imgUrl: string,
 		private indexable: boolean,
+		/** Pre-serialized `<script type="application/ld+json">`, or "" for none. */
+		private jsonLd: string,
 	) {}
 
 	element(el: Element) {
@@ -55,7 +63,8 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 				`<meta name="twitter:card" content="summary_large_image" />` +
 				`<meta name="twitter:title" content="${t}" />` +
 				`<meta name="twitter:description" content="${d}" />` +
-				`<meta name="twitter:image" content="${img}" />`,
+				`<meta name="twitter:image" content="${img}" />` +
+				this.jsonLd,
 			{ html: true },
 		);
 	}
@@ -76,6 +85,12 @@ interface PageMeta {
 	ogTitle: string;
 	/** og:/twitter: description — same, budget stays at 500 chars. */
 	ogDescription: string;
+	/**
+	 * The page's structured data, already serialized into a script tag. Only
+	 * pages whose id resolves get one — an unknown id is a real 404 and must not
+	 * describe an entity that does not exist.
+	 */
+	jsonLd: string;
 }
 
 function lookupName(nameId: string): PageMeta | null {
@@ -85,6 +100,7 @@ function lookupName(nameId: string): PageMeta | null {
 	return {
 		ogTitle: `LinkedFin: ${og.title}`,
 		ogDescription: truncate(og.description, 500),
+		jsonLd: jsonLdScript(buildNameJsonLd(nameId, row)),
 	};
 }
 
@@ -92,12 +108,14 @@ function lookupSpecies(speciesId: string): PageMeta | null {
 	const species = speciesById[speciesId];
 	if (!species) return null;
 
-	const names = (namesBySpeciesId[speciesId] ?? []).map((name) => ({ name }));
+	const nameList = namesBySpeciesId[speciesId] ?? [];
+	const names = nameList.map((name) => ({ name }));
 
 	const og = buildSpeciesOg(species, names);
 	return {
 		ogTitle: `LinkedFin: ${og.title}`,
 		ogDescription: truncate(og.description, 500, ", "),
+		jsonLd: jsonLdScript(buildSpeciesJsonLd(speciesId, species, nameList)),
 	};
 }
 
@@ -131,6 +149,14 @@ export async function onRequest(
 
 	const indexable = isIndexable(url.pathname, pageMeta !== null);
 
+	// WebSite/SearchAction goes on the homepage only — Google's sitelinks
+	// searchbox docs are explicit about that, and repeating it on every page
+	// would just duplicate the same entity.
+	const isHome = normalizePath(url.pathname) === "/";
+	const jsonLd = isHome
+		? jsonLdScript(buildWebSiteJsonLd())
+		: (pageMeta?.jsonLd ?? "");
+
 	let imgUrl: string;
 	if (nameMatch) {
 		imgUrl = `${url.origin}/og/name/${nameMatch[1]}`;
@@ -142,7 +168,14 @@ export async function onRequest(
 
 	const rewriter = new HTMLRewriter().on(
 		"head",
-		new OgTagsHandler(ogTitle, ogDescription, url.href, imgUrl, indexable),
+		new OgTagsHandler(
+			ogTitle,
+			ogDescription,
+			url.href,
+			imgUrl,
+			indexable,
+			jsonLd,
+		),
 	);
 
 	const rewritten = rewriter.transform(response);
