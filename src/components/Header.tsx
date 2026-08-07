@@ -4,14 +4,9 @@ import { Input } from "#/components/ui/input";
 import { useDebouncedCallback } from "#/hooks/useDebouncedCallback";
 
 export default function Header() {
-	const search = useSearch({ strict: false }) as {
-		q?: string;
-		name?: string;
-		species?: string;
-	};
+	const search = useSearch({ strict: false }) as { q?: string };
 	const navigate = useNavigate();
 	const urlQuery = search.q || "";
-	const hasModal = !!search.name || !!search.species;
 
 	// Local state for immediate input feedback
 	const [localQuery, setLocalQuery] = useState(urlQuery);
@@ -55,10 +50,12 @@ export default function Header() {
 					</Link>
 				</h1>
 
-				<div
-					className={`relative flex-1 transition-all ${hasModal ? "pointer-events-none select-none opacity-40 blur-[2px]" : ""}`}
-					inert={hasModal ? true : undefined}
-				>
+				{/*
+					The search box stays fully active on every route, detail pages
+					included: typing here navigates back to "/" with the query, so it
+					doubles as the way out of a detail view.
+				*/}
+				<div className="relative flex-1">
 					<Input
 						value={localQuery}
 						onChange={(e) => handleSearch(e.target.value)}
