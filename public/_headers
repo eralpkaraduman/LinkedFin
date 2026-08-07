@@ -1,0 +1,61 @@
+# Cache-Control for static assets on Cloudflare Pages.
+#
+# Two things to know before editing this file:
+#
+# 1. `_headers` does NOT apply to responses produced by a Pages Function.
+#    `functions/_middleware.ts` matches `/*`, so without `public/_routes.json`
+#    excluding these paths every rule below would be silently ignored — and the
+#    responses would also be `cf-cache-status: DYNAMIC`, i.e. never edge-cached.
+#    The two files must be kept in sync: a path needs an `exclude` entry in
+#    `_routes.json` for its rule here to do anything.
+#
+# 2. Vite copies `public/` verbatim into `dist/client`, which is what Pages
+#    deploys, so this file belongs in `public/` rather than the build output.
+#
+# HTML is deliberately absent. It is served through the middleware (which sets
+# `max-age=0, must-revalidate` itself) because it references content-hashed
+# assets and must be fresh immediately after a deploy.
+
+# Vite writes everything here with a content hash in the filename, so a given
+# URL's bytes can never change. Safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# NOT content-hashed — only ever fetched server-side by the OG image Function,
+# so a stale day costs nothing, but it cannot be `immutable`.
+/fonts/*
+  Cache-Control: public, max-age=86400
+
+# 300 KB, NOT content-hashed, and rewritten on every data deploy. A long cache
+# would pin readers to a stale database, so this stays on ETag revalidation.
+# Making it immutable requires a versioned filename first.
+/fish.db
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Regenerated each deploy, but nothing breaks if a crawler sees an hour-old
+# copy.
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
+/robots.txt
+  Cache-Control: public, max-age=3600
+
+# Icons and the fallback OG image: unhashed, referenced by manifest.json and by
+# social crawlers, and effectively static.
+/favicon.ico
+  Cache-Control: public, max-age=86400
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=86400
+
+/logo192.png
+  Cache-Control: public, max-age=86400
+
+/logo512.png
+  Cache-Control: public, max-age=86400
+
+/og-image.png
+  Cache-Control: public, max-age=86400
+
+/manifest.json
+  Cache-Control: public, max-age=86400

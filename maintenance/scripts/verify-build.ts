@@ -116,6 +116,69 @@ if (!existsSync(sitemapPath)) {
 	}
 }
 
+// --- Caching config ------------------------------------------------------
+// `_headers` is ignored on any route a Pages Function handles, and
+// `functions/_middleware.ts` matches `/*`. So a rule in `_headers` only does
+// anything if `_routes.json` also excludes that path from the Function.
+// Getting this wrong fails silently — the site works, it is just uncached —
+// which is exactly the bug this pair of files was added to fix. Assert the
+// coupling here instead.
+const headersPath = resolve(DIST, "_headers");
+const routesPath = resolve(DIST, "_routes.json");
+
+if (!existsSync(headersPath)) {
+	fail("missing _headers — static assets fall back to Pages' max-age=0 default");
+}
+if (!existsSync(routesPath)) {
+	fail(
+		"missing _routes.json — every request runs through the Function and is never edge-cached",
+	);
+}
+
+if (existsSync(headersPath) && existsSync(routesPath)) {
+	const routes = JSON.parse(readFileSync(routesPath, "utf-8")) as {
+		version: number;
+		include: string[];
+		exclude: string[];
+	};
+
+	if (routes.version !== 1) fail(`_routes.json version is ${routes.version}, expected 1`);
+	if (!routes.include?.includes("/*")) {
+		fail("_routes.json must include /* so the middleware still runs on all HTML");
+	}
+	// The OG image endpoint is itself a Function; excluding it would 404 every card.
+	for (const rule of routes.exclude ?? []) {
+		if (rule === "/og/*" || rule === "/og" || rule === "/*") {
+			fail(`_routes.json exclude "${rule}" would disable the OG image Function`);
+		}
+	}
+	// Cloudflare's limits: 100 combined rules, 100 characters per rule.
+	const allRules = [...(routes.include ?? []), ...(routes.exclude ?? [])];
+	if (allRules.length > 100) {
+		fail(`_routes.json has ${allRules.length} rules, Cloudflare allows 100`);
+	}
+	for (const rule of allRules) {
+		if (rule.length > 100) fail(`_routes.json rule over 100 chars: ${rule}`);
+	}
+
+	const excluded = new Set(routes.exclude ?? []);
+	const headerPaths = readFileSync(headersPath, "utf-8")
+		.split("\n")
+		.map((l) => l.trimEnd())
+		.filter((l) => l.startsWith("/"));
+
+	if (headerPaths.length === 0) fail("_headers defines no rules");
+
+	for (const path of headerPaths) {
+		if (!excluded.has(path)) {
+			fail(
+				`_headers sets rules for "${path}" but _routes.json does not exclude it — ` +
+					`the Function handles that route, so the header is dropped`,
+			);
+		}
+	}
+}
+
 // --- Report --------------------------------------------------------------
 if (errors.length > 0) {
 	console.error("\n❌ Build verification FAILED:\n");
@@ -129,5 +192,6 @@ if (errors.length > 0) {
 
 console.log(
 	`✅ Build verified: ${namePages} name pages, ${speciesPages} species pages, ` +
-		`index/about/404 present, sitemap complete, sample page carries real content`,
+		`index/about/404 present, sitemap complete, sample page carries real content, ` +
+		`_headers and _routes.json agree`,
 );

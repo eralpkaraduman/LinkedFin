@@ -1,0 +1,17 @@
+{
+	"version": 1,
+	"include": ["/*"],
+	"exclude": [
+		"/assets/*",
+		"/fonts/*",
+		"/fish.db",
+		"/favicon.ico",
+		"/apple-touch-icon.png",
+		"/logo192.png",
+		"/logo512.png",
+		"/og-image.png",
+		"/manifest.json",
+		"/robots.txt",
+		"/sitemap.xml"
+	]
+}
