@@ -4,6 +4,7 @@
 	"exclude": [
 		"/assets/*",
 		"/fonts/*",
+		"/fish-*.db",
 		"/fish.db",
 		"/favicon.ico",
 		"/apple-touch-icon.png",

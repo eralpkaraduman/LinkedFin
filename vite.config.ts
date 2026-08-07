@@ -33,6 +33,32 @@ function readGenerated<T>(file: string, fallback: T): T {
 const generatedPaths = readGenerated<string[]>("prerender-pages.json", []);
 
 /**
+ * The content-addressed database filename, baked into both bundles.
+ *
+ * `og:generate` writes `public/fish-<hash>.db` and records the name here; the
+ * browser must fetch that URL rather than `/fish.db` for the immutable
+ * `_headers` rule to buy anything.
+ *
+ * This is a `define` and not a companion to `virtual:fish-data`, deliberately.
+ * The virtual module exists because its payload is 270 KB and must *differ*
+ * between the server and client builds; a module is the only way to vary it.
+ * This is one string that must be *identical* everywhere, and `define` inlines
+ * it at the use site — no extra chunk on the critical path, which matters when
+ * the whole point is saving a round trip. It also degrades correctly under
+ * vitest: `vitest.config.ts` does not load this file's plugins, so a virtual
+ * module imported by `src/lib/database.ts` would be unresolvable there (tests
+ * reach it transitively through `DatabaseContext`), whereas an unreplaced
+ * `typeof __FISH_DB_FILE__` is simply `"undefined"` and the fallback applies.
+ *
+ * The fallback is `fish.db`, which is still deployed and still correct — just
+ * revalidated rather than immutable. A fresh clone running `vite dev` without
+ * `og:generate` therefore still has a working search.
+ */
+const fishDbFile = readGenerated<{ file: string }>("fish-db.json", {
+	file: "fish.db",
+}).file;
+
+/**
  * The homepage cannot be listed as plain `/`.
  *
  * `post-build.ts` appends the SPA shell to the page list under `spa.maskPath`,
@@ -88,6 +114,9 @@ function fishDataPlugin(): Plugin {
 
 const config = defineConfig({
 	base: "/",
+	define: {
+		__FISH_DB_FILE__: JSON.stringify(fishDbFile),
+	},
 	server: {
 		port: 4141,
 		strictPort: true,

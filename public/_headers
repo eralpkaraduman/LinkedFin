@@ -26,9 +26,24 @@
 /fonts/*
   Cache-Control: public, max-age=86400
 
-# 300 KB, NOT content-hashed, and rewritten on every data deploy. A long cache
-# would pin readers to a stale database, so this stays on ETag revalidation.
-# Making it immutable requires a versioned filename first.
+# The content-addressed copy of the database, written by `pnpm og:generate` as
+# `public/fish-<sha256-prefix>.db`. This is what the app actually fetches (the
+# filename is baked into the bundle via `__FISH_DB_FILE__`). The digest is of
+# the file's own bytes, so this URL's contents can never change — same
+# guarantee as /assets/*, same cache policy.
+#
+# The wildcard sits mid-rule, before a literal `.db`. Cloudflare's docs only
+# ever show a trailing `*`, so this was verified against `wrangler pages dev`
+# rather than assumed; `maintenance/scripts/verify-build.ts` re-checks on every
+# build that the rule really does match the current filename.
+/fish-*.db
+  Cache-Control: public, max-age=31536000, immutable
+
+# The unhashed original. Still deployed — it is the repo's source of truth and a
+# long-lived public URL — but NOT content-hashed and rewritten on every data
+# deploy, so a long cache would pin readers to a stale database. Stays on ETag
+# revalidation. Nothing in the app fetches it any more; it is here for anything
+# outside the app that already links to it.
 /fish.db
   Cache-Control: public, max-age=0, must-revalidate
 

@@ -14,12 +14,23 @@
  * - `.generated/prerender-pages.json` — the list of paths to prerender, read by
  *   vite.config.ts. Kept as JSON so the Vite config never has to load the
  *   better-sqlite3 native module.
+ * - `public/fish-<hash>.db` — a content-addressed copy of the database, plus
+ *   `.generated/fish-db.json` naming it. See the "Content-addressed database"
+ *   section below.
  *
  * Run: pnpm og:generate (which runs first in `pnpm build`)
  */
 
 import Database from "better-sqlite3";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+	copyFileSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import { getLanguageName } from "../../src/lib/language.ts";
 import { SITE_ORIGIN } from "../../src/lib/site.ts";
@@ -31,6 +42,8 @@ const SITEMAP_PATH = resolve(ROOT, "public/sitemap.xml");
 const GENERATED_DIR = resolve(ROOT, ".generated");
 const FISH_DATA_PATH = resolve(GENERATED_DIR, "fish-data.json");
 const PRERENDER_PAGES_PATH = resolve(GENERATED_DIR, "prerender-pages.json");
+const PUBLIC_DIR = resolve(ROOT, "public");
+const FISH_DB_MANIFEST_PATH = resolve(GENERATED_DIR, "fish-db.json");
 
 /** Routes that exist independently of the database. */
 const STATIC_PATHS = ["/", "/about"];
@@ -183,3 +196,53 @@ console.log(
 
 writeFileSync(PRERENDER_PAGES_PATH, JSON.stringify(sitemapPaths));
 console.log(`Generated ${PRERENDER_PAGES_PATH} (${sitemapPaths.length} paths)`);
+
+/**
+ * Content-addressed database.
+ *
+ * `public/fish.db` is ~300 KB and every visitor who uses the search downloads
+ * it. Its URL cannot be cached beyond an ETag revalidation, because the
+ * filename is stable while the bytes are rewritten on every data deploy — a
+ * long max-age would pin readers to a stale database. Copying it to a name that
+ * contains a digest of its own bytes removes that hazard: that URL's contents
+ * can never change, so `_headers` can hand it the same
+ * `max-age=31536000, immutable` that `/assets/*` gets.
+ *
+ * Why `public/` and not `dist/client` after the build:
+ *
+ * - Vite copies `public/` verbatim into `dist/client`, so the file needs no
+ *   copy step, no emit plugin, and no ordering rule against the prerender.
+ * - `vite dev` and `vite preview` serve `public/` too, so the hashed URL
+ *   resolves in development exactly as it does in production. Emitting only
+ *   into `dist/client` would 404 that URL under `vite dev`, forcing a
+ *   dev-only fallback branch in `src/lib/database.ts` — a divergence between
+ *   environments in the one code path that must not have one.
+ * - This script already writes a build artefact into `public/`
+ *   (`sitemap.xml`), so the precedent and the .gitignore entry pattern exist.
+ *
+ * The tracked, unhashed `public/fish.db` stays exactly where it is and stays
+ * deployed: it is the repo's single source of truth (see AGENTS.md), every
+ * maintenance script opens it by that path, and it is a URL that has been
+ * public long enough that something may link to it. It keeps its
+ * `must-revalidate` rule; only the app moves to the hashed copy.
+ */
+const dbBytes = readFileSync(DB_PATH);
+const dbHash = createHash("sha256").update(dbBytes).digest("hex").slice(0, 8);
+const fishDbFile = `fish-${dbHash}.db`;
+
+// Previous runs' copies would otherwise pile up in public/ and ship in every
+// deploy. Only the current hash survives.
+for (const entry of readdirSync(PUBLIC_DIR)) {
+	if (/^fish-[0-9a-f]+\.db$/.test(entry) && entry !== fishDbFile) {
+		rmSync(resolve(PUBLIC_DIR, entry));
+	}
+}
+
+copyFileSync(DB_PATH, resolve(PUBLIC_DIR, fishDbFile));
+writeFileSync(
+	FISH_DB_MANIFEST_PATH,
+	JSON.stringify({ file: fishDbFile, hash: dbHash }),
+);
+console.log(
+	`Generated public/${fishDbFile} (${(dbBytes.length / 1024).toFixed(0)} KB) and ${FISH_DB_MANIFEST_PATH}`,
+);
