@@ -120,9 +120,16 @@ function WelcomeHero({
 							<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
 						) : (
 							<SpeciesImage
-								imageUrl={data?.imageUrl}
+								file={data?.imageFile}
 								alt={scientificName}
-								large
+								/* The slot is 144 CSS px wide (w-36); asking for 600 used
+								   to land on the 960px bucket — a ~170 KB file for a
+								   thumbnail-sized box. */
+								sizes="144px"
+								widths={[250, 500]}
+								width={144}
+								height={108}
+								eager
 								className="h-full w-full"
 							/>
 						)}

@@ -35,11 +35,11 @@ test("shows loading placeholder while wikidata is loading", async () => {
 	);
 });
 
-test("renders an image whose src is derived from the wikidata imageUrl", async () => {
+test("renders an image whose src is derived from the wikidata image file", async () => {
 	wikidataMock.mockReturnValue({
 		data: {
-			imageUrl: "https://commons.example/salmon.jpg",
-			imageUrls: ["https://commons.example/salmon.jpg"],
+			imageFile: "Salmon.jpg",
+			imageFiles: ["Salmon.jpg"],
 			description: "x",
 		},
 		isLoading: false,
@@ -49,7 +49,7 @@ test("renders an image whose src is derived from the wikidata imageUrl", async (
 	);
 	expect(await screen.findByText("Salmo salar")).toBeInTheDocument();
 	const matching = Array.from(container.querySelectorAll("img")).find((img) =>
-		img.getAttribute("src")?.includes("commons.example/salmon.jpg"),
+		img.getAttribute("src")?.includes("/120px-Salmon.jpg"),
 	);
 	expect(matching).toBeDefined();
 });

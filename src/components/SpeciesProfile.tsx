@@ -15,6 +15,14 @@ import { useDatabase } from "#/lib/DatabaseContext";
 import { toBcp47 } from "#/lib/language";
 import type { FishName } from "#/lib/types";
 
+/**
+ * The gallery sits in `max-w-2xl` (672px) inside `page-wrap px-4`, so it is
+ * 672 CSS px once the viewport clears 672 + 4rem of gutters, and
+ * `100vw - 4rem` below that. Measured in the browser, not guessed.
+ */
+const GALLERY_SIZES = "(min-width: 736px) 672px, calc(100vw - 4rem)";
+const GALLERY_WIDTHS = [250, 500, 960, 1280];
+
 interface SpeciesProfileProps {
 	speciesId: string;
 	scientificName: string;
@@ -59,8 +67,8 @@ export function SpeciesProfile({
 		});
 	}, [carouselApi]);
 
-	const imageUrls = data?.imageUrls ?? [];
-	const hasMultipleImages = imageUrls.length > 1;
+	const imageFiles = data?.imageFiles ?? [];
+	const hasMultipleImages = imageFiles.length > 1;
 
 	// Detect vague Wikidata descriptions that should be replaced by local notes
 	const vagueDescriptionPatterns = [
@@ -95,13 +103,19 @@ export function SpeciesProfile({
 						setApi={setCarouselApi}
 					>
 						<CarouselContent>
-							{imageUrls.map((url, index) => (
-								<CarouselItem key={url}>
+							{imageFiles.map((file, index) => (
+								<CarouselItem key={file}>
 									<div className="overflow-hidden rounded-lg">
 										<SpeciesImage
-											imageUrl={url}
+											file={file}
 											alt={`${scientificName} - Image ${index + 1}`}
-											large={true}
+											sizes={GALLERY_SIZES}
+											widths={GALLERY_WIDTHS}
+											width={600}
+											height={400}
+											/* Only the first slide is on screen at load, and
+											   it is the LCP candidate for this page. */
+											eager={index === 0}
 											className="aspect-[3/2] w-full"
 										/>
 									</div>
@@ -113,9 +127,9 @@ export function SpeciesProfile({
 					</Carousel>
 					{/* Image counter dots */}
 					<div className="flex justify-center gap-1.5">
-						{imageUrls.map((url, index) => (
+						{imageFiles.map((file, index) => (
 							<button
-								key={url}
+								key={file}
 								type="button"
 								onClick={() => carouselApi?.scrollTo(index)}
 								className={`h-1.5 rounded-full transition-all ${
@@ -131,9 +145,13 @@ export function SpeciesProfile({
 			) : (
 				<div className="overflow-hidden rounded-lg">
 					<SpeciesImage
-						imageUrl={data?.imageUrl}
+						file={data?.imageFile}
 						alt={scientificName}
-						large={true}
+						sizes={GALLERY_SIZES}
+						widths={GALLERY_WIDTHS}
+						width={600}
+						height={400}
+						eager
 						className="aspect-[3/2] w-full"
 					/>
 				</div>

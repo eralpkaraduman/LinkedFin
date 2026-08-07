@@ -23,9 +23,12 @@ export function SpeciesCard({ speciesId, scientificName }: SpeciesCardProps) {
 					<div className="h-full w-full animate-pulse bg-muted-foreground/20" />
 				) : (
 					<SpeciesImage
-						imageUrl={data?.imageUrl}
+						file={data?.imageFile}
 						alt={scientificName}
-						large={false}
+						sizes="40px"
+						widths={[40, 60, 120]}
+						width={40}
+						height={40}
 						className="h-full w-full"
 					/>
 				)}

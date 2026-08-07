@@ -80,8 +80,8 @@ test("shows error message when wikidata fetch fails", async () => {
 test("renders single image and Wikipedia link when one image exists", async () => {
 	wikidataMock.mockReturnValue({
 		data: {
-			imageUrl: "https://commons.example/img.jpg",
-			imageUrls: ["https://commons.example/img.jpg"],
+			imageFile: "Img.jpg",
+			imageFiles: ["Img.jpg"],
 			wikipediaUrl: "https://en.wikipedia.org/wiki/X",
 			description: "A real description.",
 		},
@@ -99,11 +99,8 @@ test("renders single image and Wikipedia link when one image exists", async () =
 test("renders multi-image branch with image-counter dots", async () => {
 	wikidataMock.mockReturnValue({
 		data: {
-			imageUrl: "https://commons.example/a.jpg",
-			imageUrls: [
-				"https://commons.example/a.jpg",
-				"https://commons.example/b.jpg",
-			],
+			imageFile: "A.jpg",
+			imageFiles: ["A.jpg", "B.jpg"],
 			description: "Multi.",
 		},
 		isLoading: false,
@@ -119,7 +116,7 @@ test("renders multi-image branch with image-counter dots", async () => {
 test("replaces vague Wikidata description with species notes when provided", async () => {
 	wikidataMock.mockReturnValue({
 		data: {
-			imageUrls: [],
+			imageFiles: [],
 			description: "species of fish",
 		},
 		isLoading: false,
@@ -138,7 +135,7 @@ test("replaces vague Wikidata description with species notes when provided", asy
 
 test("shows species notes as secondary info when Wikidata description is good", async () => {
 	wikidataMock.mockReturnValue({
-		data: { imageUrls: [], description: "A specific real description." },
+		data: { imageFiles: [], description: "A specific real description." },
 		isLoading: false,
 		error: null,
 	});
@@ -157,7 +154,7 @@ test("shows species notes as secondary info when Wikidata description is good", 
 
 test("falls back to species notes if Wikidata has no description", async () => {
 	wikidataMock.mockReturnValue({
-		data: { imageUrls: [], description: "" },
+		data: { imageFiles: [], description: "" },
 		isLoading: false,
 		error: null,
 	});
@@ -173,7 +170,7 @@ test("falls back to species notes if Wikidata has no description", async () => {
 
 test("shows no-data message when nothing is available", async () => {
 	wikidataMock.mockReturnValue({
-		data: { imageUrls: [], description: "" },
+		data: { imageFiles: [], description: "" },
 		isLoading: false,
 		error: null,
 	});
@@ -187,7 +184,7 @@ test("shows no-data message when nothing is available", async () => {
 
 test("renders the names list when species has names", async () => {
 	wikidataMock.mockReturnValue({
-		data: { imageUrls: [], description: "x" },
+		data: { imageFiles: [], description: "x" },
 		isLoading: false,
 		error: null,
 	});
@@ -205,7 +202,7 @@ test("renders the names list when species has names", async () => {
 
 test("renders Report Issue link with prefilled URL", async () => {
 	wikidataMock.mockReturnValue({
-		data: { imageUrls: [], description: "x" },
+		data: { imageFiles: [], description: "x" },
 		isLoading: false,
 		error: null,
 	});
@@ -221,7 +218,7 @@ test("renders Report Issue link with prefilled URL", async () => {
 test("falls back to trwiki when enwiki not available", async () => {
 	wikidataMock.mockReturnValue({
 		data: {
-			imageUrls: [],
+			imageFiles: [],
 			description: "x",
 			wikipediaUrl: "https://tr.wikipedia.org/wiki/X",
 		},

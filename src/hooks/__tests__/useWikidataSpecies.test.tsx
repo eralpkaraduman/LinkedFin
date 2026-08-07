@@ -83,7 +83,7 @@ test("returns species data with English description and image", async () => {
 	expect(result.current.data?.qid).toBe("Q42");
 	expect(result.current.data?.description).toBe("Atlantic salmon");
 	expect(result.current.data?.descriptionLang).toBe("en");
-	expect(result.current.data?.imageUrl).toContain("Salmon.jpg");
+	expect(result.current.data?.imageFile).toBe("Salmon.jpg");
 	expect(result.current.data?.wikipediaUrl).toBe(
 		"https://en.wikipedia.org/wiki/Salmon",
 	);
@@ -171,8 +171,10 @@ test("falls back to Commons image search when Wikidata has no P18", async () => 
 	);
 
 	await waitFor(() => expect(result.current.isLoading).toBe(false));
-	expect(result.current.data?.imageUrls.length).toBe(2);
-	expect(result.current.data?.imageUrls[0]).toContain("Penaeus.jpg");
+	expect(result.current.data?.imageFiles).toEqual([
+		"Penaeus.jpg",
+		"Penaeus2.png",
+	]);
 });
 
 test("uses synonym lookup when scientific name is in synonym map and no images found", async () => {
@@ -213,8 +215,7 @@ test("uses synonym lookup when scientific name is in synonym map and no images f
 	});
 
 	await waitFor(() => expect(result.current.isLoading).toBe(false));
-	expect(result.current.data?.imageUrls.length).toBe(1);
-	expect(result.current.data?.imageUrls[0]).toContain("LizaAurata.jpg");
+	expect(result.current.data?.imageFiles).toEqual(["LizaAurata.jpg"]);
 });
 
 test("falls back to enwiki title-based URL when only title (no url) is present", async () => {
@@ -330,7 +331,7 @@ test("Commons fallback returns empty list when network errors", async () => {
 	});
 
 	await waitFor(() => expect(result.current.isLoading).toBe(false));
-	expect(result.current.data?.imageUrls).toEqual([]);
+	expect(result.current.data?.imageFiles).toEqual([]);
 });
 
 test("Commons fallback returns empty list when response not ok", async () => {
@@ -354,7 +355,7 @@ test("Commons fallback returns empty list when response not ok", async () => {
 	});
 
 	await waitFor(() => expect(result.current.isLoading).toBe(false));
-	expect(result.current.data?.imageUrls).toEqual([]);
+	expect(result.current.data?.imageFiles).toEqual([]);
 });
 
 test("throws when Wikidata search fetch is not ok", async () => {
@@ -378,4 +379,100 @@ test("throws when entity fetch is not ok", async () => {
 
 	await waitFor(() => expect(result.current.isLoading).toBe(false));
 	expect(result.current.error).toBeInstanceOf(Error);
+});
+
+test("returns raw Commons file names, not Special:FilePath URLs", async () => {
+	// The hook used to hand components a
+	// `commons.wikimedia.org/wiki/Special:FilePath/...` URL, which cost two
+	// redirects per image. Components now build direct upload.wikimedia.org
+	// URLs themselves, so the hook must not pre-encode or wrap the name.
+	fetchMock.mockResolvedValueOnce(jsonResponse({ search: [{ id: "Q42" }] }));
+	fetchMock.mockResolvedValueOnce(
+		jsonResponse({
+			entities: {
+				Q42: {
+					id: "Q42",
+					descriptions: { en: { value: "x", language: "en" } },
+					claims: {
+						P18: [
+							{
+								mainsnak: {
+									datavalue: { value: "Trüsche Walchensee.jpg" },
+								},
+							},
+						],
+					},
+					sitelinks: {},
+				},
+			},
+		}),
+	);
+
+	const { result } = renderHook(() => useWikidataSpecies("Lota lota"), {
+		wrapper: makeWrapper(),
+	});
+
+	await waitFor(() => expect(result.current.isLoading).toBe(false));
+	expect(result.current.data?.imageFile).toBe("Trüsche Walchensee.jpg");
+	expect(result.current.data?.imageFile).not.toContain("commons.wikimedia.org");
+});
+
+test("keeps every P18 image, in claim order, with the first as the default", async () => {
+	fetchMock.mockResolvedValueOnce(jsonResponse({ search: [{ id: "Q42" }] }));
+	fetchMock.mockResolvedValueOnce(
+		jsonResponse({
+			entities: {
+				Q42: {
+					id: "Q42",
+					descriptions: { en: { value: "x", language: "en" } },
+					claims: {
+						P18: [
+							{ mainsnak: { datavalue: { value: "First.jpg" } } },
+							{ mainsnak: {} }, // no datavalue: skipped, not a hole
+							{ mainsnak: { datavalue: { value: "Second.jpg" } } },
+						],
+					},
+					sitelinks: {},
+				},
+			},
+		}),
+	);
+
+	const { result } = renderHook(() => useWikidataSpecies("Salmo salar"), {
+		wrapper: makeWrapper(),
+	});
+
+	await waitFor(() => expect(result.current.isLoading).toBe(false));
+	expect(result.current.data?.imageFiles).toEqual(["First.jpg", "Second.jpg"]);
+	expect(result.current.data?.imageFile).toBe("First.jpg");
+});
+
+test("Commons fallback strips the File: prefix from search results", async () => {
+	fetchMock.mockResolvedValueOnce(jsonResponse({ search: [{ id: "Q42" }] }));
+	fetchMock.mockResolvedValueOnce(
+		jsonResponse({
+			entities: {
+				Q42: {
+					id: "Q42",
+					descriptions: { en: { value: "x", language: "en" } },
+					claims: {},
+					sitelinks: {},
+				},
+			},
+		}),
+	);
+	fetchMock.mockResolvedValueOnce(
+		jsonResponse({
+			query: { search: [{ title: "File:Boga (Boops boops), España.jpg" }] },
+		}),
+	);
+
+	const { result } = renderHook(() => useWikidataSpecies("Boops boops"), {
+		wrapper: makeWrapper(),
+	});
+
+	await waitFor(() => expect(result.current.isLoading).toBe(false));
+	expect(result.current.data?.imageFiles).toEqual([
+		"Boga (Boops boops), España.jpg",
+	]);
 });
