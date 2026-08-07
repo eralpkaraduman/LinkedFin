@@ -20,5 +20,8 @@ public/fish-*.db
 # Dictionaries (reference data, not deployed)
 dictionaries/
 
+# Agent worktrees (created by EnterWorktree / isolated subagents)
+.claude/worktrees/
+
 # Local settings
 .claude/settings.local.json
