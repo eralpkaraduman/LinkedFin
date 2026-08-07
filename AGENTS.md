@@ -32,10 +32,42 @@ Run these from the project root:
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm db:types` | Regenerate TypeScript types from database schema |
-| `pnpm db:validate` | Validate database integrity against the schema |
+| `pnpm db:types` | Regenerate TypeScript types from `public/fish.db` into `src/db/types.ts` |
+| `pnpm db:validate` | Validate database integrity (`maintenance/scripts/validate-integrity.ts`) |
+| `pnpm og:generate` | Generate `functions/og-data.json`, `public/sitemap.xml` and `.generated/` |
+| `pnpm check` | Biome format + lint check |
+| `pnpm pipeline` | Full gate — see below |
 
 **Single source of truth:** `public/fish.db` is the canonical database. Every maintenance script, the OG generator, the validator, type generation, and the runtime app all read/write `public/fish.db` directly. There is no separate "source" copy — edit `public/fish.db` in place.
+
+There is **no `pnpm db:copy` script.** (One error message inside `validate-integrity.ts` still suggests running it; ignore that suggestion.)
+
+### `pnpm pipeline` is the deploy gate
+
+`pnpm pipeline` is the command Cloudflare Pages runs to build the site, so whatever it rejects does not deploy. It currently runs:
+
+```
+pnpm rebuild better-sqlite3 → og:generate → check → tsc --noEmit (root)
+→ tsc --noEmit -p functions/tsconfig.json → test → db:validate → build
+```
+
+**`pnpm og:generate` must run before `vite build`.** It reads `public/fish.db` and writes:
+
+- `functions/og-data.json` — lookup tables for the Pages Functions middleware
+- `public/sitemap.xml` — every indexable URL
+- `.generated/fish-data.json` and `.generated/prerender-pages.json` — the prerender dataset and path list
+
+All four are **gitignored**, so a checkout does not contain them and a build that skips `og:generate` fails or ships an empty site. `pnpm dev` and `pnpm build` both run it first for this reason.
+
+### Running maintenance scripts
+
+Use `tsx` (or `node --experimental-strip-types`):
+
+```bash
+pnpm tsx maintenance/scripts/your-migration.ts
+```
+
+**Do not use `bun`.** Bun cannot load the `better-sqlite3` native addon, which every maintenance script depends on.
 
 ### Schema Change Workflow
 
@@ -43,7 +75,7 @@ When modifying the database schema or adding data via scripts:
 
 ```bash
 # 1. Run your migration/data script (operates on public/fish.db)
-bun maintenance/scripts/your-migration.ts
+pnpm tsx maintenance/scripts/your-migration.ts
 
 # 2. Regenerate types to match new schema
 pnpm db:types
@@ -56,6 +88,55 @@ pnpm db:validate
 
 ---
 
+## Schema Reference
+
+Authoritative as of the current `public/fish.db` (`PRAGMA table_info`). Verify with
+`sqlite3 public/fish.db ".schema"` before writing SQL — this document can drift.
+
+**`species`** — three columns. There is **no `family` and no `habitat` column.**
+
+| Column | Type | Null? |
+|--------|------|-------|
+| `id` | TEXT | NOT NULL, PK (`sp_XXX`) |
+| `scientific_name` | TEXT | NOT NULL, UNIQUE |
+| `notes` | TEXT | nullable |
+
+**`names`** — there is **no `notes` column.** (`species_notes` in `src/lib/types.ts` is a JOIN alias for `species.notes`, not a stored column.)
+
+| Column | Type | Null? |
+|--------|------|-------|
+| `id` | TEXT | NOT NULL, PK (`nm_XXXX`) |
+| `name` | TEXT | NOT NULL |
+| `species_id` | TEXT | NOT NULL → `species(id)` |
+| `region_id` | TEXT | NOT NULL → `regions(id)` |
+| `lang` | TEXT | NOT NULL |
+| `etymology` | TEXT | NOT NULL |
+| `transliteration` | TEXT | NOT NULL |
+| `phonetic` | TEXT | NOT NULL |
+| `measurement_unit` | TEXT | nullable |
+| `measurement_min` | REAL | nullable |
+| `measurement_max` | REAL | nullable |
+
+**`regions`** — two columns. There is **no `name_local`, `language`, `parent_region` or `notes` column.**
+
+| Column | Type | Null? |
+|--------|------|-------|
+| `id` | TEXT | NOT NULL, PK (lowercase kebab-case) |
+| `name` | TEXT | NOT NULL |
+
+**`name_relations`** (the table is named `name_relations`, not `relations`):
+
+| Column | Type | Null? |
+|--------|------|-------|
+| `source_id` | TEXT | NOT NULL → `names(id)`, PK part |
+| `target_id` | TEXT | NOT NULL → `names(id)`, PK part |
+| `relation` | TEXT | NOT NULL, PK part |
+| `notes` | TEXT | nullable |
+
+**There are no triggers in the database.** Every rule below beyond NOT NULL/FK is enforced by `pnpm db:validate` (`maintenance/scripts/validate-integrity.ts`), not by SQLite.
+
+---
+
 ## Adding New Data
 
 ### Workflow for Adding a New Country/Region
@@ -64,43 +145,50 @@ pnpm db:validate
 2. **Cross-reference scientific names** with multiple sources
 3. **Add region first**, then species (if new), then names
 4. **Build relations** after names exist
-5. **Update UI language map** if new language code
+5. **Check the language display name** if new language code
 
 ### Step 1: Add New Region
 
+`regions` has only `id` and `name`:
+
 ```sql
-INSERT INTO regions (id, name, name_local, language, parent_region, notes)
+INSERT INTO regions (id, name)
 VALUES (
   'norway',                    -- id: lowercase, hyphenated (e.g., 'turkish-aegean')
-  'Norway',                    -- name: English name
-  'Norge',                     -- name_local: Native name (nullable)
-  'Norwegian',                 -- language: Primary language name
-  NULL,                        -- parent_region: For sub-regions (e.g., 'arabic' for 'arabic-egypt')
-  'Norwegian freshwater and coastal fish'  -- notes
+  'Norway'                     -- name: English name
 );
 ```
+
+There is nowhere in the schema to store a region's native name, primary language,
+parent region, or notes. Sub-region relationships exist only by ID convention.
 
 **Region ID conventions:**
 - Country: `norway`, `japan`, `russia`
 - Sub-region: `country-region` e.g., `turkish-aegean`, `arabic-levant`
 - Special: `international` (for scientific/English names), `sapmi` (cross-border Sami region)
 
-### Step 2: Add New Language to UI
+### Step 2: Check the Language Display Name
 
-Edit `index.html` language map:
+Display names come from `getLanguageName()` in `src/lib/language.ts`, which uses
+`Intl.DisplayNames`. Most ISO 639-3 codes therefore need **no code change at all**.
+Only add an entry to `LANGUAGE_NAME_OVERRIDES` when `Intl.DisplayNames` echoes the raw
+code back or gives a wrong label — currently `arb`, `apc`, `arz`, `grc`, `sme`:
 
-```javascript
-const langNames = {
-  tur: 'Turkish', ell: 'Greek', eng: 'English', lat: 'Latin',
-  fin: 'Finnish', swe: 'Swedish', est: 'Estonian', sme: 'Northern Sami',
-  arb: 'Standard Arabic',    // MSA/formal
-  arz: 'Egyptian Arabic',    // Egyptian colloquial
-  apc: 'Levantine Arabic',   // Levantine colloquial
-  nor: 'Norwegian',          // ← Add new language
+```ts
+const LANGUAGE_NAME_OVERRIDES: Record<string, string> = {
+  arb: "Standard Arabic",
+  apc: "Levantine Arabic",
+  arz: "Egyptian Arabic",
+  grc: "Ancient Greek",
+  sme: "Northern Sami",
 };
 ```
 
-**Language codes:** Use ISO 639-3 (3-letter codes):
+`functions/og-utils.ts` carries a parallel map for the Pages Functions runtime; if you
+add an override, check whether it needs the same entry.
+
+**Language codes:** Use ISO 639-3 (3-letter codes). `pnpm db:validate` enforces
+`/^[a-z]{3}$/` on `names.lang` — exactly three lowercase letters, nothing else.
 
 Arabic varieties (use dialect codes, not generic `ara`):
 - `arb`: Standard Arabic (MSA/formal written)
@@ -132,15 +220,16 @@ SELECT 'sp_' || printf('%03d', MAX(CAST(SUBSTR(id, 4) AS INTEGER)) + 1) FROM spe
 Add new species:
 
 ```sql
-INSERT INTO species (id, scientific_name, family, habitat, notes)
+INSERT INTO species (id, scientific_name, notes)
 VALUES (
   'sp_050',                    -- id: sp_XXX format
   'Gadus morhua',              -- scientific_name: Genus species (unique)
-  'Gadidae',                   -- family: taxonomic family (nullable)
-  'marine',                    -- habitat: 'marine', 'freshwater', or 'brackish'
-  'Atlantic cod, important commercial species'  -- notes
+  'Atlantic cod, important commercial species'  -- notes: nullable, but never an empty string
 );
 ```
+
+Taxonomic family and habitat have **no columns**. If that information is worth keeping,
+it belongs in prose inside `notes`.
 
 ### Step 4: Add New Names
 
@@ -150,45 +239,44 @@ Get next available ID:
 SELECT 'nm_' || printf('%04d', MAX(CAST(SUBSTR(id, 4) AS INTEGER)) + 1) FROM names;
 ```
 
-**Required fields by language (enforced by trigger):**
+**Required fields — for every language, no exceptions:**
 
-| Language | transliteration | phonetic |
-|----------|-----------------|----------|
-| Standard Arabic (arb) | REQUIRED | recommended |
-| Egyptian Arabic (arz) | REQUIRED | recommended |
-| Levantine Arabic (apc) | REQUIRED | recommended |
-| Greek (ell) | REQUIRED | recommended |
-| Finnish (fin) | REQUIRED | REQUIRED |
-| Swedish (swe) | REQUIRED | REQUIRED |
-| Estonian (est) | REQUIRED | REQUIRED |
-| English (eng) | not needed | optional |
-| Others | recommended | recommended |
+`etymology`, `transliteration` and `phonetic` are all `NOT NULL` in the schema, and
+`pnpm db:validate` additionally rejects empty strings in each. This applies to English
+too: an English name still needs a transliteration (the name itself, unchanged) and IPA.
+
+`phonetic` must be wrapped in `/slashes/` (phonemic) or `[brackets]` (phonetic) —
+the validator rejects bare IPA.
 
 **Insert template:**
 
 ```sql
 INSERT INTO names (
   id, name, species_id, region_id, lang,
-  etymology, transliteration, phonetic, notes
+  etymology, transliteration, phonetic
 ) VALUES (
   'nm_0312',           -- id
   'Torsk',             -- name: Native script
   'sp_050',            -- species_id: Must exist
   'norway',            -- region_id: Must exist
-  'nor',               -- lang: ISO 639-3
-  'From Old Norse þorskr (cod)',  -- etymology
-  'Torsk',             -- transliteration: Latin-script version
-  'tɔʂk',              -- phonetic: IPA
-  'Important food fish in Norway'  -- notes
+  'nor',               -- lang: ISO 639-3, /^[a-z]{3}$/
+  'From Old Norse þorskr (cod)',  -- etymology: required
+  'Torsk',             -- transliteration: Latin-script version, required
+  '/tɔʂk/'             -- phonetic: IPA in slashes or brackets, required
 );
 ```
+
+`measurement_unit`, `measurement_min` and `measurement_max` are the only optional
+columns; set them together or leave all three NULL.
+
+**There is no `names.notes` column** — do not include one in an INSERT.
 
 ### Step 5: Add International/English Name
 
 Always add an English name for new species:
 
 ```sql
-INSERT INTO names (id, name, species_id, region_id, lang, etymology, phonetic, notes)
+INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic)
 VALUES (
   'nm_0313',
   'Atlantic cod',
@@ -196,8 +284,8 @@ VALUES (
   'international',
   'eng',
   'From Middle English cod, origin uncertain',
-  'ətˈlæntɪk kɒd',
-  'One of the most commercially important fish species'
+  'Atlantic cod',
+  '/ətˈlæntɪk kɒd/'
 );
 ```
 
@@ -223,21 +311,20 @@ VALUES ('nm_fish1', 'nm_fish2', 'confused_with', 'Often confused due to similar 
 
 ```typescript
 // 1. Add region
-db.run(`INSERT INTO regions (id, name, name_local, language, notes)
-        VALUES ('norway', 'Norway', 'Norge', 'Norwegian', 'Norwegian fish names')`);
+db.run(`INSERT INTO regions (id, name) VALUES ('norway', 'Norway')`);
 
 // 2. Check/add species
 // Gadus morhua (cod) - check if exists first
 
 // 3. Add Norwegian name
-db.run(`INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic, notes)
+db.run(`INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic)
         VALUES ('nm_0312', 'Torsk', 'sp_050', 'norway', 'nor',
-                'From Old Norse þorskr (cod)', 'Torsk', 'tɔʂk', NULL)`);
+                'From Old Norse þorskr (cod)', 'Torsk', '/tɔʂk/')`);
 
 // 4. Add English name if species is new
-db.run(`INSERT INTO names (id, name, species_id, region_id, lang, etymology, phonetic, notes)
+db.run(`INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic)
         VALUES ('nm_0313', 'Atlantic cod', 'sp_050', 'international', 'eng',
-                'From Middle English cod, origin uncertain', 'ətˈlæntɪk kɒd', NULL)`);
+                'From Middle English cod, origin uncertain', 'Atlantic cod', '/ətˈlæntɪk kɒd/')`);
 
 // 5. Build relations if applicable
 ```
@@ -275,7 +362,7 @@ WHERE n1.region_id = 'norway' OR n2.region_id = 'norway';
 | Priority | Source | Best for |
 |----------|--------|----------|
 | 1 | **Wiktionary** (all languages) | Etymology chains, borrowing history, cognates, word components |
-| 2 | **FishBase** (fishbase.org) | Species data, scientific names, habitat, accepted taxonomy |
+| 2 | **FishBase** (fishbase.org) | Species data, scientific names, accepted taxonomy, habitat |
 | 3 | **Wikipedia** (all languages) | Common names, regional usage, species descriptions |
 | 4 | **Academic sources / Google Scholar** | Disputed etymologies, rare species, historical linguistics |
 
@@ -289,6 +376,11 @@ WHERE n1.region_id = 'norway' OR n2.region_id = 'norway';
 | Russia | fishbase.org, academic sources |
 
 **Research each component separately** for compound words. For borrowing chains, check Wiktionary in both the source and target languages.
+
+**On habitat and taxonomy from FishBase:** useful for confirming the accepted scientific
+name and for sanity-checking that a name refers to the species you think it does. But
+there is **no `habitat` or `family` column** to store it in — the only place it can live
+is prose in `species.notes`. Do not add columns for it as a side effect of adding data.
 
 ---
 
@@ -355,7 +447,13 @@ From Old Norse lax (salmon)
 
 ### What Goes in Notes (Not Etymology)
 
-Move this information to the `notes` field:
+**Caveat:** the only `notes` columns that exist are `species.notes` and
+`name_relations.notes`. `names` has none. Species-level facts go in `species.notes`;
+the rationale for a relation goes in that relation's `notes`. Per-name usage and
+cultural detail has no column today — do not invent one, and do not smuggle it into
+`etymology` to work around the gap.
+
+Keep this out of `etymology`:
 
 1. **Literal translations**: "Literally 'black-backed'"
 2. **Usage context**: "Used in Aegean/Mediterranean region"
@@ -415,9 +513,12 @@ sqlite3 public/fish.db "SELECT name || '|' || COALESCE(etymology, '') FROM names
 
 ## Transliteration Requirements
 
-### Required Languages (enforced by database trigger)
+### Required for every language
 
-**Arabic (arb, arz, apc)** and **Greek (ell)** names MUST have a `transliteration` field. The database will reject inserts/updates without it.
+`names.transliteration` is `NOT NULL`, and `pnpm db:validate` also rejects the empty
+string. There is no per-language exemption and no database trigger. For Latin-script
+languages that need no conversion, repeat the name itself. The rules below are about
+*how* to romanize, not *whether* to.
 
 ### Transliteration Standards
 
@@ -465,15 +566,16 @@ sqlite3 public/fish.db "SELECT name || '|' || COALESCE(etymology, '') FROM names
 | Gädda (swe) | Gadda |
 | Lõhi (est) | Lohi |
 
-### Optional
+### Diacritic Folding
 
-**Turkish (tur)** and **Sami (sme)** - transliteration recommended for special characters:
+**Turkish (tur)** and **Sami (sme)** — fold special characters:
 - Turkish: ğ→g, ı→i, ş→s, ç→c, ö→o, ü→u
 - Sami: č→c, đ→d, ŋ→n, š→s, ŧ→t, ž→z
 
-### Not Required
+### Plain Latin Script
 
-**English (eng)** - Standard Latin script, no transliteration needed.
+**English (eng)** and other plain-ASCII names: nothing to convert, so repeat the name
+verbatim in `transliteration`. The column is still required and cannot be NULL or empty.
 
 ---
 
@@ -481,12 +583,19 @@ sqlite3 public/fish.db "SELECT name || '|' || COALESCE(etymology, '') FROM names
 
 ### Relation Types
 
-| Relation | Meaning | Direction |
-|----------|---------|-----------|
-| `borrowed_from` | Source borrowed from target | source ← target |
-| `alternate_of` | Different name for same thing | bidirectional |
-| `smaller_than` | Size progression | source < target |
-| `confused_with` | Different species, often confused | bidirectional |
+The full set lives in `src/db/relations.ts` (`NameRelationType`); `pnpm db:validate`
+rejects any other value.
+
+| Relation | Meaning | Direction | Same species required? |
+|----------|---------|-----------|------------------------|
+| `borrowed_from` | Source borrowed from target | source ← target | yes |
+| `alternate_of` | Different name for same thing | bidirectional | yes |
+| `smaller_than` | Size progression | source < target | yes |
+| `confused_with` | Different species, often confused | bidirectional | no (same species warns) |
+| `male_of` | Name for male specimens | source → target | yes |
+| `female_of` | Name for female specimens | source → target | yes |
+
+Self-references and duplicate `(source_id, target_id, relation)` triples are rejected.
 
 ### When to Use Each
 
