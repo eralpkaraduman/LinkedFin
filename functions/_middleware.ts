@@ -1,5 +1,7 @@
 import data from "./og-data.json";
 import {
+	buildMetaDescription,
+	buildMetaTitle,
 	buildNameOg,
 	buildSpeciesOg,
 	GENERIC_META,
@@ -64,34 +66,42 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 	}
 }
 
+/**
+ * REPLACES the shell's generic `<title>` instead of appending to it.
+ *
+ * `setInnerContent` drops every existing text chunk in one go, so there is no
+ * boilerplate prefix left for Google to truncate against. `html: false` makes
+ * the rewriter escape the text itself — do not pre-escape or it double-encodes
+ * the Greek/Arabic/Turkish strings.
+ */
 class TitleHandler implements HTMLRewriterElementContentHandlers {
-	constructor(private suffix: string) {}
+	constructor(private title: string) {}
 
-	text(chunk: Text) {
-		if (chunk.lastInTextNode) {
-			chunk.after(` | ${escapeHtml(sanitize(this.suffix))}`, { html: true });
-		}
+	element(el: Element) {
+		el.setInnerContent(sanitize(this.title), { html: false });
 	}
 }
 
+/** REPLACES the shell's generic description rather than concatenating onto it. */
 class MetaDescriptionHandler implements HTMLRewriterElementContentHandlers {
-	constructor(private suffix: string) {}
+	constructor(private description: string) {}
 
 	element(el: Element) {
-		if (el.getAttribute("name") === "description") {
-			const existing = el.getAttribute("content") ?? "";
-			el.setAttribute("content", `${existing} | ${sanitize(this.suffix)}`);
-		}
+		if (el.getAttribute("name") !== "description") return;
+		// setAttribute escapes the value; pass the raw sanitized string.
+		el.setAttribute("content", sanitize(this.description));
 	}
 }
 
 interface PageMeta {
-	title: string;
-	description: string;
-	/** Raw dynamic title for appending to existing <title> */
-	dynamicTitle: string;
-	/** Raw dynamic description for appending to existing <meta description> */
-	dynamicDescription: string;
+	/** og:/twitter: title — rendered in full by social cards, so it can be long. */
+	ogTitle: string;
+	/** og:/twitter: description — same, budget stays at 500 chars. */
+	ogDescription: string;
+	/** Replacement for the shell `<title>`, within the SERP budget. */
+	metaTitle: string;
+	/** Replacement for the shell `<meta name="description">`, within the SERP budget. */
+	metaDescription: string;
 }
 
 function lookupName(nameId: string): PageMeta | null {
@@ -99,10 +109,10 @@ function lookupName(nameId: string): PageMeta | null {
 	if (!row) return null;
 	const og = buildNameOg(row);
 	return {
-		title: `LinkedFin: ${og.title}`,
-		description: truncate(og.description, 500),
-		dynamicTitle: og.title,
-		dynamicDescription: truncate(og.description, 500),
+		ogTitle: `LinkedFin: ${og.title}`,
+		ogDescription: truncate(og.description, 500),
+		metaTitle: buildMetaTitle(og.title),
+		metaDescription: buildMetaDescription(og.description),
 	};
 }
 
@@ -113,11 +123,15 @@ function lookupSpecies(speciesId: string): PageMeta | null {
 	const names = (namesBySpeciesId[speciesId] ?? []).map((name) => ({ name }));
 
 	const og = buildSpeciesOg(species, names);
+	// buildSpeciesOg falls back to the scientific name when a species has no
+	// names yet; don't emit "Cancer pagurus: Cancer pagurus" in that case.
+	const descriptionCore =
+		og.description === og.title ? og.title : `${og.title}: ${og.description}`;
 	return {
-		title: `LinkedFin: ${og.title}`,
-		description: truncate(og.description, 500, ", "),
-		dynamicTitle: og.title,
-		dynamicDescription: truncate(og.description, 500, ", "),
+		ogTitle: `LinkedFin: ${og.title}`,
+		ogDescription: truncate(og.description, 500, ", "),
+		metaTitle: buildMetaTitle(og.title),
+		metaDescription: buildMetaDescription(descriptionCore, ", "),
 	};
 }
 
@@ -146,7 +160,8 @@ export async function onRequest(
 		console.error("OG lookup error:", e);
 	}
 
-	const og = pageMeta ?? GENERIC_META;
+	const ogTitle = pageMeta?.ogTitle ?? GENERIC_META.title;
+	const ogDescription = pageMeta?.ogDescription ?? GENERIC_META.description;
 
 	const canonical = canonicalUrl(url);
 	const indexable = isIndexable(url.pathname, pageMeta !== null);
@@ -163,8 +178,8 @@ export async function onRequest(
 	const rewriter = new HTMLRewriter().on(
 		"head",
 		new OgTagsHandler(
-			og.title,
-			og.description,
+			ogTitle,
+			ogDescription,
 			url.href,
 			imgUrl,
 			canonical,
@@ -174,8 +189,8 @@ export async function onRequest(
 
 	if (pageMeta) {
 		rewriter
-			.on("title", new TitleHandler(pageMeta.dynamicTitle))
-			.on("meta", new MetaDescriptionHandler(pageMeta.dynamicDescription));
+			.on("title", new TitleHandler(pageMeta.metaTitle))
+			.on("meta", new MetaDescriptionHandler(pageMeta.metaDescription));
 	}
 
 	const rewritten = rewriter.transform(response);

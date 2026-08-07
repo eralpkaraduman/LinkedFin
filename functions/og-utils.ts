@@ -69,6 +69,46 @@ export const GENERIC_META = {
 		"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names from Turkish, Greek, Arabic, and more.",
 };
 
+/**
+ * Search-snippet budgets.
+ *
+ * Google truncates the `<title>` around 60 characters and the description
+ * snippet around 155-160. Anything past the cut is invisible in results, so
+ * the page-specific text must come FIRST and the brand context last. These are
+ * deliberately tighter than the ~500 char budget used for og:/twitter: tags,
+ * which are rendered in full by social cards.
+ */
+export const META_TITLE_MAX = 60;
+export const META_DESCRIPTION_MAX = 155;
+
+const TITLE_BRAND = " — LinkedFin";
+const DESCRIPTION_BRAND = " | LinkedFin fish name etymology";
+
+/**
+ * `<title>` for a resolved detail page: page-specific text first, brand last.
+ */
+export function buildMetaTitle(core: string): string {
+	const text = sanitize(core);
+	if (!text) return GENERIC_META.title;
+	return `${truncate(text, META_TITLE_MAX - TITLE_BRAND.length)}${TITLE_BRAND}`;
+}
+
+/**
+ * `<meta name="description">` for a resolved detail page.
+ *
+ * The distinguishing text (region, language, etymology) leads. The brand tail
+ * is only appended when it fits inside the snippet budget — it is the first
+ * thing worth losing.
+ */
+export function buildMetaDescription(core: string, sep = " "): string {
+	const text = sanitize(core);
+	if (!text) return GENERIC_META.description;
+	if (text.length + DESCRIPTION_BRAND.length <= META_DESCRIPTION_MAX) {
+		return `${text}${DESCRIPTION_BRAND}`;
+	}
+	return truncate(text, META_DESCRIPTION_MAX, sep);
+}
+
 export interface NameRow {
 	name: string;
 	lang: string;
