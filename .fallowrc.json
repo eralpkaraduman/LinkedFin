@@ -46,5 +46,25 @@
       "testOnlyDependencies": 0,
       "boundaryViolations": 0
     }
+  },
+  "regression": {
+    "baseline":     {
+      "totalIssues": 7,
+      "unusedFiles": 0,
+      "unusedExports": 7,
+      "unusedTypes": 0,
+      "unusedDependencies": 0,
+      "unusedDevDependencies": 0,
+      "unusedOptionalDependencies": 0,
+      "unusedEnumMembers": 0,
+      "unusedClassMembers": 0,
+      "unresolvedImports": 0,
+      "unlistedDependencies": 0,
+      "duplicateExports": 0,
+      "circularDependencies": 0,
+      "typeOnlyDependencies": 0,
+      "testOnlyDependencies": 0,
+      "boundaryViolations": 0
+    }
   }
 }
