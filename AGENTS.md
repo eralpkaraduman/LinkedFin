@@ -40,7 +40,9 @@ Run these from the project root:
 
 **Single source of truth:** `public/fish.db` is the canonical database. Every maintenance script, the OG generator, the validator, type generation, and the runtime app all read/write `public/fish.db` directly. There is no separate "source" copy — edit `public/fish.db` in place.
 
-There is **no `pnpm db:copy` script.** (One error message inside `validate-integrity.ts` still suggests running it; ignore that suggestion.)
+There is **no `pnpm db:copy` script.** Older one-off migration scripts under `maintenance/scripts/` still print "Run: pnpm db:copy" when they finish — ignore it. They are historical records of migrations that already ran, not things to execute again.
+
+If `db:validate` reports a `page_size` mismatch, run **`pnpm db:fix-page-size`** and commit the rewritten `public/fish.db`. A page size can only be changed on a non-empty database by setting the pragma and then `VACUUM`ing; the pragma alone is silently ignored.
 
 ### `pnpm pipeline` is the deploy gate
 

@@ -16,6 +16,7 @@ import Database from "better-sqlite3"
 import { Kysely, SqliteDialect } from "kysely"
 import type { DB, Names, Species, Regions, NameRelations } from "../../src/db/types"
 import { NameRelationType, isValidRelationType, requiresSameSpecies } from "../../src/db/relations"
+import { expectedWasmPageSize } from "./wasm-page-size.ts"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -338,21 +339,15 @@ export function validatePageSize(sqliteDb: import("better-sqlite3").Database): V
   // sqlite-wasm >= 3.46 defaults to 8192; older versions use 4096
   const expected = getWasmExpectedPageSize()
   if (row !== expected) {
-    errors.push(`page_size is ${row}, expected ${expected} (required for sqlite-wasm compatibility). Run pnpm db:copy to fix.`)
+    errors.push(`page_size is ${row}, expected ${expected} (required for sqlite-wasm compatibility). Run pnpm db:fix-page-size to fix, then commit public/fish.db.`)
   }
   return { check: `Database: page_size = ${expected}`, passed: errors.length === 0, errors, warnings: [] }
 }
 
-function getWasmExpectedPageSize(): number {
-  try {
-    const fs = require("node:fs")
-    const pkg = JSON.parse(fs.readFileSync("node_modules/@sqlite.org/sqlite-wasm/package.json", "utf8"))
-    const minor = Number.parseInt(pkg.version.split(".")[1])
-    return minor >= 46 ? 8192 : 4096
-  } catch {
-    return 8192
-  }
-}
+// Shared with db:fix-page-size so the check and the fix cannot disagree about
+// the target. (The previous inline copy read node_modules via a cwd-relative
+// path, so it silently fell back to 8192 whenever run from another directory.)
+const getWasmExpectedPageSize = expectedWasmPageSize
 
 export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
   return [

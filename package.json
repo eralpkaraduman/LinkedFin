@@ -17,6 +17,7 @@
     "check": "biome check",
     "db:types": "kysely-codegen --dialect sqlite --url ./public/fish.db --out-file src/db/types.ts",
     "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
+    "db:fix-page-size": "tsx maintenance/scripts/fix-page-size.ts",
     "og:generate": "tsx maintenance/scripts/og-data-gen.ts",
     "verify:build": "tsx maintenance/scripts/verify-build.ts",
     "fallow": "pnpm og:generate && fallow dead-code --fail-on-regression --tolerance 0 --quiet",
