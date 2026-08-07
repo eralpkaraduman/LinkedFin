@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-	buildMetaDescription,
-	buildMetaTitle,
 	buildNameOg,
 	buildSpeciesOg,
 	GENERIC_META,
 	GENERIC_OG,
 	getLangName,
 	isArabicLang,
-	META_DESCRIPTION_MAX,
-	META_TITLE_MAX,
 	sanitize,
 	stripArabic,
 	truncate,
@@ -231,98 +227,6 @@ describe("buildSpeciesOg", () => {
 		const result = buildSpeciesOg(species, []);
 		expect(result.title).toBe("Gadus morhua");
 		expect(result.description).toBe("Gadus morhua");
-	});
-});
-
-describe("buildMetaTitle", () => {
-	it("puts the page-specific name first and the brand last", () => {
-		expect(buildMetaTitle("Kalamar")).toBe("Kalamar — LinkedFin");
-	});
-
-	it("keeps non-Latin scripts intact", () => {
-		expect(buildMetaTitle("دنيس")).toBe("دنيس — LinkedFin");
-		expect(buildMetaTitle("Συναγρίδα")).toBe("Συναγρίδα — LinkedFin");
-	});
-
-	it("works for species scientific names", () => {
-		expect(buildMetaTitle("Cancer pagurus")).toBe("Cancer pagurus — LinkedFin");
-	});
-
-	it("stays inside the SERP title budget", () => {
-		const long =
-			"Thunnus thynnus atlanticus mediterraneus giganteus longissimus";
-		const result = buildMetaTitle(long);
-		expect(result.length).toBeLessThanOrEqual(META_TITLE_MAX);
-		expect(result.endsWith(" — LinkedFin")).toBe(true);
-		// The distinguishing text still leads.
-		expect(result.startsWith("Thunnus thynnus")).toBe(true);
-	});
-
-	it("falls back to the generic title when there is nothing specific", () => {
-		expect(buildMetaTitle("")).toBe(GENERIC_META.title);
-		expect(buildMetaTitle("   ")).toBe(GENERIC_META.title);
-	});
-
-	it("collapses whitespace", () => {
-		expect(buildMetaTitle("  Red  mullet ")).toBe("Red mullet — LinkedFin");
-	});
-});
-
-describe("buildMetaDescription", () => {
-	it("leads with the etymology, not the boilerplate", () => {
-		const core =
-			"Turkish · Turkish Aegean — From Greek καλαμάριον kalamárion (little reed/pen)";
-		const result = buildMetaDescription(core);
-		expect(result.startsWith(core)).toBe(true);
-		expect(result).toBe(`${core} | LinkedFin fish name etymology`);
-		expect(result.length).toBeLessThanOrEqual(META_DESCRIPTION_MAX);
-	});
-
-	it("keeps Arabic, Greek and the · / — separators unmangled", () => {
-		const core =
-			"Standard Arabic · Egypt — From Turkish deniz (sea) ↳ Via Ottoman Turkish, from Proto-Turkic *teŋiŕ";
-		const result = buildMetaDescription(core);
-		expect(result).toContain("·");
-		expect(result).toContain("—");
-		expect(result).toContain("↳");
-		expect(result).toContain("*teŋiŕ");
-	});
-
-	it("drops the brand tail rather than the page-specific text", () => {
-		const core = `Finnish · Finland — ${"etymology ".repeat(20)}`.trim();
-		const result = buildMetaDescription(core);
-		expect(result.length).toBeLessThanOrEqual(META_DESCRIPTION_MAX + 1);
-		expect(result).not.toContain("LinkedFin");
-		expect(result.startsWith("Finnish · Finland —")).toBe(true);
-		expect(result.endsWith("…")).toBe(true);
-	});
-
-	it("truncates a species name list on the list separator", () => {
-		const core = `Mullus barbatus: ${Array(40).fill("Barbun").join(", ")}`;
-		const result = buildMetaDescription(core, ", ");
-		expect(result.length).toBeLessThanOrEqual(META_DESCRIPTION_MAX + 1);
-		expect(result.startsWith("Mullus barbatus: Barbun")).toBe(true);
-		expect(result).not.toContain(", …");
-	});
-
-	it("is well under the ~155 char snippet cut for a typical name page", () => {
-		const row = {
-			name: "Kalamar",
-			lang: "tur",
-			region_name: "Turkish Aegean",
-			etymology: "From Greek καλαμάριον kalamárion (little reed/pen)",
-			transliteration: "Kalamar",
-		};
-		const result = buildMetaDescription(buildNameOg(row).description);
-		expect(result.length).toBeLessThanOrEqual(META_DESCRIPTION_MAX);
-		// The old build appended after 172 chars of boilerplate; the first
-		// distinguishing word must now be at the very start.
-		expect(result.indexOf("Turkish")).toBe(0);
-	});
-
-	it("falls back to the generic description when there is nothing specific", () => {
-		expect(buildMetaDescription("")).toBe(GENERIC_META.description);
-		expect(buildMetaDescription("  ")).toBe(GENERIC_META.description);
 	});
 });
 

@@ -24,17 +24,6 @@ export function normalizePath(pathname: string): string {
 }
 
 /**
- * The canonical URL for a request.
- *
- * Drops the query string: `?q`, `?page`, `?sort` and `?dir` are views of the
- * same document, not separate pages. Indexing 52 paginated permutations of a
- * randomly-ordered list would be actively harmful.
- */
-export function canonicalUrl(url: URL): string {
-	return `${url.origin}${normalizePath(url.pathname)}`;
-}
-
-/**
  * Whether a path should be indexed.
  *
  * Cloudflare Pages' SPA fallback serves the app shell with a 200 for ANY path,

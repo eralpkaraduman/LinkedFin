@@ -1,4 +1,4 @@
-import { canonicalUrl, isIndexable, normalizePath } from "./seo-utils.ts";
+import { isIndexable, normalizePath } from "./seo-utils.ts";
 
 describe("normalizePath", () => {
 	test("leaves the root alone", () => {
@@ -12,30 +12,6 @@ describe("normalizePath", () => {
 
 	test("leaves already-normal paths unchanged", () => {
 		expect(normalizePath("/name/nm_0118")).toBe("/name/nm_0118");
-	});
-});
-
-describe("canonicalUrl", () => {
-	test("uses the page's own URL, not the site root", () => {
-		expect(canonicalUrl(new URL("https://linkedfin.net/name/nm_0118"))).toBe(
-			"https://linkedfin.net/name/nm_0118",
-		);
-	});
-
-	test("drops the query string", () => {
-		// ?page/?sort/?dir/?q are views of one document, not separate pages.
-		expect(
-			canonicalUrl(new URL("https://linkedfin.net/?page=3&sort=region")),
-		).toBe("https://linkedfin.net/");
-		expect(canonicalUrl(new URL("https://linkedfin.net/?q=lobster"))).toBe(
-			"https://linkedfin.net/",
-		);
-	});
-
-	test("normalizes a trailing slash", () => {
-		expect(canonicalUrl(new URL("https://linkedfin.net/about/"))).toBe(
-			"https://linkedfin.net/about",
-		);
 	});
 });
 

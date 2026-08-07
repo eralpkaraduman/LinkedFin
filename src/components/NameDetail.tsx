@@ -2,14 +2,31 @@ import { Link } from "@tanstack/react-router";
 import { useDatabase } from "#/lib/DatabaseContext";
 import { toBcp47 } from "#/lib/language";
 import { buildChain, getRelationsForName } from "#/lib/relations";
-import type { FishName } from "#/lib/types";
+import type { FishName, Relation } from "#/lib/types";
 
 interface NameDetailProps {
 	name: FishName;
+	/**
+	 * The three data dependencies below are supplied by the route loader, which
+	 * resolves in Node at prerender time as well as in the browser. They fall
+	 * back to the client-side database context so the component stays usable
+	 * (and testable) without a loader around it.
+	 */
+	relations?: Relation[];
+	getNameById?: (id: string) => FishName | undefined;
+	sameSpecies?: FishName[];
 }
 
-export function NameDetail({ name }: NameDetailProps) {
-	const { relations, getNameById, getNamesBySpecies } = useDatabase();
+export function NameDetail({
+	name,
+	relations: relationsProp,
+	getNameById: getNameByIdProp,
+	sameSpecies: sameSpeciesProp,
+}: NameDetailProps) {
+	const db = useDatabase();
+	const relations = relationsProp ?? db.relations;
+	const getNameById = getNameByIdProp ?? db.getNameById;
+	const sameSpecies = sameSpeciesProp ?? db.getNamesBySpecies(name.species_id);
 
 	const sizeChain = buildChain(name.id, "smaller_than", relations);
 	const alternates = buildChain(name.id, "alternate_of", relations);
@@ -22,7 +39,6 @@ export function NameDetail({ name }: NameDetailProps) {
 		hasMale,
 		hasFemale,
 	} = getRelationsForName(name.id, relations);
-	const sameSpecies = getNamesBySpecies(name.species_id);
 
 	const NameLink = ({
 		id,

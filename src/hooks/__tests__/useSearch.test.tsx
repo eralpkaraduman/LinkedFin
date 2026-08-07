@@ -48,6 +48,7 @@ function wrapper({ children }: { children: ReactNode }) {
 				relations: [],
 				isLoading: false,
 				error: null,
+				status: "",
 				getNameById: () => undefined,
 				getNamesBySpecies: () => [],
 				getSpeciesInfo: () => undefined,

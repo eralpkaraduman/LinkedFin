@@ -41,3 +41,29 @@ export function toBcp47(lang: string | null | undefined): string | undefined {
 	if (!normalized) return undefined;
 	return ISO_639_3_TO_1[normalized] ?? normalized;
 }
+
+/**
+ * English display name for a stored ISO 639-3 code.
+ *
+ * `Intl.DisplayNames` covers most codes; the overrides fill the gaps where it
+ * echoes the raw code back (the Arabic varieties, Ancient Greek, Northern Sami).
+ *
+ * Lives here rather than in `database.ts` because the same mapping has to be
+ * applied twice: once in the browser when the sqlite-wasm database is read, and
+ * once in Node when `og:generate` bakes the prerender dataset. Both call this.
+ */
+const languageDisplayNames = new Intl.DisplayNames(["en"], {
+	type: "language",
+});
+
+const LANGUAGE_NAME_OVERRIDES: Record<string, string> = {
+	arb: "Standard Arabic",
+	apc: "Levantine Arabic",
+	arz: "Egyptian Arabic",
+	grc: "Ancient Greek",
+	sme: "Northern Sami",
+};
+
+export function getLanguageName(code: string): string {
+	return LANGUAGE_NAME_OVERRIDES[code] || languageDisplayNames.of(code) || code;
+}

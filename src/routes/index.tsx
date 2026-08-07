@@ -12,6 +12,7 @@ import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
 import { nextSeed } from "#/lib/randomOrder";
+import { canonical } from "#/lib/site";
 
 interface SearchParams {
 	q?: string;
@@ -66,6 +67,16 @@ export const Route = createFileRoute("/")({
 			? String(search.sort)
 			: undefined,
 		dir: search.dir === "desc" ? "desc" : undefined,
+	}),
+	/**
+	 * No loader. This route is the fuzzy search over all 512 names, which needs
+	 * the whole table in memory — dehydrating it into the document would add
+	 * ~250 KB to the most-visited page to make ten table rows crawlable, and the
+	 * rows are not links, so it would buy no crawl paths either. The detail
+	 * pages carry the indexable text and sitemap.xml carries the discovery.
+	 */
+	head: () => ({
+		links: [{ rel: "canonical", href: canonical("/") }],
 	}),
 	component: HomePage,
 });
@@ -143,7 +154,7 @@ function WelcomeHero({
 function HomePage() {
 	const { q = "", page = 1, sort, dir } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
-	const { names } = useDatabase();
+	const { names, isLoading, error, status } = useDatabase();
 
 	// Defer the search query so expensive Fuse.js search doesn't block UI
 	const deferredQuery = useDeferredValue(q);
@@ -218,6 +229,29 @@ function HomePage() {
 	}, [deferredQuery, searchResults.length]);
 
 	const displayResults = useMemo(() => results.map(getItem), [results]);
+
+	// The search needs the whole table in memory, so this screen — and only this
+	// screen — waits for the sqlite-wasm database. It used to live in
+	// DatabaseProvider, where it blocked every route from ever rendering on the
+	// server. The prerendered `/` is therefore this state; the detail pages are
+	// fully rendered.
+	if (isLoading || error) {
+		return (
+			<main className="flex min-h-[60vh] items-center justify-center px-4">
+				{error ? (
+					<div className="text-center text-destructive">
+						<div className="mb-4 text-4xl">❌</div>
+						<div>Error: {error}</div>
+					</div>
+				) : (
+					<div className="text-center">
+						<div className="mb-4 text-4xl">🐟</div>
+						<div className="text-muted-foreground">{status}</div>
+					</div>
+				)}
+			</main>
+		);
+	}
 
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">

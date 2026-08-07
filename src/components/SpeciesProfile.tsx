@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SpeciesImage } from "#/components/SpeciesImage";
-import { SpeciesProfileSkeleton } from "#/components/SpeciesProfileSkeleton";
 import {
 	Carousel,
 	type CarouselApi,
@@ -14,11 +13,17 @@ import {
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { useDatabase } from "#/lib/DatabaseContext";
 import { toBcp47 } from "#/lib/language";
+import type { FishName } from "#/lib/types";
 
 interface SpeciesProfileProps {
 	speciesId: string;
 	scientificName: string;
 	speciesNotes?: string | null;
+	/**
+	 * Supplied by the route loader so the names list is present in prerendered
+	 * HTML. Falls back to the client-side database context.
+	 */
+	names?: FishName[];
 }
 
 function buildGitHubIssueUrl(
@@ -36,10 +41,11 @@ export function SpeciesProfile({
 	speciesId,
 	scientificName,
 	speciesNotes,
+	names: namesProp,
 }: SpeciesProfileProps) {
 	const { data, isLoading, error } = useWikidataSpecies(scientificName);
 	const { getNamesBySpecies } = useDatabase();
-	const names = getNamesBySpecies(speciesId);
+	const names = namesProp ?? getNamesBySpecies(speciesId);
 
 	// Carousel state for image counter (must be before early return)
 	const [carouselApi, setCarouselApi] = useState<CarouselApi>();
@@ -52,11 +58,6 @@ export function SpeciesProfile({
 			setCurrentSlide(carouselApi.selectedScrollSnap());
 		});
 	}, [carouselApi]);
-
-	// Show full skeleton while loading Wikidata
-	if (isLoading) {
-		return <SpeciesProfileSkeleton />;
-	}
 
 	const imageUrls = data?.imageUrls ?? [];
 	const hasMultipleImages = imageUrls.length > 1;
@@ -80,8 +81,13 @@ export function SpeciesProfile({
 
 	return (
 		<div className="space-y-4">
-			{/* Image gallery */}
-			{hasMultipleImages ? (
+			{/* Image gallery. Wikidata is fetched in the browser, so this area is
+			    still a skeleton in the prerendered HTML — everything below it (the
+			    notes and the name list) is not, and that is the part worth
+			    indexing. */}
+			{isLoading ? (
+				<div className="aspect-[3/2] w-full animate-pulse rounded-lg bg-muted-foreground/20" />
+			) : hasMultipleImages ? (
 				<div className="space-y-2">
 					<Carousel
 						className="mx-auto w-full"
@@ -148,7 +154,12 @@ export function SpeciesProfile({
 
 			{/* Description */}
 			<div className="space-y-3">
-				{error ? (
+				{isLoading && !speciesNotes ? (
+					<div className="space-y-2">
+						<div className="h-4 w-full animate-pulse rounded bg-muted-foreground/20" />
+						<div className="h-4 w-3/4 animate-pulse rounded bg-muted-foreground/20" />
+					</div>
+				) : error ? (
 					<p className="text-sm text-muted-foreground">
 						Could not load information from Wikipedia.
 					</p>

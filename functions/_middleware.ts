@@ -1,14 +1,12 @@
 import data from "./og-data.json";
 import {
-	buildMetaDescription,
-	buildMetaTitle,
 	buildNameOg,
 	buildSpeciesOg,
 	GENERIC_META,
 	sanitize,
 	truncate,
 } from "./og-utils.ts";
-import { canonicalUrl, isIndexable } from "./seo-utils.ts";
+import { isIndexable } from "./seo-utils.ts";
 
 const namesById = data.namesById as Record<
 	string,
@@ -34,7 +32,6 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 		private description: string,
 		private url: string,
 		private imgUrl: string,
-		private canonical: string,
 		private indexable: boolean,
 	) {}
 
@@ -43,12 +40,10 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 		const d = escapeHtml(sanitize(this.description));
 		const u = escapeHtml(this.url);
 		const img = escapeHtml(this.imgUrl);
-		const canonical = escapeHtml(this.canonical);
 		el.append(
-			`<link rel="canonical" href="${canonical}" />` +
-				`<meta name="robots" content="${
-					this.indexable ? "index, follow" : "noindex, follow"
-				}" />` +
+			`<meta name="robots" content="${
+				this.indexable ? "index, follow" : "noindex, follow"
+			}" />` +
 				`<meta property="og:type" content="website" />` +
 				`<meta property="og:url" content="${u}" />` +
 				`<meta property="og:title" content="${t}" />` +
@@ -67,41 +62,20 @@ class OgTagsHandler implements HTMLRewriterElementContentHandlers {
 }
 
 /**
- * REPLACES the shell's generic `<title>` instead of appending to it.
+ * The `<title>`, `<meta name="description">` and canonical are NOT set here.
+ * Every route emits its own via `head()` (src/routes/*), which is rendered
+ * into the prerendered HTML and re-applied on hydration — so it is correct for
+ * crawlers that run JavaScript and those that don't. Rewriting them here too
+ * would give each page two sources for the same tag.
  *
- * `setInnerContent` drops every existing text chunk in one go, so there is no
- * boilerplate prefix left for Google to truncate against. `html: false` makes
- * the rewriter escape the text itself — do not pre-escape or it double-encodes
- * the Greek/Arabic/Turkish strings.
+ * What remains middleware-only is the OG/Twitter block (it feeds the OG image
+ * endpoint and is not emitted by the app) and the robots directive.
  */
-class TitleHandler implements HTMLRewriterElementContentHandlers {
-	constructor(private title: string) {}
-
-	element(el: Element) {
-		el.setInnerContent(sanitize(this.title), { html: false });
-	}
-}
-
-/** REPLACES the shell's generic description rather than concatenating onto it. */
-class MetaDescriptionHandler implements HTMLRewriterElementContentHandlers {
-	constructor(private description: string) {}
-
-	element(el: Element) {
-		if (el.getAttribute("name") !== "description") return;
-		// setAttribute escapes the value; pass the raw sanitized string.
-		el.setAttribute("content", sanitize(this.description));
-	}
-}
-
 interface PageMeta {
 	/** og:/twitter: title — rendered in full by social cards, so it can be long. */
 	ogTitle: string;
 	/** og:/twitter: description — same, budget stays at 500 chars. */
 	ogDescription: string;
-	/** Replacement for the shell `<title>`, within the SERP budget. */
-	metaTitle: string;
-	/** Replacement for the shell `<meta name="description">`, within the SERP budget. */
-	metaDescription: string;
 }
 
 function lookupName(nameId: string): PageMeta | null {
@@ -111,8 +85,6 @@ function lookupName(nameId: string): PageMeta | null {
 	return {
 		ogTitle: `LinkedFin: ${og.title}`,
 		ogDescription: truncate(og.description, 500),
-		metaTitle: buildMetaTitle(og.title),
-		metaDescription: buildMetaDescription(og.description),
 	};
 }
 
@@ -123,15 +95,9 @@ function lookupSpecies(speciesId: string): PageMeta | null {
 	const names = (namesBySpeciesId[speciesId] ?? []).map((name) => ({ name }));
 
 	const og = buildSpeciesOg(species, names);
-	// buildSpeciesOg falls back to the scientific name when a species has no
-	// names yet; don't emit "Cancer pagurus: Cancer pagurus" in that case.
-	const descriptionCore =
-		og.description === og.title ? og.title : `${og.title}: ${og.description}`;
 	return {
 		ogTitle: `LinkedFin: ${og.title}`,
 		ogDescription: truncate(og.description, 500, ", "),
-		metaTitle: buildMetaTitle(og.title),
-		metaDescription: buildMetaDescription(descriptionCore, ", "),
 	};
 }
 
@@ -163,7 +129,6 @@ export async function onRequest(
 	const ogTitle = pageMeta?.ogTitle ?? GENERIC_META.title;
 	const ogDescription = pageMeta?.ogDescription ?? GENERIC_META.description;
 
-	const canonical = canonicalUrl(url);
 	const indexable = isIndexable(url.pathname, pageMeta !== null);
 
 	let imgUrl: string;
@@ -177,21 +142,8 @@ export async function onRequest(
 
 	const rewriter = new HTMLRewriter().on(
 		"head",
-		new OgTagsHandler(
-			ogTitle,
-			ogDescription,
-			url.href,
-			imgUrl,
-			canonical,
-			indexable,
-		),
+		new OgTagsHandler(ogTitle, ogDescription, url.href, imgUrl, indexable),
 	);
-
-	if (pageMeta) {
-		rewriter
-			.on("title", new TitleHandler(pageMeta.metaTitle))
-			.on("meta", new MetaDescriptionHandler(pageMeta.metaDescription));
-	}
 
 	const rewritten = rewriter.transform(response);
 

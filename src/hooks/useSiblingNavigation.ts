@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-import { useDatabase } from "#/lib/DatabaseContext";
 import type { FishName } from "#/lib/types";
 
 /**
@@ -88,19 +86,11 @@ export function getSpeciesSiblings(
 	return siblingsOf(buildSpeciesOrder(names), currentSpeciesId);
 }
 
-export function useNameSiblings(currentId: string): SiblingNavigation {
-	const { names } = useDatabase();
-	const order = useMemo(() => buildNameOrder(names), [names]);
-	return useMemo(() => siblingsOf(order, currentId), [order, currentId]);
-}
-
-export function useSpeciesSiblings(
-	currentSpeciesId: string,
-): SiblingNavigation {
-	const { names } = useDatabase();
-	const order = useMemo(() => buildSpeciesOrder(names), [names]);
-	return useMemo(
-		() => siblingsOf(order, currentSpeciesId),
-		[order, currentSpeciesId],
-	);
-}
+/*
+ * The `useNameSiblings` / `useSpeciesSiblings` hooks that used to live here are
+ * gone. They read the full name list out of the client database context, which
+ * is empty during prerendering — the detail routes now compute prev/next in
+ * their loaders with the pure functions above, so the neighbours are in the
+ * prerendered HTML instead of appearing once the WASM database finishes
+ * loading.
+ */

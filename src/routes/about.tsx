@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonical } from "#/lib/site";
 
 export const Route = createFileRoute("/about")({
+	head: () => ({
+		meta: [{ title: "About — LinkedFin" }],
+		links: [{ rel: "canonical", href: canonical("/about") }],
+	}),
 	component: About,
 });
 
