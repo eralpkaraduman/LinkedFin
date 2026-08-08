@@ -58,6 +58,19 @@ const largestRegion = db
 const sampleName = db
 	.prepare("SELECT id, name, etymology FROM names WHERE etymology != '' LIMIT 1")
 	.get() as { id: string; name: string; etymology: string };
+/**
+ * The MAX(names.updated_at) of the largest region — the value its sitemap
+ * <lastmod> must equal. See the sitemap assertions below.
+ */
+const largestRegionNameMax = largestRegion
+	? (
+			db
+				.prepare(
+					"SELECT MAX(updated_at) AS updated_at FROM names WHERE region_id = ?",
+				)
+				.get(largestRegion.id) as { updated_at: string | null }
+		).updated_at
+	: null;
 db.close();
 
 // --- Static entry points -------------------------------------------------
@@ -146,16 +159,109 @@ if (largestRegion) {
 }
 
 // --- Sitemap -------------------------------------------------------------
+// + / and /about
+const expectedUrls = nameIds.length + speciesIds.length + regionIds.length + 2;
+
 const sitemapPath = resolve(DIST, "sitemap.xml");
 if (!existsSync(sitemapPath)) {
 	fail("missing sitemap.xml");
 } else {
-	const urls = (readFileSync(sitemapPath, "utf-8").match(/<url>/g) ?? []).length;
-	// + / and /about
-	const expected =
-		nameIds.length + speciesIds.length + regionIds.length + 2;
-	if (urls !== expected) {
-		fail(`sitemap.xml lists ${urls} URLs, expected ${expected}`);
+	const xml = readFileSync(sitemapPath, "utf-8");
+	const urls = (xml.match(/<url>/g) ?? []).length;
+	if (urls !== expectedUrls) {
+		fail(`sitemap.xml lists ${urls} URLs, expected ${expectedUrls}`);
+	}
+
+	// --- lastmod ---------------------------------------------------------
+	// Every entity-backed URL carries one; `/` and `/about` deliberately do
+	// not (og-data-gen.ts explains why).
+	const entries = [...xml.matchAll(/<url><loc>([^<]+)<\/loc>(.*?)<\/url>/g)].map(
+		([, loc, rest]) => ({
+			loc,
+			lastmod: /<lastmod>([^<]+)<\/lastmod>/.exec(rest)?.[1],
+		}),
+	);
+
+	if (entries.length !== urls) {
+		fail(
+			`parsed ${entries.length} of ${urls} sitemap <url> elements — the entry format changed`,
+		);
+	}
+
+	const withLastmod = entries.filter((e) => e.lastmod);
+	if (withLastmod.length !== expectedUrls - 2) {
+		fail(
+			`${withLastmod.length} sitemap URLs carry <lastmod>, expected ${expectedUrls - 2} ` +
+				`(every URL except / and /about)`,
+		);
+	}
+	for (const entry of entries) {
+		const isStatic = /\/(about)?$/.test(entry.loc);
+		if (isStatic && entry.lastmod) {
+			fail(`${entry.loc} carries a <lastmod>; / and /about must omit it`);
+		}
+	}
+
+	// A malformed or future date is worse than no date: it is the fastest way
+	// to get lastmod distrusted across the whole site.
+	const today = new Date().toISOString().slice(0, 10);
+	for (const { loc, lastmod } of withLastmod) {
+		if (!lastmod) continue;
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(lastmod)) {
+			fail(`${loc} has <lastmod>${lastmod}</lastmod>, expected YYYY-MM-DD`);
+		} else if (Number.isNaN(Date.parse(lastmod))) {
+			fail(`${loc} has an unparseable <lastmod>${lastmod}</lastmod>`);
+		} else if (lastmod > today) {
+			fail(`${loc} has <lastmod>${lastmod}</lastmod>, which is in the future`);
+		}
+	}
+
+	// The check this whole feature exists for. A region row is only (id, name)
+	// and has no timestamp of its own, so its lastmod must be the MAX over the
+	// names it lists. Copying some other date here is the failure mode that
+	// looks entirely healthy from the outside.
+	if (largestRegion && largestRegionNameMax) {
+		const expected = largestRegionNameMax.slice(0, 10);
+		const entry = entries.find((e) =>
+			e.loc.endsWith(`/region/${largestRegion.id}`),
+		);
+		if (!entry) {
+			fail(`sitemap has no entry for /region/${largestRegion.id}`);
+		} else if (entry.lastmod !== expected) {
+			fail(
+				`/region/${largestRegion.id} has <lastmod>${entry.lastmod}</lastmod> but the ` +
+					`MAX(names.updated_at) over its ${largestRegion.name_count} names is ${expected} — ` +
+					`region lastmod must be derived from its names, not copied from elsewhere`,
+			);
+		}
+	}
+}
+
+// The prerender list is the same *set* of URLs as the sitemap, but plain path
+// strings: vite.config.ts reads it directly. If lastmod work ever leaks objects
+// into this file, Vite prerenders nothing and ships empty shells.
+const prerenderPath = resolve(ROOT, ".generated/prerender-pages.json");
+if (!existsSync(prerenderPath)) {
+	fail("missing .generated/prerender-pages.json — og:generate did not run");
+} else {
+	const paths = JSON.parse(readFileSync(prerenderPath, "utf-8")) as unknown;
+	if (!Array.isArray(paths)) {
+		fail(".generated/prerender-pages.json is not an array");
+	} else {
+		if (paths.length !== expectedUrls) {
+			fail(
+				`.generated/prerender-pages.json holds ${paths.length} entries, expected ${expectedUrls}`,
+			);
+		}
+		const nonString = paths.filter(
+			(p) => typeof p !== "string" || !p.startsWith("/"),
+		);
+		if (nonString.length > 0) {
+			fail(
+				`.generated/prerender-pages.json holds ${nonString.length} non-path entries ` +
+					`(e.g. ${JSON.stringify(nonString[0])}) — Vite expects plain path strings`,
+			);
+		}
 	}
 }
 
@@ -345,7 +451,8 @@ if (errors.length > 0) {
 console.log(
 	`✅ Build verified: ${namePages} name pages, ${speciesPages} species pages, ` +
 		`${regionPages} region pages, ` +
-		`index/about/404 present, sitemap complete, sample page carries real content, ` +
+		`index/about/404 present, sitemap complete with derived lastmod, ` +
+		`${expectedUrls} prerender paths, sample page carries real content, ` +
 		`_headers and _routes.json agree, ` +
 		`${expectedDbFile} shipped and referenced by the bundle`,
 );
