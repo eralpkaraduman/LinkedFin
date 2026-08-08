@@ -24,6 +24,9 @@ import {
   validateNoDuplicateNames,
   validateNoDuplicateRelations,
   validateNoSelfReferences,
+  validateUpdatedAtRequired,
+  validateUpdatedAtFormat,
+  validateUpdatedAtNotFuture,
   runAllValidations,
   createValidationContext,
 } from "./validate-integrity"
@@ -45,6 +48,7 @@ const validName = (overrides: Partial<Names> = {}): Names => ({
   measurement_min: null,
   measurement_max: null,
   notes: null,
+  updated_at: "2026-08-07T18:04:57Z",
   ...overrides,
 })
 
@@ -54,6 +58,7 @@ const validSpecies = (overrides: Partial<Species> = {}): Species => ({
   family: null,
   habitat: null,
   notes: null,
+  updated_at: "2026-08-07T18:04:57Z",
   ...overrides,
 })
 
@@ -676,11 +681,103 @@ describe("validateNoSelfReferences", () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
+// updated_at TESTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("validateUpdatedAtRequired", () => {
+  it("passes when both names and species have updated_at", () => {
+    const result = validateUpdatedAtRequired([validName()], [validSpecies()])
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("fails when a name's updated_at is null", () => {
+    const result = validateUpdatedAtRequired([validName({ updated_at: null })], [validSpecies()])
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("missing updated_at"))
+  })
+
+  it("fails when a species' updated_at is null", () => {
+    const result = validateUpdatedAtRequired([validName()], [validSpecies({ updated_at: null })])
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("missing updated_at"))
+  })
+})
+
+describe("validateUpdatedAtFormat", () => {
+  it("passes for a well-formed ISO 8601 UTC timestamp", () => {
+    const result = validateUpdatedAtFormat(
+      [validName({ updated_at: "2026-08-07T18:04:57Z" })],
+      [validSpecies({ updated_at: "2026-08-07T18:04:57Z" })]
+    )
+    expect(result.passed).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it("passes when updated_at is null (legacy row, caught by the required check instead)", () => {
+    const result = validateUpdatedAtFormat([validName({ updated_at: null })], [validSpecies({ updated_at: null })])
+    expect(result.passed).toBe(true)
+  })
+
+  it("fails for SQLite's default 'YYYY-MM-DD HH:MM:SS' format", () => {
+    const result = validateUpdatedAtFormat(
+      [validName({ updated_at: "2026-08-08 20:00:00" })],
+      [validSpecies()]
+    )
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("is not ISO 8601 UTC"))
+  })
+
+  it("fails for a species row in the wrong format", () => {
+    const result = validateUpdatedAtFormat(
+      [validName()],
+      [validSpecies({ updated_at: "2026-08-08 20:00:00" })]
+    )
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("is not ISO 8601 UTC"))
+  })
+})
+
+describe("validateUpdatedAtNotFuture", () => {
+  it("passes for a timestamp in the past", () => {
+    const result = validateUpdatedAtNotFuture(
+      [validName({ updated_at: "2020-01-01T00:00:00Z" })],
+      [validSpecies({ updated_at: "2020-01-01T00:00:00Z" })]
+    )
+    expect(result.passed).toBe(true)
+  })
+
+  it("fails for a timestamp years in the future", () => {
+    const result = validateUpdatedAtNotFuture(
+      [validName({ updated_at: "2030-01-01T00:00:00Z" })],
+      [validSpecies()]
+    )
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("is in the future"))
+  })
+
+  it("fails for a species timestamp years in the future", () => {
+    const result = validateUpdatedAtNotFuture(
+      [validName()],
+      [validSpecies({ updated_at: "2030-01-01T00:00:00Z" })]
+    )
+    expect(result.passed).toBe(false)
+    expect(result.errors).toContainEqual(expect.stringContaining("is in the future"))
+  })
+
+  it("tolerates a few minutes of clock skew", () => {
+    const almostNow = new Date(Date.now() + 60 * 1000).toISOString().replace(/\.\d+Z$/, "Z")
+    const result = validateUpdatedAtNotFuture([validName({ updated_at: almostNow })], [validSpecies()])
+    expect(result.passed).toBe(true)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
 // INTEGRATION TESTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("runAllValidations", () => {
-  it("runs all 23 validation checks", () => {
+  it("runs all 26 validation checks", () => {
     const ctx = createValidationContext({
       names: [validName()],
       species: [validSpecies()],
@@ -688,7 +785,7 @@ describe("runAllValidations", () => {
       relations: [],
     })
     const results = runAllValidations(ctx)
-    expect(results).toHaveLength(23)
+    expect(results).toHaveLength(26)
   })
 
   it("all pass for valid minimal data", () => {

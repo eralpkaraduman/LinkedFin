@@ -329,6 +329,68 @@ export function validateEtymology(names: Names[]): ValidationResult {
   return { check: "Names: etymology required", passed: errors.length === 0, errors, warnings: [] }
 }
 
+// The exact format stamped by every /add-* and /update-* command:
+// strftime('%Y-%m-%dT%H:%M:%SZ', 'now') → e.g. 2026-08-07T18:04:57Z.
+// Deliberately stricter than Date.parse (which also accepts SQLite's default
+// "YYYY-MM-DD HH:MM:SS", space-separated with no 'Z') — a value that slips
+// past this pattern was written by a script that didn't stamp it correctly.
+const ISO_8601_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/
+
+// A row written before commit fdf22ce (when updated_at was added) has no
+// value, so updated_at is nullable in the schema — but any row written by
+// the data-entry commands from here on must stamp it. Missing it means a
+// command inserted/updated a row without going through the stamping logic.
+export function validateUpdatedAtRequired(names: Names[], species: Species[]): ValidationResult {
+  const errors: string[] = []
+  for (const n of names) {
+    if (n.updated_at === null) errors.push(`${n.id} (${n.name}): missing updated_at`)
+  }
+  for (const s of species) {
+    if (s.updated_at === null) errors.push(`${s.id} (${s.scientific_name}): missing updated_at`)
+  }
+  return { check: "Names/Species: updated_at present", passed: errors.length === 0, errors, warnings: [] }
+}
+
+export function validateUpdatedAtFormat(names: Names[], species: Species[]): ValidationResult {
+  const errors: string[] = []
+  for (const n of names) {
+    if (n.updated_at !== null && !ISO_8601_UTC_PATTERN.test(n.updated_at)) {
+      errors.push(`${n.id} (${n.name}): updated_at '${n.updated_at}' is not ISO 8601 UTC (expected YYYY-MM-DDTHH:MM:SSZ)`)
+    }
+  }
+  for (const s of species) {
+    if (s.updated_at !== null && !ISO_8601_UTC_PATTERN.test(s.updated_at)) {
+      errors.push(`${s.id} (${s.scientific_name}): updated_at '${s.updated_at}' is not ISO 8601 UTC (expected YYYY-MM-DDTHH:MM:SSZ)`)
+    }
+  }
+  return { check: "Names/Species: updated_at format (ISO 8601 UTC)", passed: errors.length === 0, errors, warnings: [] }
+}
+
+// Allow a few minutes of tolerance rather than comparing against the exact
+// current instant — the validator's clock and the writing process's clock
+// can drift slightly, and CI/build machines are not guaranteed to be
+// perfectly synced. Anything further out than that is a bad clock or a
+// hand-typed date, not skew.
+const FUTURE_TOLERANCE_MS = 5 * 60 * 1000
+
+export function validateUpdatedAtNotFuture(names: Names[], species: Species[]): ValidationResult {
+  const errors: string[] = []
+  const now = Date.now()
+  for (const n of names) {
+    if (n.updated_at === null || !ISO_8601_UTC_PATTERN.test(n.updated_at)) continue
+    if (Date.parse(n.updated_at) - now > FUTURE_TOLERANCE_MS) {
+      errors.push(`${n.id} (${n.name}): updated_at '${n.updated_at}' is in the future`)
+    }
+  }
+  for (const s of species) {
+    if (s.updated_at === null || !ISO_8601_UTC_PATTERN.test(s.updated_at)) continue
+    if (Date.parse(s.updated_at) - now > FUTURE_TOLERANCE_MS) {
+      errors.push(`${s.id} (${s.scientific_name}): updated_at '${s.updated_at}' is in the future`)
+    }
+  }
+  return { check: "Names/Species: updated_at not in the future", passed: errors.length === 0, errors, warnings: [] }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RUN ALL VALIDATIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -374,6 +436,9 @@ export function runAllValidations(ctx: ValidationContext): ValidationResult[] {
     validateNoDuplicateNames(ctx.names),
     validateNoDuplicateRelations(ctx.relations),
     validateNoSelfReferences(ctx.relations),
+    validateUpdatedAtRequired(ctx.names, ctx.species),
+    validateUpdatedAtFormat(ctx.names, ctx.species),
+    validateUpdatedAtNotFuture(ctx.names, ctx.species),
   ]
 }
 
