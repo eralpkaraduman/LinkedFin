@@ -40,14 +40,19 @@ A name ID (nm_XXXX), name text, or search term to find the entry to update.
 
 5. **Apply quality control** (see Quality Control section below).
 
-6. **Update the name**:
+6. **Update the name**, always stamping `updated_at` alongside the changed fields:
    ```sql
    UPDATE names SET
      etymology = 'new etymology',
      transliteration = 'new transliteration',
-     phonetic = 'new phonetic'
+     phonetic = 'new phonetic',
+     updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
    WHERE id = 'nm_XXXX';
    ```
+
+   Every `UPDATE names` — even one that only touches a single field — must include
+   `updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`. A row that changed but kept its
+   old timestamp is a lie the moment someone reads it.
 
 7. **Check if relations need updating** — if the etymology reveals borrowings or corrections, add/update relations using /add-relation or /update-relation.
 

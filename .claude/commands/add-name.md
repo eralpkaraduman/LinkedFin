@@ -59,14 +59,17 @@ $ARGUMENTS
 7. **Format phonetic** as IPA (REQUIRED for fin, swe, est):
    - Enclose in slashes: /ˈpunɑˌsimpːu/
 
-8. **Insert the name**:
+8. **Insert the name**, stamping `updated_at` with the current UTC time:
    ```sql
-   INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic)
-   VALUES ('nm_XXXX', 'Name', 'sp_XXX', 'region', 'lang', 'etymology', 'transliteration', '/IPA/');
+   INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic, updated_at)
+   VALUES ('nm_XXXX', 'Name', 'sp_XXX', 'region', 'lang', 'etymology', 'transliteration', '/IPA/',
+           strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
    ```
 
    `measurement_unit`, `measurement_min` and `measurement_max` are optional and nullable
-   (size/length data) — leave them out unless you have that data.
+   (size/length data) — leave them out unless you have that data. `updated_at` is not
+   optional here — always set it on insert, using `strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`
+   so the stored value is ISO 8601 UTC.
 
 9. **Run validation**:
    ```bash

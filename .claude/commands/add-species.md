@@ -23,11 +23,15 @@ $ARGUMENTS
    SELECT 'sp_' || printf('%03d', MAX(CAST(SUBSTR(id, 4) AS INTEGER)) + 1) FROM species;
    ```
 
-4. **Insert the species**:
+4. **Insert the species**, stamping `updated_at` with the current UTC time:
    ```sql
-   INSERT INTO species (id, scientific_name, family, habitat, notes)
-   VALUES ('sp_XXX', 'Scientific name', 'Family', 'habitat', 'notes');
+   INSERT INTO species (id, scientific_name, notes, updated_at)
+   VALUES ('sp_XXX', 'Scientific name', 'notes', strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
    ```
+
+   `species` has only `id`, `scientific_name`, `notes` and `updated_at` — there is no
+   `family` or `habitat` column; fold that information into prose in `notes` if it's
+   worth keeping (see AGENTS.md Schema Reference). Always set `updated_at` on insert.
 
 5. **Run validation**:
    ```bash

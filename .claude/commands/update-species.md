@@ -39,13 +39,17 @@ A species ID (sp_XXX), scientific name, or search term.
 
 5. **Apply quality control** (see Quality Control section below).
 
-6. **Update the species**:
+6. **Update the species**, always stamping `updated_at` alongside the changed fields:
    ```sql
    UPDATE species SET
      scientific_name = 'New name',
-     notes = 'Updated notes'
+     notes = 'Updated notes',
+     updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
    WHERE id = 'sp_XXX';
    ```
+
+   Every `UPDATE species` must include `updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
+   even when only one field changes.
 
 7. **Check cascading impacts** — if the scientific name changed, verify all associated names still make sense. If notes describe the species, ensure the description is factual and concise.
 
