@@ -41,6 +41,20 @@ const nameIds = db.prepare("SELECT id FROM names ORDER BY id").all() as {
 const speciesIds = db.prepare("SELECT id FROM species ORDER BY id").all() as {
 	id: string;
 }[];
+/** Regions with at least one name — the set og-data-gen prerenders. */
+const regionIds = db
+	.prepare(
+		"SELECT regions.id FROM regions JOIN names ON names.region_id = regions.id GROUP BY regions.id ORDER BY regions.id",
+	)
+	.all() as { id: string }[];
+/** The biggest region, whose page is the one most likely to be truncated. */
+const largestRegion = db
+	.prepare(
+		`SELECT regions.id, COUNT(names.id) AS name_count
+		 FROM regions JOIN names ON names.region_id = regions.id
+		 GROUP BY regions.id ORDER BY name_count DESC, regions.id LIMIT 1`,
+	)
+	.get() as { id: string; name_count: number } | undefined;
 const sampleName = db
 	.prepare("SELECT id, name, etymology FROM names WHERE etymology != '' LIMIT 1")
 	.get() as { id: string; name: string; etymology: string };
@@ -62,6 +76,7 @@ function countHtml(dir: string): number {
 
 const namePages = countHtml("name");
 const speciesPages = countHtml("species");
+const regionPages = countHtml("region");
 
 if (namePages !== nameIds.length) {
 	fail(`prerendered ${namePages} name pages, expected ${nameIds.length}`);
@@ -70,6 +85,9 @@ if (speciesPages !== speciesIds.length) {
 	fail(
 		`prerendered ${speciesPages} species pages, expected ${speciesIds.length}`,
 	);
+}
+if (regionPages !== regionIds.length) {
+	fail(`prerendered ${regionPages} region pages, expected ${regionIds.length}`);
 }
 
 // --- Content, not just file count ----------------------------------------
@@ -105,13 +123,37 @@ if (sampleName) {
 	}
 }
 
+// A region page renders every one of its names, unpaginated — that is the only
+// reason it is worth prerendering. If pagination ever leaks back in, the page
+// still looks fine and quietly links to ten names instead of a hundred.
+if (largestRegion) {
+	const regionPath = resolve(DIST, `region/${largestRegion.id}.html`);
+	if (!existsSync(regionPath)) {
+		fail(`region/${largestRegion.id}.html missing`);
+	} else {
+		const html = readFileSync(regionPath, "utf-8");
+		const body = html.slice(html.indexOf("<body"));
+		const linked = new Set(
+			[...body.matchAll(/href="\/name\/([^"]+)"/g)].map((m) => m[1]),
+		);
+		if (linked.size !== largestRegion.name_count) {
+			fail(
+				`region/${largestRegion.id}.html links ${linked.size} names, expected ${largestRegion.name_count} — ` +
+					`the region table is paginating or rendering as an empty shell`,
+			);
+		}
+	}
+}
+
 // --- Sitemap -------------------------------------------------------------
 const sitemapPath = resolve(DIST, "sitemap.xml");
 if (!existsSync(sitemapPath)) {
 	fail("missing sitemap.xml");
 } else {
 	const urls = (readFileSync(sitemapPath, "utf-8").match(/<url>/g) ?? []).length;
-	const expected = nameIds.length + speciesIds.length + 2; // + / and /about
+	// + / and /about
+	const expected =
+		nameIds.length + speciesIds.length + regionIds.length + 2;
 	if (urls !== expected) {
 		fail(`sitemap.xml lists ${urls} URLs, expected ${expected}`);
 	}
@@ -302,6 +344,7 @@ if (errors.length > 0) {
 
 console.log(
 	`✅ Build verified: ${namePages} name pages, ${speciesPages} species pages, ` +
+		`${regionPages} region pages, ` +
 		`index/about/404 present, sitemap complete, sample page carries real content, ` +
 		`_headers and _routes.json agree, ` +
 		`${expectedDbFile} shipped and referenced by the bundle`,

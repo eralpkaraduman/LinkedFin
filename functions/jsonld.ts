@@ -10,6 +10,10 @@
  * - `/species/*`→ Taxon (schema.org's purpose-built type for a taxonomic
  *                 concept; it lives in the "new/pending" area but resolves at
  *                 https://schema.org/Taxon and is what Bioschemas/GBIF emit).
+ * - `/region/*` → CollectionPage. The page is a listing of other pages, not an
+ *                 entity in its own right; `DefinedTermSet` was the alternative
+ *                 but the site already declares exactly one of those (all fish
+ *                 names), and a region is a subset of it, not a second set.
  * - `/`         → WebSite + SearchAction. Google's sitelinks-searchbox docs say
  *                 to put this on the homepage only, so that is where it goes.
  *
@@ -17,7 +21,14 @@
  * they do not exist at the edge.
  */
 
-import { buildNameOg, type NameRow, sanitize, truncate } from "./og-utils.ts";
+import {
+	buildNameOg,
+	buildRegionOg,
+	type NameRow,
+	type RegionRow,
+	sanitize,
+	truncate,
+} from "./og-utils.ts";
 
 /**
  * Canonical origin. Duplicated from src/lib/site.ts on purpose: `functions/`
@@ -172,6 +183,35 @@ export function buildSpeciesJsonLd(
 	if (alternateName.length > 0) taxon.alternateName = alternateName;
 
 	return taxon;
+}
+
+/**
+ * A region's listing page as a CollectionPage.
+ *
+ * `isPartOf` points at the site's WebSite node (`@id` only — the node itself is
+ * declared on the homepage) and `mainEntity` at the one DefinedTermSet the
+ * `/name/*` pages already put their terms in, which is what ties a region's
+ * listing to the vocabulary it draws from.
+ */
+export function buildRegionJsonLd(id: string, row: RegionRow): JsonLd {
+	const url = `${SITE_ORIGIN}/region/${id}`;
+	const og = buildRegionOg(row);
+
+	return {
+		"@context": "https://schema.org",
+		"@type": "CollectionPage",
+		"@id": `${url}#collection`,
+		url,
+		name: sanitize(og.title),
+		description: truncate(sanitize(og.description), 500),
+		isPartOf: { "@type": "WebSite", "@id": `${SITE_ORIGIN}/#website` },
+		mainEntity: {
+			"@type": "DefinedTermSet",
+			"@id": TERM_SET_ID,
+			name: "LinkedFin fish names",
+			url: `${SITE_ORIGIN}/`,
+		},
+	};
 }
 
 /**

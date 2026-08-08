@@ -16,6 +16,7 @@ function makeName(index: number): FishName {
 		etymology: `Etymology ${padded}`,
 		transliteration: `Translit ${padded}`,
 		phonetic: `fon ${padded}`,
+		region_id: `region-${padded}`,
 		region: `Region ${padded}`,
 		scientific_name: `Scientificus ${padded}`,
 		language: "English",

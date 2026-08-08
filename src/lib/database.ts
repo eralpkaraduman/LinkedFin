@@ -63,6 +63,7 @@ export async function initDatabase(
 			"names.measurement_min",
 			"names.measurement_max",
 			"names.species_id",
+			"names.region_id",
 			"regions.name as region",
 			"species.scientific_name",
 			"species.notes as species_notes",

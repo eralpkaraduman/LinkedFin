@@ -46,7 +46,7 @@ import {
 import { toBcp47 } from "#/lib/language";
 import { getPageItems, getPageRange } from "#/lib/pagination";
 import { shuffleWithSeed } from "#/lib/randomOrder";
-import type { FishName } from "#/lib/types";
+import type { NameTableRow } from "#/lib/types";
 
 export const DEFAULT_PAGE_SIZE = 10;
 
@@ -92,7 +92,7 @@ const features = tableFeatures({
 	paginatedRowModel: createPaginatedRowModel(),
 });
 
-const columnHelper = createColumnHelper<typeof features, FishName>();
+const columnHelper = createColumnHelper<typeof features, NameTableRow>();
 
 const columns = columnHelper.columns([
 	columnHelper.accessor("name", {
@@ -138,7 +138,7 @@ const columns = columnHelper.columns([
 
 export interface NamesTableProps {
 	/** Rows to display, already filtered by the active search. */
-	data: FishName[];
+	data: NameTableRow[];
 	/** True when `data` comes from a search (relevance order) rather than the full list. */
 	isSearch: boolean;
 	/** Seed driving the random order. Change it to reshuffle. */
@@ -151,7 +151,7 @@ export interface NamesTableProps {
 	 * middle-click and open-in-new-tab to work. What is left here is the
 	 * side effect that the link cannot express: the analytics event.
 	 */
-	onRowSelect: (item: FishName) => void;
+	onRowSelect: (item: NameTableRow) => void;
 	/** When provided, a "Clear" button is shown in the toolbar. */
 	onClearSearch?: () => void;
 	pageSize?: number;

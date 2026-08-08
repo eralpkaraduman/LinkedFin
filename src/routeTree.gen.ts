@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SpeciesIdRouteImport } from './routes/species.$id'
+import { Route as RegionIdRouteImport } from './routes/region.$id'
 import { Route as NameIdRouteImport } from './routes/name.$id'
 
 const AboutRoute = AboutRouteImport.update({
@@ -29,6 +30,11 @@ const SpeciesIdRoute = SpeciesIdRouteImport.update({
   path: '/species/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegionIdRoute = RegionIdRouteImport.update({
+  id: '/region/$id',
+  path: '/region/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NameIdRoute = NameIdRouteImport.update({
   id: '/name/$id',
   path: '/name/$id',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/name/$id': typeof NameIdRoute
+  '/region/$id': typeof RegionIdRoute
   '/species/$id': typeof SpeciesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/name/$id': typeof NameIdRoute
+  '/region/$id': typeof RegionIdRoute
   '/species/$id': typeof SpeciesIdRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/name/$id': typeof NameIdRoute
+  '/region/$id': typeof RegionIdRoute
   '/species/$id': typeof SpeciesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/name/$id' | '/species/$id'
+  fullPaths: '/' | '/about' | '/name/$id' | '/region/$id' | '/species/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/name/$id' | '/species/$id'
-  id: '__root__' | '/' | '/about' | '/name/$id' | '/species/$id'
+  to: '/' | '/about' | '/name/$id' | '/region/$id' | '/species/$id'
+  id: '__root__' | '/' | '/about' | '/name/$id' | '/region/$id' | '/species/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   NameIdRoute: typeof NameIdRoute
+  RegionIdRoute: typeof RegionIdRoute
   SpeciesIdRoute: typeof SpeciesIdRoute
 }
 
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SpeciesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/region/$id': {
+      id: '/region/$id'
+      path: '/region/$id'
+      fullPath: '/region/$id'
+      preLoaderRoute: typeof RegionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/name/$id': {
       id: '/name/$id'
       path: '/name/$id'
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   NameIdRoute: NameIdRoute,
+  RegionIdRoute: RegionIdRoute,
   SpeciesIdRoute: SpeciesIdRoute,
 }
 export const routeTree = rootRouteImport

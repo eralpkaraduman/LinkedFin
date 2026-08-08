@@ -85,6 +85,22 @@ export interface NameEntry {
 	name: string;
 }
 
+export interface RegionRow {
+	name: string;
+	name_count: number;
+}
+
+export function buildRegionOg(row: RegionRow): {
+	title: string;
+	description: string;
+} {
+	const count = row.name_count;
+	return {
+		title: `${row.name} fish names`,
+		description: `${count} fish ${count === 1 ? "name" : "names"} from ${row.name}, with etymology, transliteration and pronunciation`,
+	};
+}
+
 export function buildNameOg(row: NameRow): {
 	title: string;
 	description: string;

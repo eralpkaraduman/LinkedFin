@@ -25,6 +25,8 @@ describe("isIndexable", () => {
 	test("indexes detail pages whose id resolves", () => {
 		expect(isIndexable("/name/nm_0118", true)).toBe(true);
 		expect(isIndexable("/species/sp_024", true)).toBe(true);
+		expect(isIndexable("/region/greek", true)).toBe(true);
+		expect(isIndexable("/region/greek/", true)).toBe(true);
 	});
 
 	test("does not index detail pages whose id is dead", () => {
@@ -32,6 +34,7 @@ describe("isIndexable", () => {
 		// become soft 404s, which matters now the sitemap lists 622 URLs.
 		expect(isIndexable("/name/nm_9999", false)).toBe(false);
 		expect(isIndexable("/species/sp_999", false)).toBe(false);
+		expect(isIndexable("/region/atlantis", false)).toBe(false);
 	});
 
 	test("does not index unknown paths", () => {
