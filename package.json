@@ -15,7 +15,7 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "db:types": "kysely-codegen --dialect sqlite --url ./public/fish.db --out-file src/db/types.ts",
+    "db:types": "kysely-codegen --dialect sqlite --url ./public/fish.db --out-file src/db/types.ts && biome check --write src/db/types.ts",
     "db:validate": "tsx maintenance/scripts/validate-integrity.ts",
     "db:fix-page-size": "tsx maintenance/scripts/fix-page-size.ts",
     "og:generate": "tsx maintenance/scripts/og-data-gen.ts",

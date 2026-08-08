@@ -4,42 +4,42 @@
  */
 
 export interface NameRelations {
-  notes: string | null;
-  relation: string;
-  source_id: string;
-  target_id: string;
+	notes: string | null;
+	relation: string;
+	source_id: string;
+	target_id: string;
 }
 
 export interface Names {
-  etymology: string;
-  id: string;
-  lang: string;
-  measurement_max: number | null;
-  measurement_min: number | null;
-  measurement_unit: string | null;
-  name: string;
-  phonetic: string;
-  region_id: string;
-  species_id: string;
-  transliteration: string;
-  updated_at: string | null;
+	etymology: string;
+	id: string;
+	lang: string;
+	measurement_max: number | null;
+	measurement_min: number | null;
+	measurement_unit: string | null;
+	name: string;
+	phonetic: string;
+	region_id: string;
+	species_id: string;
+	transliteration: string;
+	updated_at: string | null;
 }
 
 export interface Regions {
-  id: string;
-  name: string;
+	id: string;
+	name: string;
 }
 
 export interface Species {
-  id: string;
-  notes: string | null;
-  scientific_name: string;
-  updated_at: string | null;
+	id: string;
+	notes: string | null;
+	scientific_name: string;
+	updated_at: string | null;
 }
 
 export interface DB {
-  name_relations: NameRelations;
-  names: Names;
-  regions: Regions;
-  species: Species;
+	name_relations: NameRelations;
+	names: Names;
+	regions: Regions;
+	species: Species;
 }
