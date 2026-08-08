@@ -57,11 +57,13 @@ interface NameRow {
 	etymology: string | null;
 	transliteration: string | null;
 	region_name: string;
+	updated_at: string | null;
 }
 
 interface SpeciesRow {
 	id: string;
 	scientific_name: string;
+	updated_at: string | null;
 }
 
 interface NameSpeciesRow {
@@ -77,13 +79,29 @@ interface RegionRow {
 
 const names: NameRow[] = db
 	.prepare(
-		"SELECT n.id, n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id",
+		"SELECT n.id, n.name, n.lang, n.etymology, n.transliteration, n.updated_at, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id",
 	)
 	.all() as NameRow[];
 
 const species: SpeciesRow[] = db
-	.prepare("SELECT id, scientific_name FROM species")
+	.prepare("SELECT id, scientific_name, updated_at FROM species")
 	.all() as SpeciesRow[];
+
+/**
+ * The freshest `names.updated_at` per species and per region. Both feed
+ * <lastmod> derivation below; neither belongs in og-data.json.
+ */
+const nameMaxBySpecies = db
+	.prepare(
+		"SELECT species_id AS id, MAX(updated_at) AS updated_at FROM names WHERE updated_at IS NOT NULL GROUP BY species_id",
+	)
+	.all() as { id: string; updated_at: string | null }[];
+
+const nameMaxByRegion = db
+	.prepare(
+		"SELECT region_id AS id, MAX(updated_at) AS updated_at FROM names WHERE updated_at IS NOT NULL GROUP BY region_id",
+	)
+	.all() as { id: string; updated_at: string | null }[];
 
 const namesBySpecies: NameSpeciesRow[] = db
 	.prepare("SELECT species_id, name FROM names ORDER BY id")
@@ -176,37 +194,99 @@ console.log(
 );
 
 /**
- * sitemap.xml — <loc> only, deliberately.
+ * sitemap.xml — <loc> plus a derived <lastmod>.
  *
  * Google ignores <priority> and <changefreq> outright, and honours <lastmod>
- * only when it is reliable. Neither table carries a real per-row timestamp, so
- * the only lastmod available would be the build time, identical across every
- * URL on every deploy — the classic way to get lastmod distrusted site-wide.
- * Omitting it is better than faking it. Add real values once names/species
- * carry updated_at.
+ * only when it judges the values reliable, so the rule here is that a page's
+ * lastmod describes *what the page renders*, not the row that happens to share
+ * its id. Three of the four page types render data they do not own:
+ *
+ * - `/name/$id`    → `names.updated_at`. A relation edit stamps both endpoint
+ *                    names, so relations are covered. Deliberately approximate
+ *                    in one respect: the page also renders sibling names for
+ *                    prev/next navigation, and renaming a sibling moves this
+ *                    page's text without moving its `updated_at`. Chasing that
+ *                    would mean a transitive dependency graph for what is only
+ *                    a recrawl hint. Do not "fix" it.
+ * - `/species/$id` → MAX(species.updated_at, MAX(names.updated_at) of its
+ *                    names). The page lists every name of the species.
+ * - `/region/$id`  → MAX(names.updated_at) over that region's names, with no
+ *                    contribution from the region row: `regions` is only
+ *                    (id, name), so it has no timestamp of its own and copying
+ *                    one would freeze every region page at a date unrelated to
+ *                    the content it shows.
+ * - `/` and `/about` → no lastmod at all. `/about` is genuinely static. `/` has
+ *                    a loader and does render 23 region names with counts, but
+ *                    those counts move on nearly every edit, so a root lastmod
+ *                    would churn constantly — and crawlers revisit a site root
+ *                    frequently regardless.
+ *
+ * Dates are emitted date-only (`YYYY-MM-DD`), which is valid W3C Datetime and
+ * is as precise as this data honestly is.
  */
-const sitemapPaths = [
-	...STATIC_PATHS,
-	...names.map((n) => `/name/${n.id}`),
-	...species.map((s) => `/species/${s.id}`),
-	...regions.map((r) => `/region/${r.id}`),
+interface SitemapEntry {
+	path: string;
+	/** Absent for the static pages; see above. */
+	lastmod?: string;
+}
+
+const toDate = (iso: string | null | undefined): string | undefined =>
+	iso ? iso.slice(0, 10) : undefined;
+
+/** Latest of the given timestamps, ISO 8601 sorting lexicographically. */
+const latest = (...values: (string | null | undefined)[]): string | undefined =>
+	values.filter((v): v is string => Boolean(v)).sort().pop();
+
+const nameMaxBySpeciesId = new Map(
+	nameMaxBySpecies.map((row) => [row.id, row.updated_at]),
+);
+const nameMaxByRegionId = new Map(
+	nameMaxByRegion.map((row) => [row.id, row.updated_at]),
+);
+
+const sitemapEntries: SitemapEntry[] = [
+	...STATIC_PATHS.map((path) => ({ path })),
+	...names.map((n) => ({
+		path: `/name/${n.id}`,
+		lastmod: toDate(n.updated_at),
+	})),
+	...species.map((s) => ({
+		path: `/species/${s.id}`,
+		lastmod: toDate(latest(s.updated_at, nameMaxBySpeciesId.get(s.id))),
+	})),
+	...regions.map((r) => ({
+		path: `/region/${r.id}`,
+		lastmod: toDate(nameMaxByRegionId.get(r.id)),
+	})),
 ];
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${sitemapPaths.map((path) => `\t<url><loc>${SITE_ORIGIN}${path}</loc></url>`).join("\n")}
+${sitemapEntries
+	.map(
+		({ path, lastmod }) =>
+			`\t<url><loc>${SITE_ORIGIN}${path}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`,
+	)
+	.join("\n")}
 </urlset>
 `;
 
 writeFileSync(SITEMAP_PATH, sitemap);
-console.log(`Generated ${SITEMAP_PATH} (${sitemapPaths.length} URLs)`);
+console.log(
+	`Generated ${SITEMAP_PATH} (${sitemapEntries.length} URLs, ${sitemapEntries.filter((e) => e.lastmod).length} with lastmod)`,
+);
 
 /**
  * Prerender inputs.
  *
- * `sitemapPaths` and the prerender list are deliberately the same set: a URL we
- * advertise in the sitemap but never prerender would be served as an empty
+ * `sitemapEntries` and the prerender list are deliberately the same set: a URL
+ * we advertise in the sitemap but never prerender would be served as an empty
  * shell to a crawler.
+ *
+ * They are the same *set*, not the same value. The prerender list's consumer
+ * (vite.config.ts) reads plain path strings, so the entries are projected back
+ * down to `.path` here. Writing `sitemapEntries` straight out would hand Vite
+ * an array of objects and silently prerender nothing.
  */
 mkdirSync(GENERATED_DIR, { recursive: true });
 
@@ -221,8 +301,11 @@ console.log(
 	`Generated ${FISH_DATA_PATH} (${fishNames.length} names, ${fishRelations.length} relations)`,
 );
 
-writeFileSync(PRERENDER_PAGES_PATH, JSON.stringify(sitemapPaths));
-console.log(`Generated ${PRERENDER_PAGES_PATH} (${sitemapPaths.length} paths)`);
+const prerenderPaths = sitemapEntries.map((entry) => entry.path);
+writeFileSync(PRERENDER_PAGES_PATH, JSON.stringify(prerenderPaths));
+console.log(
+	`Generated ${PRERENDER_PAGES_PATH} (${prerenderPaths.length} paths)`,
+);
 
 /**
  * Content-addressed database.
