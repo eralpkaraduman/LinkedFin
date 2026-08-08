@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildNameJsonLd,
+	buildRegionJsonLd,
 	buildSpeciesJsonLd,
 	buildWebSiteJsonLd,
 	jsonLdScript,
@@ -172,6 +173,38 @@ describe("buildSpeciesJsonLd", () => {
 	it("omits alternateName when the species has no names", () => {
 		const taxon = buildSpeciesJsonLd("sp_999", { scientific_name: "X y" }, []);
 		expect(taxon).not.toHaveProperty("alternateName");
+	});
+});
+
+describe("buildRegionJsonLd", () => {
+	it("describes the listing page and ties it to the site", () => {
+		const page = buildRegionJsonLd("greek", {
+			name: "Greece",
+			name_count: 70,
+			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
+		}) as any;
+		expect(page["@type"]).toBe("CollectionPage");
+		expect(page.url).toBe(`${SITE_ORIGIN}/region/greek`);
+		expect(page.name).toBe("Greece fish names");
+		expect(page.description).toContain("70 fish names from Greece");
+		expect(page.isPartOf["@id"]).toBe(`${SITE_ORIGIN}/#website`);
+		expect(page.mainEntity["@type"]).toBe("DefinedTermSet");
+	});
+
+	it("keeps the count singular for a one-name region", () => {
+		const page = buildRegionJsonLd("poland", {
+			name: "Poland",
+			name_count: 1,
+			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
+		}) as any;
+		expect(page.description).toContain("1 fish name from Poland");
+	});
+
+	it("survives serialization", () => {
+		const input = { name: "Sápmi", name_count: 5 };
+		expect(
+			parseScript(jsonLdScript(buildRegionJsonLd("sapmi", input))),
+		).toEqual(buildRegionJsonLd("sapmi", input));
 	});
 });
 

@@ -16,6 +16,7 @@ function makeName(over: Partial<FishName> = {}): FishName {
 		measurement_min: null,
 		measurement_max: null,
 		species_id: "sp_001",
+		region_id: "turkey",
 		region: "Turkey",
 		scientific_name: "Dicentrarchus labrax",
 		species_notes: null,

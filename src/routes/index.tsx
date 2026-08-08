@@ -11,6 +11,8 @@ import { getItem, useSearch } from "#/hooks/useSearch";
 import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
+import { loadFishData } from "#/lib/fishData";
+import { type RegionSummary, selectRegionList } from "#/lib/pageData";
 import { nextSeed } from "#/lib/randomOrder";
 import { canonical } from "#/lib/site";
 
@@ -69,12 +71,18 @@ export const Route = createFileRoute("/")({
 		dir: search.dir === "desc" ? "desc" : undefined,
 	}),
 	/**
-	 * No loader. This route is the fuzzy search over all 512 names, which needs
-	 * the whole table in memory — dehydrating it into the document would add
-	 * ~250 KB to the most-visited page to make ten table rows crawlable, and the
-	 * rows are not links, so it would buy no crawl paths either. The detail
-	 * pages carry the indexable text and sitemap.xml carries the discovery.
+	 * The loader returns the region browse list and nothing else — 23 rows of
+	 * `{id, name, count}`.
+	 *
+	 * The table below is still not loader-driven and must not become so: it is
+	 * the fuzzy search over all 512 names, and dehydrating those would add
+	 * ~250 KB to the most-visited page to make ten non-link rows crawlable. The
+	 * region list is the opposite trade — a few hundred bytes for 23 real links
+	 * that only exist in the HTML if they come from here, since anything drawn
+	 * from `useDatabase()` renders after hydration and a crawler never sees it.
 	 */
+	loader: async () => selectRegionList(await loadFishData()),
+	staleTime: Number.POSITIVE_INFINITY,
 	head: () => ({
 		links: [{ rel: "canonical", href: canonical("/") }],
 	}),
@@ -158,8 +166,45 @@ function WelcomeHero({
 	);
 }
 
+/**
+ * Every region, with its name count, as real links.
+ *
+ * Rendered from loader data in both of `HomePage`'s branches — including the
+ * database-loading one, which is the branch the prerendered document actually
+ * contains. Putting it only in the loaded branch would have kept it out of the
+ * HTML entirely, which is the whole point of the exercise.
+ *
+ * All 23 are listed, thin ones included: the count next to each label ("Poland
+ * (1)") sets the expectation before the click.
+ */
+function RegionBrowse({ regions }: { regions: RegionSummary[] }) {
+	if (regions.length === 0) return null;
+	return (
+		<nav aria-labelledby="browse-regions" className="mt-8 border-t pt-6">
+			<h2 id="browse-regions" className="mb-3 text-sm font-semibold">
+				Browse fish names by region
+			</h2>
+			<ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+				{regions.map((region) => (
+					<li key={region.id}>
+						<Link
+							to="/region/$id"
+							params={{ id: region.id }}
+							className="text-primary hover:underline"
+						>
+							{region.name}
+						</Link>{" "}
+						<span className="text-muted-foreground">({region.count})</span>
+					</li>
+				))}
+			</ul>
+		</nav>
+	);
+}
+
 function HomePage() {
 	const { q = "", page = 1, sort, dir } = Route.useSearch();
+	const regions = Route.useLoaderData();
 	const navigate = useNavigate({ from: Route.fullPath });
 	const { names, isLoading, error, status } = useDatabase();
 
@@ -244,18 +289,21 @@ function HomePage() {
 	// fully rendered.
 	if (isLoading || error) {
 		return (
-			<main className="flex min-h-[60vh] items-center justify-center px-4">
-				{error ? (
-					<div className="text-center text-destructive">
-						<div className="mb-4 text-4xl">❌</div>
-						<div>Error: {error}</div>
-					</div>
-				) : (
-					<div className="text-center">
-						<div className="mb-4 text-4xl">🐟</div>
-						<div className="text-muted-foreground">{status}</div>
-					</div>
-				)}
+			<main className="page-wrap flex flex-col px-4 pb-8">
+				<div className="flex min-h-[50vh] items-center justify-center">
+					{error ? (
+						<div className="text-center text-destructive">
+							<div className="mb-4 text-4xl">❌</div>
+							<div>Error: {error}</div>
+						</div>
+					) : (
+						<div className="text-center">
+							<div className="mb-4 text-4xl">🐟</div>
+							<div className="text-muted-foreground">{status}</div>
+						</div>
+					)}
+				</div>
+				<RegionBrowse regions={regions} />
 			</main>
 		);
 	}
@@ -309,6 +357,8 @@ function HomePage() {
 					onRowSelect={(item) => trackDetailView(item.id, item.name)}
 				/>
 			</div>
+
+			<RegionBrowse regions={regions} />
 		</main>
 	);
 }

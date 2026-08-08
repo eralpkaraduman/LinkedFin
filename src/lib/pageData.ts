@@ -17,7 +17,7 @@ import {
 } from "#/hooks/useSiblingNavigation";
 import type { FishData } from "#/lib/fishData";
 import { buildChain } from "#/lib/relations";
-import type { FishName, Relation } from "#/lib/types";
+import type { FishName, NameTableRow, Relation } from "#/lib/types";
 
 export interface NamePageData {
 	name: FishName;
@@ -36,6 +36,21 @@ export interface SpeciesPageData {
 	names: FishName[];
 	prev: Sibling | null;
 	next: Sibling | null;
+}
+
+/** One entry in the homepage's region browse list. */
+export interface RegionSummary {
+	id: string;
+	name: string;
+	/** Names in this region. Rendered next to the label so thin ones are obvious. */
+	count: number;
+}
+
+export interface RegionPageData {
+	id: string;
+	name: string;
+	/** Every name in the region — see the no-pagination note on the route. */
+	names: NameTableRow[];
 }
 
 /** Relation types whose chains are rendered transitively by `NameDetail`. */
@@ -102,6 +117,50 @@ export function selectSpeciesPage(
 	};
 }
 
+/** Only the columns `NamesTable` renders — see `NameTableRow`. */
+function toTableRow(name: FishName): NameTableRow {
+	return {
+		id: name.id,
+		name: name.name,
+		lang: name.lang,
+		transliteration: name.transliteration,
+		region: name.region,
+		scientific_name: name.scientific_name,
+	};
+}
+
+/**
+ * Every region that has at least one name, with its count.
+ *
+ * Derived from the names rather than from a regions table so it needs no extra
+ * data source, and so a region with nothing in it can never produce a link to
+ * an empty page. Twenty-three rows of `{id, name, count}` — this is what the
+ * homepage dehydrates, not the 512 names behind them.
+ */
+export function selectRegionList(data: FishData): RegionSummary[] {
+	const byId = new Map<string, RegionSummary>();
+	for (const name of data.names) {
+		const existing = byId.get(name.region_id);
+		if (existing) existing.count += 1;
+		else
+			byId.set(name.region_id, {
+				id: name.region_id,
+				name: name.region,
+				count: 1,
+			});
+	}
+	return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "en"));
+}
+
+export function selectRegionPage(
+	data: FishData,
+	id: string,
+): RegionPageData | null {
+	const names = data.names.filter((n) => n.region_id === id);
+	if (names.length === 0) return null;
+	return { id, name: names[0].region, names: names.map(toTableRow) };
+}
+
 function collapse(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
@@ -136,6 +195,23 @@ export function namePageMeta(page: NamePageData): {
 		 */
 		title: `${name.name} — ${name.language} name for ${name.scientific_name} | LinkedFin`,
 		description: truncate(etymology ? `${lead} ${etymology}` : lead, 300),
+	};
+}
+
+/**
+ * These pages exist to answer "Turkish fish names", "Greek fish names" — so the
+ * region leads the title and the words a searcher typed follow immediately.
+ */
+export function regionPageMeta(page: RegionPageData): {
+	title: string;
+	description: string;
+} {
+	const count = page.names.length;
+	const lead = `${count} fish ${count === 1 ? "name" : "names"} from ${page.name}, with etymology, transliteration and pronunciation.`;
+	const names = page.names.map((n) => n.name).join(", ");
+	return {
+		title: `${page.name} — fish names and etymology | LinkedFin`,
+		description: truncate(`${lead} ${names}`, 300),
 	};
 }
 

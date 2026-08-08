@@ -1,5 +1,6 @@
 import {
 	buildNameJsonLd,
+	buildRegionJsonLd,
 	buildSpeciesJsonLd,
 	buildWebSiteJsonLd,
 	jsonLdScript,
@@ -7,6 +8,7 @@ import {
 import data from "./og-data.json";
 import {
 	buildNameOg,
+	buildRegionOg,
 	buildSpeciesOg,
 	GENERIC_META,
 	sanitize,
@@ -23,6 +25,10 @@ const speciesById = data.speciesById as Record<
 	(typeof data.speciesById)[keyof typeof data.speciesById]
 >;
 const namesBySpeciesId = data.namesBySpeciesId as Record<string, string[]>;
+const regionsById = data.regionsById as Record<
+	string,
+	(typeof data.regionsById)[keyof typeof data.regionsById]
+>;
 
 function escapeHtml(str: string): string {
 	return String(str)
@@ -119,6 +125,18 @@ function lookupSpecies(speciesId: string): PageMeta | null {
 	};
 }
 
+function lookupRegion(regionId: string): PageMeta | null {
+	const row = regionsById[regionId];
+	if (!row) return null;
+
+	const og = buildRegionOg(row);
+	return {
+		ogTitle: `LinkedFin: ${og.title}`,
+		ogDescription: truncate(og.description, 500),
+		jsonLd: jsonLdScript(buildRegionJsonLd(regionId, row)),
+	};
+}
+
 export async function onRequest(
 	context: EventContext<unknown, string, unknown>,
 ): Promise<Response> {
@@ -132,6 +150,7 @@ export async function onRequest(
 
 	const nameMatch = url.pathname.match(/^\/name\/([^/]+)$/);
 	const speciesMatch = url.pathname.match(/^\/species\/([^/]+)$/);
+	const regionMatch = url.pathname.match(/^\/region\/([^/]+)$/);
 
 	let pageMeta: PageMeta | null = null;
 	try {
@@ -139,6 +158,8 @@ export async function onRequest(
 			pageMeta = lookupName(nameMatch[1]);
 		} else if (speciesMatch) {
 			pageMeta = lookupSpecies(speciesMatch[1]);
+		} else if (regionMatch) {
+			pageMeta = lookupRegion(regionMatch[1]);
 		}
 	} catch (e) {
 		console.error("OG lookup error:", e);
@@ -163,6 +184,13 @@ export async function onRequest(
 	} else if (speciesMatch) {
 		imgUrl = `${url.origin}/og/species/${speciesMatch[1]}`;
 	} else {
+		/**
+		 * Everything else — including `/region/*` — gets the generic card.
+		 * `functions/og/[[path]].ts` renders `GENERIC_OG` for any path it does not
+		 * recognise, so `/og/home` is not a special endpoint but the deliberate
+		 * name for that fallback. A per-region card would say little more than the
+		 * title already does, and each one is a satori render at the edge.
+		 */
 		imgUrl = `${url.origin}/og/home`;
 	}
 

@@ -1,7 +1,10 @@
 import type { FishData } from "#/lib/fishData";
 import {
 	namePageMeta,
+	regionPageMeta,
 	selectNamePage,
+	selectRegionList,
+	selectRegionPage,
 	selectSpeciesPage,
 	speciesPageMeta,
 	truncate,
@@ -20,6 +23,7 @@ function makeName(over: Partial<FishName> = {}): FishName {
 		measurement_min: null,
 		measurement_max: null,
 		species_id: "sp_001",
+		region_id: "turkey",
 		region: "Turkey",
 		scientific_name: "Dicentrarchus labrax",
 		species_notes: null,
@@ -32,6 +36,7 @@ const levrek = makeName();
 const lavraki = makeName({
 	id: "nm_0002",
 	name: "Lavraki",
+	region_id: "greek",
 	region: "Greece",
 	language: "Greek",
 });
@@ -114,6 +119,37 @@ test("species meta lists the names and front-loads the scientific name", () => {
 	expect(title.startsWith("Pomatomus saltatrix")).toBe(true);
 	expect(description).toContain("Lüfer");
 	expect(description).toContain("A pelagic predator.");
+});
+
+test("selectRegionList counts every region and sorts by label", () => {
+	expect(selectRegionList(data)).toEqual([
+		{ id: "greek", name: "Greece", count: 1 },
+		{ id: "turkey", name: "Turkey", count: 2 },
+	]);
+});
+
+test("selectRegionPage returns every name of the region and nothing else", () => {
+	const page = selectRegionPage(data, "turkey");
+	expect(page?.name).toBe("Turkey");
+	expect(page?.names.map((n) => n.name)).toEqual(["Levrek", "Lüfer"]);
+	// Only the columns the table renders — the etymology stays out of the HTML.
+	expect(page?.names[0]).not.toHaveProperty("etymology");
+	expect(selectRegionPage(data, "atlantis")).toBeNull();
+});
+
+test("region meta front-loads the region and counts its names", () => {
+	const page = selectRegionPage(data, "turkey");
+	if (!page) throw new Error("expected a page");
+	const { title, description } = regionPageMeta(page);
+	expect(title).toBe("Turkey — fish names and etymology | LinkedFin");
+	expect(description).toContain("2 fish names from Turkey");
+	expect(description).toContain("Levrek");
+
+	const single = selectRegionPage(data, "greek");
+	if (!single) throw new Error("expected a page");
+	expect(regionPageMeta(single).description).toContain(
+		"1 fish name from Greece",
+	);
 });
 
 test("truncate cuts on a word boundary and collapses whitespace", () => {

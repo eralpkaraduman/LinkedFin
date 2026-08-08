@@ -69,6 +69,12 @@ interface NameSpeciesRow {
 	name: string;
 }
 
+interface RegionRow {
+	id: string;
+	name: string;
+	name_count: number;
+}
+
 const names: NameRow[] = db
 	.prepare(
 		"SELECT n.id, n.name, n.lang, n.etymology, n.transliteration, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id",
@@ -84,6 +90,21 @@ const namesBySpecies: NameSpeciesRow[] = db
 	.all() as NameSpeciesRow[];
 
 /**
+ * Regions that actually have names. An INNER JOIN, deliberately: an empty
+ * region would otherwise get a prerendered page, a sitemap entry and an
+ * indexable URL listing nothing at all.
+ */
+const regions: RegionRow[] = db
+	.prepare(
+		`SELECT regions.id, regions.name, COUNT(names.id) AS name_count
+		 FROM regions
+		 JOIN names ON names.region_id = regions.id
+		 GROUP BY regions.id, regions.name
+		 ORDER BY regions.name`,
+	)
+	.all() as RegionRow[];
+
+/**
  * The same projection `initDatabase()` builds in the browser: the identical
  * columns, the identical join, the identical `ORDER BY names.name` (SQLite's
  * BINARY collation both here and in sqlite-wasm, so the row order matches).
@@ -94,7 +115,7 @@ const fishNames = db
 		`SELECT names.id, names.name, names.lang, names.transliteration,
 		        names.phonetic, names.etymology, names.measurement_unit,
 		        names.measurement_min, names.measurement_max, names.species_id,
-		        regions.name AS region, species.scientific_name,
+		        names.region_id, regions.name AS region, species.scientific_name,
 		        species.notes AS species_notes
 		 FROM names
 		 JOIN species ON species.id = names.species_id
@@ -143,10 +164,15 @@ for (const row of namesBySpecies) {
 	namesBySpeciesId[row.species_id].push(row.name);
 }
 
-const data = { namesById, speciesById, namesBySpeciesId };
+const regionsById: Record<string, { name: string; name_count: number }> = {};
+for (const r of regions) {
+	regionsById[r.id] = { name: r.name, name_count: r.name_count };
+}
+
+const data = { namesById, speciesById, namesBySpeciesId, regionsById };
 writeFileSync(OUT_PATH, JSON.stringify(data));
 console.log(
-	`Generated ${OUT_PATH} (${names.length} names, ${species.length} species)`,
+	`Generated ${OUT_PATH} (${names.length} names, ${species.length} species, ${regions.length} regions)`,
 );
 
 /**
@@ -163,6 +189,7 @@ const sitemapPaths = [
 	...STATIC_PATHS,
 	...names.map((n) => `/name/${n.id}`),
 	...species.map((s) => `/species/${s.id}`),
+	...regions.map((r) => `/region/${r.id}`),
 ];
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

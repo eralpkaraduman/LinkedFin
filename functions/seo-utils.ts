@@ -8,7 +8,12 @@
 /** Routes that exist independently of the database. */
 const STATIC_ROUTES = new Set(["/", "/about"]);
 
-const DETAIL_ROUTE = /^\/(?:name|species)\/[^/]+$/;
+/**
+ * Database-backed routes. `/region/:id` belongs here too — its pages are
+ * prerendered and in the sitemap, and leaving it out would have served all 23
+ * of them `noindex, follow` while looking perfectly healthy.
+ */
+const DETAIL_ROUTE = /^\/(?:name|species|region)\/[^/]+$/;
 
 /**
  * Normalize a pathname for comparison and canonicalisation.
@@ -31,7 +36,8 @@ export function normalizePath(pathname: string): string {
  * classified as soft 404s. Only the static routes and detail pages whose id
  * actually resolves are indexable.
  *
- * @param entryResolved whether the id in a /name/ or /species/ path was found
+ * @param entryResolved whether the id in a /name/, /species/ or /region/ path
+ *   was found
  */
 export function isIndexable(pathname: string, entryResolved: boolean): boolean {
 	const path = normalizePath(pathname);
