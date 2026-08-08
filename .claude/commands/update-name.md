@@ -53,7 +53,7 @@ A name ID (nm_XXXX), name text, or search term to find the entry to update.
 
 8. **Validate**:
    ```bash
-   pnpm db:verify
+   pnpm db:validate
    ```
 
 9. **Report** what changed (before → after) for each modified field.
