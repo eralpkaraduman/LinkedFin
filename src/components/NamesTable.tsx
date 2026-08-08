@@ -1,4 +1,4 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
 	createColumnHelper,
 	createPaginatedRowModel,
@@ -100,15 +100,17 @@ const columns = columnHelper.columns([
 		header: "Name",
 		sortFn: "text",
 		cell: (info) => (
-			// The row's link. The `after:` overlay stretches it across the whole
-			// row so the entire row stays clickable, without nesting interactive
-			// elements inside the other `<td>`s (and without the invalid
-			// `<a><tr></tr></a>` markup that would otherwise be required).
+			// The row's real link: what crawlers follow, what the keyboard focuses,
+			// and what cmd-click opens. Clicking elsewhere in the row is handled by
+			// the row's own onClick — this used to be a stretched `after:absolute`
+			// overlay, but WebKit ignores `position: relative` on `<tr>`, so in
+			// Safari every overlay sized itself against the scroll container and
+			// the last row's covered the whole table.
 			// The name is in the entry's own language, not the page's.
 			<Link
 				to="/name/$id"
 				params={{ id: info.row.original.id }}
-				className="font-medium after:absolute after:inset-0 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				className="font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 				lang={toBcp47(info.row.original.lang)}
 				dir="auto"
 			>
@@ -145,11 +147,11 @@ export interface NamesTableProps {
 	randomSeed: number;
 	onShuffle: () => void;
 	/**
-	 * Called when a row is activated (click, or Enter on the row's link).
-	 * Navigation is **not** its job any more: each row's name cell is a real
-	 * `<Link to="/name/$id">`, so the router handles that — and must, for
-	 * middle-click and open-in-new-tab to work. What is left here is the
-	 * side effect that the link cannot express: the analytics event.
+	 * Called when a row is activated (click anywhere in it, or Enter on its
+	 * link). Navigation is not its job: the name cell's real
+	 * `<Link to="/name/$id">` handles activation from the link itself, and the
+	 * row's own handler covers the rest of the row. What is left here is the
+	 * side effect neither can express: the analytics event.
 	 */
 	onRowSelect: (item: NameTableRow) => void;
 	/** When provided, a "Clear" button is shown in the toolbar. */
@@ -183,6 +185,40 @@ export function NamesTable({
 }: NamesTableProps) {
 	const [internalSorting, setInternalSorting] = useState<SortingState>([]);
 	const [internalPageIndex, setInternalPageIndex] = useState(0);
+	const navigate = useNavigate();
+
+	/**
+	 * Makes the whole row activate the name link.
+	 *
+	 * Done in JS rather than by stretching the link across the row with an
+	 * absolutely positioned `::after`: that needs the `<tr>` to be a containing
+	 * block, and WebKit ignores `position: relative` on table rows. The overlays
+	 * then resolved against the `relative` scroll container in `ui/table.tsx`,
+	 * so on Safari all of them covered the entire table and the last row's won
+	 * every click.
+	 */
+	function onRowActivate(
+		event: React.MouseEvent<HTMLTableRowElement>,
+		item: NameTableRow,
+	) {
+		onRowSelect(item);
+
+		// The name cell holds the real <a>. Let it handle its own activation —
+		// including keyboard Enter, which dispatches a click that bubbles here.
+		if ((event.target as HTMLElement).closest("a")) return;
+
+		const href = `/name/${item.id}`;
+		if (
+			event.button === 1 ||
+			event.metaKey ||
+			event.ctrlKey ||
+			event.shiftKey
+		) {
+			window.open(href, "_blank", "noopener");
+			return;
+		}
+		navigate({ to: "/name/$id", params: { id: item.id } });
+	}
 
 	// Paging and sorting are controlled when the parent supplies both the value
 	// and its setter; otherwise the table keeps the state itself.
@@ -431,14 +467,13 @@ export function NamesTable({
 							rows.map((row) => (
 								<TableRow
 									key={row.id}
-									// `relative` makes the row the containing block for the
-									// name link's stretched `::after`; without it the overlay
-									// would size itself against the table container.
-									className="relative cursor-pointer"
-									// Notification only — the link in the name cell performs
-									// the navigation, including for keyboard Enter (which
-									// dispatches a click that bubbles to here).
-									onClick={() => onRowSelect(row.original)}
+									className="cursor-pointer"
+									onClick={(event) => onRowActivate(event, row.original)}
+									// Middle-click anywhere in the row opens a new tab, which
+									// the old stretched overlay gave us for free.
+									onAuxClick={(event) => {
+										if (event.button === 1) onRowActivate(event, row.original);
+									}}
 								>
 									{row.getAllCells().map((cell) => (
 										<TableCell

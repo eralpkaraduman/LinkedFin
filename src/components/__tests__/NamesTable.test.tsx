@@ -467,14 +467,35 @@ describe("rows", () => {
 
 		const link = screen.getByRole("link", { name: "Name 0001" });
 		expect(link).toHaveAttribute("href", "/name/nm_0001");
-		// Stretched over the row, so the whole row is still clickable without
-		// putting interactive elements in the other cells.
-		expect(link.className).toContain("after:inset-0");
 		expect(
 			document.querySelectorAll(
 				"[data-slot='table-body'] [data-slot='table-row'] a[href^='/name/']",
 			),
 		).toHaveLength(25);
+	});
+
+	/**
+	 * Regression: the row used to be made clickable by stretching the name
+	 * link across it with an absolutely positioned `::after`. That needs the
+	 * `<tr>` to be a containing block, which WebKit does not honour, so every
+	 * overlay resolved against the `relative` scroll container instead — on
+	 * Safari all of them covered the whole table and the last row's, being
+	 * last in paint order, swallowed every click. Clicking any cell of any row
+	 * has to reach that row's own detail page.
+	 */
+	test("clicking a non-link cell opens that row, not the last one", async () => {
+		const user = userEvent.setup();
+		const { router } = renderTable();
+		await user.click(await screen.findByRole("button", { name: /^Name/ }));
+
+		const thirdRow = document.querySelectorAll(
+			"[data-slot='table-body'] [data-slot='table-row']",
+		)[2] as HTMLElement;
+		const plainCell = within(thirdRow).getByText("Translit 0003");
+
+		await user.click(plainCell);
+
+		expect(router.state.location.pathname).toBe("/name/nm_0003");
 	});
 
 	test("Tab reaches a row link and Enter activates it", async () => {

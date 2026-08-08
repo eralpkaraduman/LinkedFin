@@ -47,20 +47,35 @@ export function renderWithProviders(
 		path: "/",
 		component: () => ui,
 	});
+	/**
+	 * A stub for the detail route. Components under test link and navigate to
+	 * `/name/$id`, and without a matching route those navigations cannot be
+	 * asserted — the router would resolve them to a not-found match instead of
+	 * settling on the path.
+	 */
+	const nameRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "/name/$id",
+		component: () => null,
+	});
 	const router = createRouter({
-		routeTree: rootRoute.addChildren([testRoute]),
+		routeTree: rootRoute.addChildren([testRoute, nameRoute]),
 		history: createMemoryHistory({ initialEntries: [initialPath] }),
 	});
 
 	const dbValue: DatabaseContextValue = { ...defaultDb, ...database };
 
-	return render(
-		<QueryClientProvider client={queryClient}>
-			<DatabaseContext.Provider value={dbValue}>
-				{/* biome-ignore lint/suspicious/noExplicitAny: test router type */}
-				<RouterProvider router={router as any} />
-			</DatabaseContext.Provider>
-		</QueryClientProvider>,
-		options,
-	);
+	return {
+		...render(
+			<QueryClientProvider client={queryClient}>
+				<DatabaseContext.Provider value={dbValue}>
+					{/* biome-ignore lint/suspicious/noExplicitAny: test router type */}
+					<RouterProvider router={router as any} />
+				</DatabaseContext.Provider>
+			</QueryClientProvider>,
+			options,
+		),
+		/** Exposed so tests can assert where a click actually navigated. */
+		router,
+	};
 }
