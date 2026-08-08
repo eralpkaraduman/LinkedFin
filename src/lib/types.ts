@@ -6,8 +6,14 @@ import type { NameRelations, Names } from "../db/types";
  *   name from the JOIN alongside it
  * - Adds fields from species JOIN
  * - Adds computed language display name
+ *
+ * `updated_at` is deliberately omitted. Nothing in the UI renders it, and every
+ * FishName is dehydrated into prerendered HTML — /region/international carries
+ * 108 of them — so an unused column is pure payload. The build-time consumers
+ * that do need it (sitemap lastmod) query the database directly in
+ * maintenance/scripts rather than going through this type.
  */
-export interface FishName extends Names {
+export interface FishName extends Omit<Names, "updated_at"> {
 	region: string; // from regions.name (JOIN)
 	scientific_name: string; // from species.scientific_name (JOIN)
 	species_notes?: string | null; // from species.notes (JOIN)
