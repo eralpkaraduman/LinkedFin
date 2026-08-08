@@ -58,7 +58,7 @@ A Wikipedia URL (any language) or fish name to research.
 
 9. **Validate**:
    ```bash
-   pnpm db:copy && pnpm db:validate
+   pnpm db:validate
    ```
 
 10. **Report** all added entries with IDs.

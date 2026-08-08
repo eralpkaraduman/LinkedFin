@@ -31,7 +31,7 @@ $ARGUMENTS
 
 5. **Run validation**:
    ```bash
-   pnpm db:copy && pnpm db:validate
+   pnpm db:validate
    ```
 
 6. **Apply quality control** (see Quality Control section below).

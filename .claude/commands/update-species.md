@@ -51,7 +51,7 @@ A species ID (sp_XXX), scientific name, or search term.
 
 8. **Validate**:
    ```bash
-   pnpm db:copy && pnpm db:verify
+   pnpm db:verify
    ```
 
 9. **Report** what changed (before → after).

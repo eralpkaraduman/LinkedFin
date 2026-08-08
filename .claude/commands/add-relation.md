@@ -50,7 +50,7 @@ $ARGUMENTS
 
 7. **Run validation**:
    ```bash
-   pnpm db:copy && pnpm db:validate
+   pnpm db:validate
    ```
 
 8. **Apply quality control** (see Quality Control section below).
