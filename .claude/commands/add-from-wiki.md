@@ -51,10 +51,19 @@ A Wikipedia URL (any language) or fish name to research.
    SELECT 'nm_' || printf('%04d', MAX(CAST(SUBSTR(id, 4) AS INTEGER)) + 1) FROM names;
    ```
 
+   This command has no INSERT of its own — species come from `/add-species` (step 5) and
+   names follow the same insert shape as `/add-name`, including stamping `updated_at` with
+   `strftime('%Y-%m-%dT%H:%M:%SZ', 'now')` on every row. See those commands for the exact
+   columns and the stamping rule; do not omit `updated_at` just because this command
+   doesn't spell out the INSERT itself.
+
 8. **Add relations** between names:
    - Same species, different languages: `alternate_of`
    - Borrowed words: `borrowed_from`
    - Dialectal variants: `alternate_of`
+
+   Use `/add-relation` for this — it also stamps `updated_at` on both endpoint names,
+   which a bare `INSERT INTO name_relations` here would not do.
 
 9. **Validate**:
    ```bash

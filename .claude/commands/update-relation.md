@@ -32,11 +32,14 @@ Source ID, target ID, and relation type to identify the relation; or a name/ID t
 
 4. **Apply quality control** (see Quality Control section below).
 
-5. **Execute the change**:
+5. **Execute the change, then stamp both endpoint names' `updated_at` — every path below ends with the same `UPDATE names` line**:
    ```sql
    -- Update notes
    UPDATE name_relations SET notes = 'new notes'
    WHERE source_id = 'nm_XXXX' AND target_id = 'nm_YYYY' AND relation = 'type';
+
+   UPDATE names SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+   WHERE id IN ('nm_XXXX', 'nm_YYYY');
 
    -- Change type (delete + re-insert)
    DELETE FROM name_relations
@@ -45,10 +48,22 @@ Source ID, target ID, and relation type to identify the relation; or a name/ID t
    INSERT INTO name_relations (source_id, target_id, relation, notes)
    VALUES ('nm_XXXX', 'nm_YYYY', 'new_type', 'notes');
 
+   UPDATE names SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+   WHERE id IN ('nm_XXXX', 'nm_YYYY');
+
    -- Delete
    DELETE FROM name_relations
    WHERE source_id = 'nm_XXXX' AND target_id = 'nm_YYYY' AND relation = 'type';
+
+   UPDATE names SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+   WHERE id IN ('nm_XXXX', 'nm_YYYY');
    ```
+
+   `name_relations` has no `updated_at` column of its own (by design — see AGENTS.md
+   Schema Reference). Every one of the three actions above — note edit, type change, or
+   delete — changes what renders on both endpoints' `/name/$id` pages, so every path
+   must stamp both `names` rows. Do not skip the `UPDATE names` after a delete: removing
+   a relation changes the page just as much as adding one.
 
 6. **Validate**:
    ```bash

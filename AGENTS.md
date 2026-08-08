@@ -88,6 +88,13 @@ pnpm db:validate
 
 **Important:** Always regenerate types after schema changes to keep TypeScript in sync with the database.
 
+**A plain data edit through one of the `/add-*` or `/update-*` commands is not a schema
+change** — it does not add or rename a column, so it does not need `pnpm db:types`. It
+only needs step 3: `pnpm db:validate` after the SQL runs, which is what each command's
+own "Validate" step already calls. The three-step sequence above is for the rarer case of
+changing the schema itself (e.g. the migration that added `updated_at` in commit `fdf22ce`),
+not for routine name/species/relation edits.
+
 ---
 
 ## Schema Reference
@@ -95,13 +102,14 @@ pnpm db:validate
 Authoritative as of the current `public/fish.db` (`PRAGMA table_info`). Verify with
 `sqlite3 public/fish.db ".schema"` before writing SQL — this document can drift.
 
-**`species`** — three columns. There is **no `family` and no `habitat` column.**
+**`species`** — four columns. There is **no `family` and no `habitat` column.**
 
 | Column | Type | Null? |
 |--------|------|-------|
 | `id` | TEXT | NOT NULL, PK (`sp_XXX`) |
 | `scientific_name` | TEXT | NOT NULL, UNIQUE |
 | `notes` | TEXT | nullable |
+| `updated_at` | TEXT | nullable, ISO 8601 UTC |
 
 **`names`** — there is **no `notes` column.** (`species_notes` in `src/lib/types.ts` is a JOIN alias for `species.notes`, not a stored column.)
 
@@ -118,6 +126,25 @@ Authoritative as of the current `public/fish.db` (`PRAGMA table_info`). Verify w
 | `measurement_unit` | TEXT | nullable |
 | `measurement_min` | REAL | nullable |
 | `measurement_max` | REAL | nullable |
+| `updated_at` | TEXT | nullable, ISO 8601 UTC |
+
+**`updated_at` (both tables):** stamped by every `/add-*` and `/update-*` command via
+`strftime('%Y-%m-%dT%H:%M:%SZ', 'now')` — see the SQL in `add-name.md`, `update-name.md`,
+`add-species.md`, `update-species.md`, `add-relation.md` and `update-relation.md`. It is
+nullable only because rows written before commit `fdf22ce` have no value; every row
+written from here on must set it. `pnpm db:validate` checks that populated values parse
+as ISO 8601 and are not in the future.
+
+**`regions` and `name_relations` have no `updated_at`, by design:**
+- `regions` has no per-row timestamp because a region's own two columns (`id`, `name`)
+  essentially never change; its meaningful "freshness" is derived — take `MAX(updated_at)`
+  over the names in that region — not stored.
+- `name_relations` has no `updated_at` because a relation edit (add, retype, delete) is
+  defined to stamp **both endpoint `names` rows** instead (source_id and target_id). A
+  relation only ever renders on the two `/name/$id` pages it connects, so that's where
+  the freshness signal belongs. Do not add an `updated_at` column to either table to "fix"
+  this — it would be redundant with the derivation/stamping rule above, not a correction
+  of a gap.
 
 **`regions`** — two columns. There is **no `name_local`, `language`, `parent_region` or `notes` column.**
 

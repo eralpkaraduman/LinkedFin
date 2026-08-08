@@ -42,11 +42,20 @@ $ARGUMENTS
    WHERE source_id = 'nm_XXXX' AND target_id = 'nm_YYYY' AND relation = 'type';
    ```
 
-6. **Insert the relation**:
+6. **Insert the relation, then stamp both endpoint names' `updated_at`**:
    ```sql
    INSERT INTO name_relations (source_id, target_id, relation, notes)
    VALUES ('nm_XXXX', 'nm_YYYY', 'relation_type', 'notes');
+
+   UPDATE names SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+   WHERE id IN ('nm_XXXX', 'nm_YYYY');
    ```
+
+   `name_relations` itself has no `updated_at` column (by design — see AGENTS.md Schema
+   Reference). A relation renders on both endpoints' `/name/$id` pages, so adding one
+   changes what those pages show even though neither `names` row was otherwise touched.
+   The `UPDATE names ... WHERE id IN (...)` above is required, not optional — it is what
+   keeps both pages' timestamps truthful.
 
 7. **Run validation**:
    ```bash
