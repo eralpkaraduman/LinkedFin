@@ -52,7 +52,7 @@ Source ID, target ID, and relation type to identify the relation; or a name/ID t
 
 6. **Validate**:
    ```bash
-   pnpm db:copy && pnpm db:verify
+   pnpm db:verify
    ```
 
 7. **Report** the change.

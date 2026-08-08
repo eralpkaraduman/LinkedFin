@@ -61,13 +61,16 @@ $ARGUMENTS
 
 8. **Insert the name**:
    ```sql
-   INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic, notes)
-   VALUES ('nm_XXXX', 'Name', 'sp_XXX', 'region', 'lang', 'etymology', 'transliteration', '/IPA/', 'notes');
+   INSERT INTO names (id, name, species_id, region_id, lang, etymology, transliteration, phonetic)
+   VALUES ('nm_XXXX', 'Name', 'sp_XXX', 'region', 'lang', 'etymology', 'transliteration', '/IPA/');
    ```
+
+   `measurement_unit`, `measurement_min` and `measurement_max` are optional and nullable
+   (size/length data) — leave them out unless you have that data.
 
 9. **Run validation**:
    ```bash
-   pnpm db:copy && pnpm db:validate
+   pnpm db:validate
    ```
 
 10. **Apply quality control** (see Quality Control section below).
