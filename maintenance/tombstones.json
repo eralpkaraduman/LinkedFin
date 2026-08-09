@@ -1,0 +1,8 @@
+{
+  "//": "URLs of records deleted from the database. verify-deployed.ts asserts each one 404s in production.",
+  "//why": "Deleting a record removes it from the DB, the build and the sitemap — but the page can keep serving from an edge or asset-store cache, and nothing in verify-build.ts or db:validate can see that, because both inspect the build rather than the deployed site. nm_0438 did exactly this and survived three cache purges.",
+  "//howto": "When deleting a name or species, add its path here in the same commit.",
+  "paths": [
+    "/name/nm_0438"
+  ]
+}
