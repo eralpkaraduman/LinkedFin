@@ -14,7 +14,7 @@ import {
 	sanitize,
 	truncate,
 } from "./og-utils.ts";
-import { isIndexable, normalizePath } from "./seo-utils.ts";
+import { isIndexable, normalizePath, shouldServeGone } from "./seo-utils.ts";
 
 const namesById = data.namesById as Record<
 	string,
@@ -29,6 +29,47 @@ const regionsById = data.regionsById as Record<
 	string,
 	(typeof data.regionsById)[keyof typeof data.regionsById]
 >;
+
+/**
+ * Sizes of the lookup tables, measured once at module init rather than per
+ * request — `Object.keys()` on 512 names is not something to do on every hit.
+ * These feed the guard in `shouldServeGone`; see that function for why an empty
+ * table must never be treated as "nothing exists".
+ */
+const NAME_COUNT = Object.keys(namesById).length;
+const SPECIES_COUNT = Object.keys(speciesById).length;
+const REGION_COUNT = Object.keys(regionsById).length;
+
+/** Cache-Control used for every HTML response, including the 404 body below. */
+const HTML_CACHE_CONTROL = "public, max-age=0, must-revalidate";
+
+/**
+ * A minimal, self-contained 404. Deliberately not a fetch of the site's own 404
+ * page: `next()` has already been consumed by the time we get here, and an
+ * extra edge fetch would be a new way for this path to fail.
+ */
+function goneResponse(): Response {
+	return new Response(
+		`<!doctype html><html lang="en"><head><meta charset="utf-8" />` +
+			`<meta name="viewport" content="width=device-width, initial-scale=1" />` +
+			`<meta name="robots" content="noindex" />` +
+			`<title>Not found — LinkedFin</title></head>` +
+			`<body><h1>Not found</h1>` +
+			`<p>This page no longer exists.</p>` +
+			`<p><a href="/">Go to the LinkedFin home page</a></p>` +
+			`</body></html>`,
+		{
+			status: 404,
+			headers: {
+				"content-type": "text/html; charset=utf-8",
+				// Same revalidate-always policy as every other HTML response, so
+				// the 404 itself cannot get pinned in a cache the way the page it
+				// replaces did.
+				"Cache-Control": HTML_CACHE_CONTROL,
+			},
+		},
+	);
+}
 
 function escapeHtml(str: string): string {
 	return String(str)
@@ -165,6 +206,26 @@ export async function onRequest(
 		console.error("OG lookup error:", e);
 	}
 
+	/**
+	 * A detail page that came back 200 for an id we cannot resolve is a deleted
+	 * record still being served from a stale asset — turn it into a real 404
+	 * before spending any work on meta for a page we are about to discard.
+	 * `tableSize` is 0 for anything that is not one of the three detail routes,
+	 * which the guard reads as "do nothing".
+	 */
+	const tableSize = nameMatch
+		? NAME_COUNT
+		: speciesMatch
+			? SPECIES_COUNT
+			: regionMatch
+				? REGION_COUNT
+				: 0;
+	if (
+		shouldServeGone(url.pathname, response.status, pageMeta !== null, tableSize)
+	) {
+		return goneResponse();
+	}
+
 	const ogTitle = pageMeta?.ogTitle ?? GENERIC_META.title;
 	const ogDescription = pageMeta?.ogDescription ?? GENERIC_META.description;
 
@@ -211,6 +272,6 @@ export async function onRequest(
 	const cached = new Response(rewritten.body, rewritten);
 	// HTML must revalidate on every visit so users always get the latest
 	// asset references after deployments.
-	cached.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+	cached.headers.set("Cache-Control", HTML_CACHE_CONTROL);
 	return cached;
 }
