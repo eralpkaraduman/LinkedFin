@@ -67,9 +67,21 @@ const LATIN = /[A-Za-z]/;
  * "From <language> <word>" lines must gloss the word. Anchored on an explicit
  * language/period name so descriptive lines ("From the legend that ...") do not
  * trip the check.
+ *
+ * Prefixes are chainable (zero or more, TREK-571) so two-word periods like
+ * "Old High German" or "Middle Low German" are recognised, not just a single
+ * modifier immediately before the base language name. The prefix and base
+ * lists were derived empirically from every "From X" / "Borrowed from X" /
+ * "Via X" clause in the corpus (see TREK-571 for the full diff against what
+ * was recognised before).
  */
-const FROM_LINE =
-	/^(?:↳\s*)?(?:From|from|Calque from|Borrowed from|Inherited from|Via|via)\s+((?:Ancient|Middle|Old|Modern|Proto-|Vulgar|Medieval|Late|Low|High|Byzantine|Standard)?[- ]?(?:Greek|Latin|Norse|Dutch|German|English|French|Occitan|Italian|Ligurian|Venetian|Spanish|Portuguese|Persian|Arabic|Turkish|Swedish|Danish|Norwegian|Finnish|Estonian|Sami|Polish|Slavic|Germanic|Finnic|Frankish|Saxon|Celtic|Irish|Tupi|Basque|Indo-European|Finno-Ugric|Romance)\b.*)$/;
+const LANG_PREFIX =
+	"(?:Ancient|Middle|Old|Modern|Proto-|Vulgar|Medieval|Late|Low|High|Byzantine|Standard|Koine|Hellenistic|Ottoman|Egyptian|Anglo)";
+const LANG_BASE =
+	"(?:Greek|Latin|Norse|Dutch|German|English|French|Occitan|Italian|Ligurian|Venetian|Spanish|Portuguese|Persian|Arabic|Turkish|Swedish|Danish|Norwegian|Finnish|Estonian|Sami|Polish|Slavic|Germanic|Finnic|Frankish|Saxon|Celtic|Irish|Tupi|Basque|Indo-European|Finno-Ugric|Romance|Provençal|Russian|Coptic|Aramaic|Uralic|Laz)";
+const FROM_LINE = new RegExp(
+	`^(?:↳\\s*)?(?:From|from|Calque from|Borrowed from|Inherited from|Via|via)\\s+((?:${LANG_PREFIX}[- ]?)*${LANG_BASE}\\b.*)$`,
+);
 
 /**
  * `names.lang` -> the language name(s) a "From <language> ..." clause uses
@@ -206,12 +218,14 @@ export function auditName(row: NameRow): Finding[] {
 	if (lines.some((l) => l !== l.trimEnd())) add("whitespace", "trailing whitespace on a line");
 
 	// --- rule 2: compound format ---
-	const compoundIdx = lines.findIndex((l) => /^Compound:/.test(l.trim()));
+	// Matches a leading "↳ " too (TREK-571) — a compound introduced under an
+	// arrow, mid-derivation, was previously invisible to this check entirely.
+	const compoundIdx = lines.findIndex((l) => /^(?:↳\s*)?Compound:/.test(l.trim()));
 	if (compoundIdx !== -1) {
 		const head = lines[compoundIdx].trim();
 		if (!head.includes("+")) add("compound-head", `"Compound:" line has no "+": ${head}`);
 		const parts = head
-			.replace(/^Compound:\s*/, "")
+			.replace(/^(?:↳\s*)?Compound:\s*/, "")
 			.split("+")
 			.map((p) => p.trim())
 			.filter(Boolean);
