@@ -71,6 +71,98 @@ const LATIN = /[A-Za-z]/;
 const FROM_LINE =
 	/^(?:↳\s*)?(?:From|from|Calque from|Borrowed from|Inherited from|Via|via)\s+((?:Ancient|Middle|Old|Modern|Proto-|Vulgar|Medieval|Late|Low|High|Byzantine|Standard)?[- ]?(?:Greek|Latin|Norse|Dutch|German|English|French|Occitan|Italian|Ligurian|Venetian|Spanish|Portuguese|Persian|Arabic|Turkish|Swedish|Danish|Norwegian|Finnish|Estonian|Sami|Polish|Slavic|Germanic|Finnic|Frankish|Saxon|Celtic|Irish|Tupi|Basque|Indo-European|Finno-Ugric|Romance)\b.*)$/;
 
+/**
+ * `names.lang` -> the language name(s) a "From <language> ..." clause uses
+ * to name that same language. `grc` records are written either
+ * "From Ancient Greek ..." or, occasionally, plain "From Greek ..." — both
+ * refer to the record's own language.
+ */
+const OWN_LANGUAGE_NAMES: Record<string, string[]> = {
+	tur: ["Turkish"],
+	ell: ["Greek"],
+	eng: ["English"],
+	swe: ["Swedish"],
+	fin: ["Finnish"],
+	ita: ["Italian"],
+	fra: ["French"],
+	arb: ["Arabic"],
+	arz: ["Arabic"],
+	apc: ["Arabic"],
+	est: ["Estonian"],
+	grc: ["Ancient Greek", "Greek"],
+	deu: ["German"],
+	nld: ["Dutch"],
+	nor: ["Norwegian"],
+	spa: ["Spanish"],
+	dan: ["Danish"],
+	pol: ["Polish"],
+	fas: ["Persian"],
+	sme: ["Sami"],
+	vec: ["Venetian"],
+};
+
+/**
+ * Fish/creature vocabulary (TREK-567). When the gloss on a same-language
+ * "From X ..." line is one of these, the etymology restates the headword
+ * instead of explaining it — a dead end, not a derivation. Matched as a
+ * case-insensitive substring so compounds like "dreamfish" or "cod-like
+ * fish" are caught via "fish".
+ */
+const FISH_GLOSS_WORDS = [
+	"fish",
+	"sea bream",
+	"seabream",
+	"bream",
+	"mackerel",
+	"ray",
+	"skate",
+	"lobster",
+	"crayfish",
+	"shrimp",
+	"prawn",
+	"mullet",
+	"bass",
+	"tuna",
+	"bonito",
+	"anchovy",
+	"sardine",
+	"pilchard",
+	"crab",
+	"squid",
+	"cuttlefish",
+	"octopus",
+	"eel",
+	"sole",
+	"perch",
+	"carp",
+	"trout",
+	"salmon",
+	"herring",
+	"whitefish",
+	"pike",
+	"grouper",
+	"dentex",
+	"scorpionfish",
+	"goby",
+	"shad",
+	"sprat",
+	"turbot",
+	"flounder",
+	"halibut",
+	"crustacean",
+	"mollusc",
+	"mollusk",
+	"bivalve",
+	"oyster",
+	"mussel",
+];
+
+/** Matches any FISH_GLOSS_WORDS entry as a substring, case-insensitively. */
+const FISH_GLOSS_PATTERN = new RegExp(
+	FISH_GLOSS_WORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"),
+	"i",
+);
+
 export function auditName(row: NameRow): Finding[] {
 	const findings: Finding[] = [];
 	const add = (rule: string, detail: string) => findings.push({ id: row.id, rule, detail });
@@ -142,6 +234,26 @@ export function auditName(row: NameRow): Finding[] {
 		if (!m) continue;
 		if (!/\(/.test(line) && !/(origin uncertain|unknown|uncertain)/i.test(line)) {
 			add("missing-gloss", `no (meaning) on: ${line}`);
+		}
+	}
+
+	// --- circular etymology: same-language etymon with a fish/creature gloss
+	// and no ↳ continuation (TREK-567). The naive "same-language etymon" test
+	// alone is wrong — plenty of good semantic etymologies name a fish after
+	// an ordinary word (e.g. "From Turkish yaprak (leaf)"). The discriminator
+	// is whether the gloss itself just names a fish/creature: that restates
+	// the headword instead of explaining it.
+	{
+		const ownNames = OWN_LANGUAGE_NAMES[row.lang];
+		const first = (lines[0] ?? "").trim();
+		if (ownNames && !ety.includes("↳")) {
+			const langAlt = ownNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+			const ownLangFromLine = new RegExp(`^(?:From|Borrowed from|Via)\\s+(?:${langAlt})\\b`);
+			if (ownLangFromLine.test(first)) {
+				const glossMatch = first.match(/\(([^)]*)\)/);
+				if (glossMatch && FISH_GLOSS_PATTERN.test(glossMatch[1]))
+					add("circular-etymology", `gloss just names a fish/creature: ${first}`);
+			}
 		}
 	}
 
