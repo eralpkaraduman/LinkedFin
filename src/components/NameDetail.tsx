@@ -155,9 +155,9 @@ export function NameDetail({
 			{/* Size progression chain */}
 			{sizeChain.length > 1 && (
 				<div className="space-y-3">
-					<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+					<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Progression
-					</h3>
+					</h2>
 					<div className="flex flex-wrap items-center gap-2">
 						{sizeChain.map((id, i) => {
 							const n = getNameById(id);
@@ -359,9 +359,9 @@ export function NameDetail({
 			{/* Same species, different names */}
 			{sameSpecies.length > 1 && (
 				<div className="space-y-3">
-					<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+					<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Same species, different names
-					</h3>
+					</h2>
 					<div className="flex flex-wrap gap-2">
 						{sameSpecies.map((n) => (
 							<NameCard

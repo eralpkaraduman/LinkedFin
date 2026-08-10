@@ -6,6 +6,8 @@
  * - `functions/og-data.json` — lookup tables for the Pages Functions middleware
  *   and the OG image endpoint (replaces the runtime D1 dependency).
  * - `public/sitemap.xml` — every indexable URL.
+ * - `public/llms.txt` — a plain-text description of the dataset for language
+ *   models and agents, with counts read from the database.
  * - `.generated/fish-data.json` — the whole dataset in the shape the app's
  *   `FishName`/`Relation` types describe. Vite inlines this into the *server*
  *   bundle only (see the `virtual:fish-data` plugin in vite.config.ts) so route
@@ -40,6 +42,7 @@ const ROOT = resolve(import.meta.dirname, "../..");
 const DB_PATH = resolve(ROOT, "public/fish.db");
 const OUT_PATH = resolve(ROOT, "functions/og-data.json");
 const SITEMAP_PATH = resolve(ROOT, "public/sitemap.xml");
+const LLMS_PATH = resolve(ROOT, "public/llms.txt");
 const GENERATED_DIR = resolve(ROOT, ".generated");
 const FISH_DATA_PATH = resolve(GENERATED_DIR, "fish-data.json");
 const PRERENDER_PAGES_PATH = resolve(GENERATED_DIR, "prerender-pages.json");
@@ -288,6 +291,89 @@ ${sitemapEntries
 writeFileSync(SITEMAP_PATH, sitemap);
 console.log(
 	`Generated ${SITEMAP_PATH} (${sitemapEntries.length} URLs, ${sitemapEntries.filter((e) => e.lastmod).length} with lastmod)`,
+);
+
+/**
+ * llms.txt — what this site is, in plain text, for a model or agent that has
+ * fetched one URL and has no idea what the rest of the site holds.
+ *
+ * Every number below is counted from `public/fish.db` on this run rather than
+ * typed in. A hand-written scale ("over 500 names") is wrong the week after it
+ * is written, and a file whose whole job is to be trusted by a reader that
+ * cannot check it is the worst place to let a number go stale.
+ *
+ * Served as a real static file, so `functions/_middleware.ts` — which returns
+ * early on any response that is not `text/html` — leaves it exactly as written.
+ * It is deliberately not listed in `sitemap.xml`: the sitemap is the set of
+ * indexable *pages*, and `verify-build.ts` asserts its URL count matches the
+ * database row count exactly.
+ */
+const languageCount = new Set(names.map((n) => n.lang)).size;
+
+/**
+ * Example ids for the URL shapes. Sorted rather than "the first row": none of
+ * the queries above orders by id, so an unsorted pick would churn the file
+ * whenever SQLite changed its mind about scan order, producing a diff that says
+ * nothing.
+ */
+const firstId = (ids: string[], fallback: string) =>
+	[...ids].sort()[0] ?? fallback;
+const exampleName = firstId(
+	names.map((n) => n.id),
+	"nm_0001",
+);
+const exampleSpecies = firstId(
+	species.map((s) => s.id),
+	"sp_001",
+);
+const exampleRegion = firstId(
+	regions.map((r) => r.id),
+	"international",
+);
+
+const llmsTxt = `# LinkedFin
+
+> An open reference dataset of fish names across languages: what each name
+> means, where it came from, and which names in other languages it was borrowed
+> from or confused with.
+
+Every name carries a full etymology, a Latin-script transliteration and IPA
+phonetics, and is tied to a species (by accepted scientific name) and to the
+region where the name is used. Names are linked to each other by typed
+relations — borrowed_from, alternate_of, confused_with, smaller_than, male_of,
+female_of — so borrowing chains can be followed across languages.
+
+## Scale
+
+- ${names.length} names
+- ${species.length} species
+- ${regions.length} regions
+- ${languageCount} languages (ISO 639-3)
+- ${fishRelations.length} relations between names
+
+## URLs
+
+- ${SITE_ORIGIN}/name/$id — one name: etymology, phonetics, region, language, and its relations (e.g. ${SITE_ORIGIN}/name/${exampleName})
+- ${SITE_ORIGIN}/species/$id — one species: its scientific name and every name recorded for it (e.g. ${SITE_ORIGIN}/species/${exampleSpecies})
+- ${SITE_ORIGIN}/region/$id — one region: every name used there, unpaginated (e.g. ${SITE_ORIGIN}/region/${exampleRegion})
+- ${SITE_ORIGIN}/ — search across names, regions and languages
+- ${SITE_ORIGIN}/about — what the project is and where the data comes from
+
+Every page above is prerendered as static HTML; no JavaScript is needed to read
+one.
+
+## Full index
+
+- ${SITE_ORIGIN}/sitemap.xml — every URL on the site, with last-modified dates
+
+## Source
+
+Source code and data: https://github.com/eralpkaraduman/LinkedFin
+`;
+
+writeFileSync(LLMS_PATH, llmsTxt);
+console.log(
+	`Generated ${LLMS_PATH} (${names.length} names, ${species.length} species, ${regions.length} regions, ${languageCount} languages)`,
 );
 
 /**
