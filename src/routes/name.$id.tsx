@@ -4,9 +4,11 @@ import { NameDetail } from "#/components/NameDetail";
 import { ShareActions } from "#/components/ShareActions";
 import { SpeciesCard } from "#/components/SpeciesCard";
 import { loadFishData } from "#/lib/fishData";
+import { buildHead } from "#/lib/head";
 import { toBcp47 } from "#/lib/language";
-import { namePageMeta, selectNamePage } from "#/lib/pageData";
-import { canonical } from "#/lib/site";
+import { selectNamePage } from "#/lib/pageData";
+import { buildNameJsonLd } from "#/shared/jsonld";
+import { buildNameMeta, GENERIC_META } from "#/shared/pageMeta";
 
 export const Route = createFileRoute("/name/$id")({
 	/**
@@ -29,13 +31,15 @@ export const Route = createFileRoute("/name/$id")({
 	 */
 	staleTime: Number.POSITIVE_INFINITY,
 	head: ({ loaderData, params }) => {
-		const links = [{ rel: "canonical", href: canonical(`/name/${params.id}`) }];
-		if (!loaderData) return { links };
-		const { title, description } = namePageMeta(loaderData);
-		return {
-			meta: [{ title }, { name: "description", content: description }],
-			links,
-		};
+		const path = `/name/${params.id}`;
+		if (!loaderData) {
+			return buildHead({ path, meta: GENERIC_META, indexable: false });
+		}
+		return buildHead({
+			path,
+			meta: buildNameMeta(loaderData.name),
+			jsonLd: buildNameJsonLd(params.id, loaderData.name),
+		});
 	},
 	component: DetailPage,
 });

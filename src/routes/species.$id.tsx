@@ -4,8 +4,14 @@ import { ErrorBoundary } from "#/components/ErrorBoundary";
 import { ShareActions } from "#/components/ShareActions";
 import { SpeciesProfile } from "#/components/SpeciesProfile";
 import { loadFishData } from "#/lib/fishData";
-import { selectSpeciesPage, speciesPageMeta } from "#/lib/pageData";
-import { canonical } from "#/lib/site";
+import { buildHead } from "#/lib/head";
+import { selectSpeciesPage } from "#/lib/pageData";
+import { buildSpeciesJsonLd } from "#/shared/jsonld";
+import {
+	buildSpeciesMeta,
+	GENERIC_META,
+	type SpeciesMetaInput,
+} from "#/shared/pageMeta";
 
 export const Route = createFileRoute("/species/$id")({
 	/** See the sibling comment on `/name/$id` — same isomorphic loader story. */
@@ -13,15 +19,20 @@ export const Route = createFileRoute("/species/$id")({
 		selectSpeciesPage(await loadFishData(), params.id),
 	staleTime: Number.POSITIVE_INFINITY,
 	head: ({ loaderData, params }) => {
-		const links = [
-			{ rel: "canonical", href: canonical(`/species/${params.id}`) },
-		];
-		if (!loaderData) return { links };
-		const { title, description } = speciesPageMeta(loaderData);
-		return {
-			meta: [{ title }, { name: "description", content: description }],
-			links,
+		const path = `/species/${params.id}`;
+		if (!loaderData) {
+			return buildHead({ path, meta: GENERIC_META, indexable: false });
+		}
+		const input: SpeciesMetaInput = {
+			scientificName: loaderData.scientificName,
+			notes: loaderData.notes,
+			names: loaderData.names.map((n) => n.name),
 		};
+		return buildHead({
+			path,
+			meta: buildSpeciesMeta(input),
+			jsonLd: buildSpeciesJsonLd(params.id, input),
+		});
 	},
 	component: SpeciesPage,
 });

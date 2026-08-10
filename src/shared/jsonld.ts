@@ -1,8 +1,16 @@
 /**
- * JSON-LD structured data for the Pages Functions middleware.
+ * JSON-LD structured data.
  *
- * Kept out of _middleware.ts so the builders are unit-testable — the middleware
- * itself depends on the Workers runtime (HTMLRewriter).
+ * Emitted from each route's `head()` and therefore baked into the prerendered
+ * HTML, which is what a crawler fetches. It used to be injected per request by
+ * `functions/_middleware.ts` with HTMLRewriter; that was the only way to reach
+ * the served document before the pages were prerendered, and it is no longer
+ * true.
+ *
+ * The `name`/`description` values come from `pageMeta.ts` rather than being
+ * written again here — a structured-data description that disagreed with the
+ * `<meta>` description on the same page is exactly the drift this refactor is
+ * about.
  *
  * Vocabulary (checked against schema.org, not guessed):
  * - `/name/*`   → DefinedTerm inside a site-wide DefinedTermSet. A fish name is
@@ -18,68 +26,29 @@
  *                 to put this on the homepage only, so that is where it goes.
  *
  * No Wikidata `sameAs` in v1: QIDs are resolved in the browser at runtime, so
- * they do not exist at the edge.
+ * they do not exist at prerender time.
  */
 
+import { toBcp47 } from "./language.ts";
 import {
-	buildNameOg,
-	buildRegionOg,
-	type NameRow,
-	type RegionRow,
+	buildNameMeta,
+	buildRegionMeta,
+	JSONLD_DESCRIPTION_LIMIT,
+	type NameMetaInput,
+	type RegionMetaInput,
+	SITE_NAME,
+	SITE_TAGLINE,
+	type SpeciesMetaInput,
 	sanitize,
-	truncate,
-} from "./og-utils.ts";
-
-/**
- * Canonical origin. Duplicated from src/lib/site.ts on purpose: `functions/`
- * has its own tsconfig and is bundled separately, so it must not import across
- * the src boundary. Structured-data `@id`/`url` values have to match the
- * canonical URLs the routes emit, which are built from the same origin.
- */
-export const SITE_ORIGIN = "https://linkedfin.net";
-
-/**
- * ISO 639-3 → ISO 639-1, mirroring `toBcp47` in src/lib/language.ts (same
- * reason as SITE_ORIGIN — no cross-boundary import). `inLanguage` wants BCP 47,
- * which prefers the shortest tag, so `tur` becomes `tr`; codes with no
- * two-letter form (grc, arz, apc, vec) are already valid BCP 47 and pass
- * through.
- */
-const ISO_639_3_TO_1: Record<string, string> = {
-	arb: "ar",
-	dan: "da",
-	deu: "de",
-	ell: "el",
-	eng: "en",
-	est: "et",
-	fas: "fa",
-	fin: "fi",
-	fra: "fr",
-	ita: "it",
-	nld: "nl",
-	nor: "no",
-	pol: "pl",
-	sme: "se",
-	spa: "es",
-	swe: "sv",
-	tur: "tr",
-};
-
-export function toBcp47(lang: string | null | undefined): string | undefined {
-	if (!lang) return undefined;
-	const normalized = lang.trim().toLowerCase();
-	if (!normalized) return undefined;
-	return ISO_639_3_TO_1[normalized] ?? normalized;
-}
+} from "./pageMeta.ts";
+import { SITE_ORIGIN } from "./site.ts";
 
 /** The one term set every fish name belongs to. */
 const TERM_SET_ID = `${SITE_ORIGIN}/#fish-names`;
 
-export interface SpeciesTaxonInput {
-	scientific_name: string;
-}
+export type JsonLd = Record<string, unknown>;
 
-type JsonLd = Record<string, unknown>;
+const DESCRIPTION_OPTIONS = { descriptionLimit: JSONLD_DESCRIPTION_LIMIT };
 
 /**
  * Serialize a JSON-LD object for embedding in `<script type="application/ld+json">`.
@@ -98,6 +67,12 @@ type JsonLd = Record<string, unknown>;
  *
  * U+2028/U+2029 are escaped too: legal in JSON, but they terminate a line in
  * JavaScript, so any consumer that evals the block would break on them.
+ *
+ * This is why the routes do NOT use TanStack Router's built-in
+ * `{ "script:ld+json": … }` meta entry: that path runs the payload through an
+ * HTML-attribute escaper, which turns every `"` into `&quot;` inside a
+ * `<script>` body — where nothing decodes entities — and the block stops being
+ * parseable JSON.
  */
 export function serializeJsonLd(value: JsonLd): string {
 	return JSON.stringify(value)
@@ -108,12 +83,6 @@ export function serializeJsonLd(value: JsonLd): string {
 		.replace(/\u2029/g, "\\u2029");
 }
 
-/** Wrap serialized JSON-LD in the script tag the middleware appends to `<head>`. */
-export function jsonLdScript(value: JsonLd | null): string {
-	if (!value) return "";
-	return `<script type="application/ld+json">${serializeJsonLd(value)}</script>`;
-}
-
 /**
  * A fish name as a DefinedTerm.
  *
@@ -122,9 +91,9 @@ export function jsonLdScript(value: JsonLd | null): string {
  * and friends). It is carried on the enclosing DefinedTermSet as well, where it
  * is unambiguously in-domain, so a strict consumer still learns the language.
  */
-export function buildNameJsonLd(id: string, row: NameRow): JsonLd {
+export function buildNameJsonLd(id: string, row: NameMetaInput): JsonLd {
 	const url = `${SITE_ORIGIN}/name/${id}`;
-	const og = buildNameOg(row);
+	const meta = buildNameMeta(row, DESCRIPTION_OPTIONS);
 	const language = toBcp47(row.lang);
 	const transliteration = sanitize(row.transliteration);
 
@@ -135,11 +104,11 @@ export function buildNameJsonLd(id: string, row: NameRow): JsonLd {
 		url,
 		name: sanitize(row.name),
 		termCode: id,
-		description: truncate(sanitize(og.description), 500),
+		description: meta.description,
 		inDefinedTermSet: {
 			"@type": "DefinedTermSet",
 			"@id": TERM_SET_ID,
-			name: "LinkedFin fish names",
+			name: `${SITE_NAME} fish names`,
 			url: `${SITE_ORIGIN}/`,
 			...(language ? { inLanguage: language } : {}),
 		},
@@ -163,12 +132,11 @@ export function buildNameJsonLd(id: string, row: NameRow): JsonLd {
  */
 export function buildSpeciesJsonLd(
 	id: string,
-	species: SpeciesTaxonInput,
-	names: string[],
+	species: SpeciesMetaInput,
 ): JsonLd {
 	const url = `${SITE_ORIGIN}/species/${id}`;
 	const alternateName = [
-		...new Set(names.map((n) => sanitize(n)).filter(Boolean)),
+		...new Set(species.names.map((n) => sanitize(n)).filter(Boolean)),
 	];
 
 	const taxon: JsonLd = {
@@ -176,7 +144,7 @@ export function buildSpeciesJsonLd(
 		"@type": "Taxon",
 		"@id": `${url}#taxon`,
 		url,
-		name: sanitize(species.scientific_name),
+		name: sanitize(species.scientificName),
 		taxonRank: "species",
 	};
 
@@ -193,22 +161,22 @@ export function buildSpeciesJsonLd(
  * `/name/*` pages already put their terms in, which is what ties a region's
  * listing to the vocabulary it draws from.
  */
-export function buildRegionJsonLd(id: string, row: RegionRow): JsonLd {
+export function buildRegionJsonLd(id: string, page: RegionMetaInput): JsonLd {
 	const url = `${SITE_ORIGIN}/region/${id}`;
-	const og = buildRegionOg(row);
+	const meta = buildRegionMeta(page, DESCRIPTION_OPTIONS);
 
 	return {
 		"@context": "https://schema.org",
 		"@type": "CollectionPage",
 		"@id": `${url}#collection`,
 		url,
-		name: sanitize(og.title),
-		description: truncate(sanitize(og.description), 500),
+		name: meta.headline,
+		description: meta.description,
 		isPartOf: { "@type": "WebSite", "@id": `${SITE_ORIGIN}/#website` },
 		mainEntity: {
 			"@type": "DefinedTermSet",
 			"@id": TERM_SET_ID,
-			name: "LinkedFin fish names",
+			name: `${SITE_NAME} fish names`,
 			url: `${SITE_ORIGIN}/`,
 		},
 	};
@@ -218,7 +186,7 @@ export function buildRegionJsonLd(id: string, row: RegionRow): JsonLd {
  * The site itself, with the search box on the homepage (`/?q=…`).
  *
  * Google's sitelinks-searchbox documentation is explicit that this belongs on
- * the homepage only, so the middleware emits it for `/` and nowhere else.
+ * the homepage only, so `src/routes/index.tsx` emits it and nothing else does.
  */
 export function buildWebSiteJsonLd(): JsonLd {
 	return {
@@ -226,9 +194,8 @@ export function buildWebSiteJsonLd(): JsonLd {
 		"@type": "WebSite",
 		"@id": `${SITE_ORIGIN}/#website`,
 		url: `${SITE_ORIGIN}/`,
-		name: "LinkedFin",
-		description:
-			"Explore the origins and meanings of fish names across languages",
+		name: SITE_NAME,
+		description: SITE_TAGLINE,
 		inLanguage: "en",
 		potentialAction: {
 			"@type": "SearchAction",

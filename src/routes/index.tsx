@@ -12,9 +12,11 @@ import { useWikidataSpecies } from "#/hooks/useWikidataSpecies";
 import { trackDetailView, trackSearch } from "#/lib/analytics";
 import { useDatabase } from "#/lib/DatabaseContext";
 import { loadFishData } from "#/lib/fishData";
+import { buildHead } from "#/lib/head";
 import { type RegionSummary, selectRegionList } from "#/lib/pageData";
 import { nextSeed } from "#/lib/randomOrder";
-import { canonical } from "#/lib/site";
+import { buildWebSiteJsonLd } from "#/shared/jsonld";
+import { GENERIC_META } from "#/shared/pageMeta";
 
 interface SearchParams {
 	q?: string;
@@ -83,9 +85,18 @@ export const Route = createFileRoute("/")({
 	 */
 	loader: async () => selectRegionList(await loadFishData()),
 	staleTime: Number.POSITIVE_INFINITY,
-	head: () => ({
-		links: [{ rel: "canonical", href: canonical("/") }],
-	}),
+	/**
+	 * The WebSite/SearchAction entity goes here and nowhere else — Google's
+	 * sitelinks-searchbox documentation is explicit that it belongs on the
+	 * homepage alone, and repeating it on 646 detail pages would just declare
+	 * the same node over and over.
+	 */
+	head: () =>
+		buildHead({
+			path: "/",
+			meta: GENERIC_META,
+			jsonLd: buildWebSiteJsonLd(),
+		}),
 	component: HomePage,
 });
 

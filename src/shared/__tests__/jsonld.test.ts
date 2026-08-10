@@ -4,30 +4,40 @@ import {
 	buildRegionJsonLd,
 	buildSpeciesJsonLd,
 	buildWebSiteJsonLd,
-	jsonLdScript,
-	SITE_ORIGIN,
+	type JsonLd,
 	serializeJsonLd,
-	toBcp47,
-} from "./jsonld.ts";
-import type { NameRow } from "./og-utils.ts";
+} from "#/shared/jsonld";
+import type { NameMetaInput } from "#/shared/pageMeta";
+import { SITE_ORIGIN } from "#/shared/site";
 
-const greekRow: NameRow = {
+const greekRow: NameMetaInput = {
 	name: "Λαβράκι",
 	lang: "ell",
-	region_name: "Greece",
+	language: "Greek",
+	scientific_name: "Dicentrarchus labrax",
+	region: "Greece",
 	etymology: "From Greek λάβραξ lávrax (sea bass)\n↳ From λάβρος (greedy)",
 	transliteration: "Lavráki",
 };
 
-const arabicRow: NameRow = {
+const arabicRow: NameMetaInput = {
 	name: "قاروص",
 	lang: "arb",
-	region_name: "Levant",
+	language: "Standard Arabic",
+	scientific_name: "Dicentrarchus labrax",
+	region: "Levant",
 	etymology: "From Arabic قاروص qārūṣ (sea bass)",
 	transliteration: "Qārūṣ",
 };
 
-/** Parse the JSON inside a `<script type="application/ld+json">` block. */
+/**
+ * Wrap and re-read a payload the way a route's `head()` does: the serialized
+ * string goes straight into a `<script type="application/ld+json">` body.
+ */
+function scriptTag(value: JsonLd): string {
+	return `<script type="application/ld+json">${serializeJsonLd(value)}</script>`;
+}
+
 function parseScript(html: string): unknown {
 	const match = html.match(
 		/<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
@@ -35,30 +45,6 @@ function parseScript(html: string): unknown {
 	if (!match) throw new Error("no JSON-LD script found");
 	return JSON.parse(match[1]);
 }
-
-describe("toBcp47", () => {
-	it("shortens ISO 639-3 codes that have a two-letter form", () => {
-		expect(toBcp47("tur")).toBe("tr");
-		expect(toBcp47("ell")).toBe("el");
-		expect(toBcp47("arb")).toBe("ar");
-		expect(toBcp47("sme")).toBe("se");
-		expect(toBcp47("swe")).toBe("sv");
-	});
-
-	it("passes through codes with no two-letter equivalent", () => {
-		expect(toBcp47("grc")).toBe("grc");
-		expect(toBcp47("arz")).toBe("arz");
-		expect(toBcp47("apc")).toBe("apc");
-		expect(toBcp47("vec")).toBe("vec");
-	});
-
-	it("normalizes case and whitespace, and rejects empties", () => {
-		expect(toBcp47(" TUR ")).toBe("tr");
-		expect(toBcp47("")).toBeUndefined();
-		expect(toBcp47(null)).toBeUndefined();
-		expect(toBcp47(undefined)).toBeUndefined();
-	});
-});
 
 describe("serializeJsonLd", () => {
 	it("round-trips through JSON.parse", () => {
@@ -71,7 +57,7 @@ describe("serializeJsonLd", () => {
 			"@type": "Thing",
 			name: '</script><img src=x onerror="alert(1)">',
 		};
-		const html = jsonLdScript(value);
+		const html = scriptTag(value);
 		expect(html).not.toContain("</script><img");
 		// exactly one closing tag: the real one
 		expect(html.match(/<\/script>/g)).toHaveLength(1);
@@ -98,18 +84,22 @@ describe("serializeJsonLd", () => {
 		expect(JSON.parse(serializeJsonLd(value))).toEqual(value);
 	});
 
-	it("emits nothing for a null entity", () => {
-		expect(jsonLdScript(null)).toBe("");
+	/**
+	 * The reason `src/lib/head.ts` uses `scripts` with this serializer rather
+	 * than TanStack Router's built-in `{ "script:ld+json": … }` meta entry: that
+	 * path HTML-escapes the payload, and `&quot;` inside a `<script>` body is
+	 * not JSON.
+	 */
+	it("leaves quotes as quotes, which a script body requires", () => {
+		expect(serializeJsonLd({ name: "x" })).toContain('"name":"x"');
+		expect(serializeJsonLd({ name: "x" })).not.toContain("&quot;");
 	});
 });
 
 describe("buildNameJsonLd", () => {
 	it("describes a name as a DefinedTerm in the site term set", () => {
-		const term = buildNameJsonLd("nm_0118", greekRow) as Record<
-			string,
-			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
-			any
-		>;
+		// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
+		const term = buildNameJsonLd("nm_0118", greekRow) as any;
 
 		expect(term["@context"]).toBe("https://schema.org");
 		expect(term["@type"]).toBe("DefinedTerm");
@@ -119,7 +109,10 @@ describe("buildNameJsonLd", () => {
 		expect(term.termCode).toBe("nm_0118");
 		expect(term.alternateName).toBe("Lavráki");
 		expect(term.inLanguage).toBe("el");
-		expect(term.description).toContain("Greek · Greece —");
+		// The same sentence the page's <meta description> carries.
+		expect(term.description).toContain(
+			"Λαβράκι is the Greek name for Dicentrarchus labrax in Greece.",
+		);
 		// etymology newlines are collapsed, the ↳ chain survives
 		expect(term.description).not.toContain("\n");
 		expect(term.description).toContain("↳");
@@ -131,7 +124,7 @@ describe("buildNameJsonLd", () => {
 
 	it("uses the BCP 47 tag for Arabic and keeps the Arabic script", () => {
 		const parsed = parseScript(
-			jsonLdScript(buildNameJsonLd("nm_0034", arabicRow)),
+			scriptTag(buildNameJsonLd("nm_0034", arabicRow)),
 			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
 		) as any;
 		expect(parsed.inLanguage).toBe("ar");
@@ -143,23 +136,27 @@ describe("buildNameJsonLd", () => {
 		const term = buildNameJsonLd("nm_0001", {
 			name: "Sea bass",
 			lang: "eng",
-			region_name: "International",
+			language: "English",
+			scientific_name: "Dicentrarchus labrax",
+			region: "International",
 			etymology: null,
 			transliteration: null,
 		});
 		expect(term).not.toHaveProperty("alternateName");
-		expect(term.description).toBe("English · International");
+		expect(term.description).toBe(
+			"Sea bass is the English name for Dicentrarchus labrax in International.",
+		);
 	});
 });
 
 describe("buildSpeciesJsonLd", () => {
 	it("describes a species as a Taxon with vernacular alternateNames", () => {
-		const taxon = buildSpeciesJsonLd(
-			"sp_024",
-			{ scientific_name: "Dicentrarchus labrax" },
-			["Levrek", "Λαβράκι", "Levrek"],
+		const taxon = buildSpeciesJsonLd("sp_024", {
+			scientificName: "Dicentrarchus labrax",
+			notes: null,
+			names: ["Levrek", "Λαβράκι", "Levrek"],
 			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
-		) as any;
+		}) as any;
 
 		expect(taxon["@type"]).toBe("Taxon");
 		expect(taxon["@id"]).toBe(`${SITE_ORIGIN}/species/sp_024#taxon`);
@@ -171,18 +168,24 @@ describe("buildSpeciesJsonLd", () => {
 	});
 
 	it("omits alternateName when the species has no names", () => {
-		const taxon = buildSpeciesJsonLd("sp_999", { scientific_name: "X y" }, []);
+		const taxon = buildSpeciesJsonLd("sp_999", {
+			scientificName: "X y",
+			notes: null,
+			names: [],
+		});
 		expect(taxon).not.toHaveProperty("alternateName");
 	});
 });
 
 describe("buildRegionJsonLd", () => {
+	const greece = {
+		name: "Greece",
+		names: Array.from({ length: 70 }, (_, i) => `n${i}`),
+	};
+
 	it("describes the listing page and ties it to the site", () => {
-		const page = buildRegionJsonLd("greek", {
-			name: "Greece",
-			name_count: 70,
-			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
-		}) as any;
+		// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
+		const page = buildRegionJsonLd("greek", greece) as any;
 		expect(page["@type"]).toBe("CollectionPage");
 		expect(page.url).toBe(`${SITE_ORIGIN}/region/greek`);
 		expect(page.name).toBe("Greece fish names");
@@ -194,17 +197,17 @@ describe("buildRegionJsonLd", () => {
 	it("keeps the count singular for a one-name region", () => {
 		const page = buildRegionJsonLd("poland", {
 			name: "Poland",
-			name_count: 1,
+			names: ["Okoń"],
 			// biome-ignore lint/suspicious/noExplicitAny: test assertion on JSON-LD
 		}) as any;
 		expect(page.description).toContain("1 fish name from Poland");
 	});
 
 	it("survives serialization", () => {
-		const input = { name: "Sápmi", name_count: 5 };
-		expect(
-			parseScript(jsonLdScript(buildRegionJsonLd("sapmi", input))),
-		).toEqual(buildRegionJsonLd("sapmi", input));
+		const input = { name: "Sápmi", names: ["Luosa"] };
+		expect(parseScript(scriptTag(buildRegionJsonLd("sapmi", input)))).toEqual(
+			buildRegionJsonLd("sapmi", input),
+		);
 	});
 });
 
@@ -225,7 +228,7 @@ describe("buildWebSiteJsonLd", () => {
 	});
 
 	it("survives serialization (the template braces are not JSON syntax)", () => {
-		const parsed = parseScript(jsonLdScript(buildWebSiteJsonLd())) as Record<
+		const parsed = parseScript(scriptTag(buildWebSiteJsonLd())) as Record<
 			string,
 			unknown
 		>;

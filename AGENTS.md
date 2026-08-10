@@ -26,6 +26,24 @@ These skills enforce quality control checks that must not be bypassed. Every ski
 
 ---
 
+## `src/shared/` — code the app and the Pages Functions both import
+
+A page's title, description, OG/Twitter text, OG card wording and JSON-LD are one
+fact, so they have one definition: `src/shared/pageMeta.ts` and
+`src/shared/jsonld.ts`. Routes reach them through `#/shared/…`; `functions/` uses a
+**relative** path (`../src/shared/pageMeta.ts`) — Cloudflare bundles `functions/`
+with esbuild, which follows the import, but `functions/tsconfig.json` has no `paths`
+mapping so the `#/` alias would typecheck-fail while still working at runtime.
+
+Two rules keep this working:
+
+- Anything under `src/shared/` must stay **dependency-free** — no React, no
+  sqlite-wasm, no Node built-ins, nothing reaching `#/lib/fishData`. esbuild follows
+  every transitive import into the Worker bundle. Type-only imports are fine.
+- Every meta tag is emitted from a route's `head()` via `src/lib/head.ts`.
+  `functions/_middleware.ts` deliberately appends **none** of them; a tag with two
+  sources is a tag that appears twice.
+
 ## Database Commands
 
 Run these from the project root:
@@ -55,7 +73,8 @@ pnpm rebuild better-sqlite3 → og:generate → check → tsc --noEmit (root)
 
 **`pnpm og:generate` must run before `vite build`.** It reads `public/fish.db` and writes:
 
-- `functions/og-data.json` — lookup tables for the Pages Functions middleware
+- `functions/og-data.json` — lookup tables for the OG image endpoint, plus the id
+  sets the middleware uses to tell a deleted record from a live one
 - `public/sitemap.xml` — every indexable URL
 - `.generated/fish-data.json` and `.generated/prerender-pages.json` — the prerender dataset and path list
 
@@ -213,8 +232,9 @@ const LANGUAGE_NAME_OVERRIDES: Record<string, string> = {
 };
 ```
 
-`functions/og-utils.ts` carries a parallel map for the Pages Functions runtime; if you
-add an override, check whether it needs the same entry.
+This is the only copy. `og:generate` resolves each name's display language here, at
+build time, and bakes it into `functions/og-data.json`, so the Pages Functions never
+need `Intl` and there is no parallel map to keep in step.
 
 **Language codes:** Use ISO 639-3 (3-letter codes). `pnpm db:validate` enforces
 `/^[a-z]{3}$/` on `names.lang` — exactly three lowercase letters, nothing else.

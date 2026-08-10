@@ -4,9 +4,15 @@ import { useState } from "react";
 import { NamesTable } from "#/components/NamesTable";
 import { trackDetailView } from "#/lib/analytics";
 import { loadFishData } from "#/lib/fishData";
-import { regionPageMeta, selectRegionPage } from "#/lib/pageData";
+import { buildHead } from "#/lib/head";
+import { selectRegionPage } from "#/lib/pageData";
 import { nextSeed } from "#/lib/randomOrder";
-import { canonical } from "#/lib/site";
+import { buildRegionJsonLd } from "#/shared/jsonld";
+import {
+	buildRegionMeta,
+	GENERIC_META,
+	type RegionMetaInput,
+} from "#/shared/pageMeta";
 
 export const Route = createFileRoute("/region/$id")({
 	/**
@@ -20,15 +26,19 @@ export const Route = createFileRoute("/region/$id")({
 		selectRegionPage(await loadFishData(), params.id),
 	staleTime: Number.POSITIVE_INFINITY,
 	head: ({ loaderData, params }) => {
-		const links = [
-			{ rel: "canonical", href: canonical(`/region/${params.id}`) },
-		];
-		if (!loaderData) return { links };
-		const { title, description } = regionPageMeta(loaderData);
-		return {
-			meta: [{ title }, { name: "description", content: description }],
-			links,
+		const path = `/region/${params.id}`;
+		if (!loaderData) {
+			return buildHead({ path, meta: GENERIC_META, indexable: false });
+		}
+		const input: RegionMetaInput = {
+			name: loaderData.name,
+			names: loaderData.names.map((n) => n.name),
 		};
+		return buildHead({
+			path,
+			meta: buildRegionMeta(input),
+			jsonLd: buildRegionJsonLd(params.id, input),
+		});
 	},
 	component: RegionPage,
 });
