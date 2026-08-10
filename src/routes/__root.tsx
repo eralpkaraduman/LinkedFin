@@ -9,7 +9,15 @@ import { GENERIC_META } from "../shared/pageMeta";
 
 import appCss from "../styles.css?url";
 
-const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement,mq=window.matchMedia('(prefers-color-scheme:dark)');function apply(dark){d.classList.remove('light','dark');d.classList.add(dark?'dark':'light');d.style.colorScheme=dark?'dark':'light';}apply(mq.matches);mq.addEventListener('change',function(e){apply(e.matches);});})();`;
+/**
+ * Runs before first paint so the page never flashes the wrong scheme.
+ *
+ * It also owns `theme-color`, because that tag cannot be expressed as a
+ * light/dark pair: TanStack dedupes head meta on `name`, so only one of two
+ * `theme-color` entries survives regardless of their `media` attributes. Setting
+ * it here keeps the browser chrome correct in both schemes and on live changes.
+ */
+const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement,mq=window.matchMedia('(prefers-color-scheme:dark)');function apply(dark){d.classList.remove('light','dark');d.classList.add(dark?'dark':'light');d.style.colorScheme=dark?'dark':'light';var t=document.querySelector('meta[name="theme-color"]');if(t)t.setAttribute('content',dark?'#252525':'#ffffff');}apply(mq.matches);mq.addEventListener('change',function(e){apply(e.matches);});})();`;
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -55,15 +63,23 @@ export const Route = createRootRoute({
 				name: "apple-mobile-web-app-status-bar-style",
 				content: "black-translucent",
 			},
+			/**
+			 * One tag, kept current by THEME_INIT_SCRIPT.
+			 *
+			 * There used to be two — a light and a dark variant distinguished only
+			 * by `media` — and only one ever reached the page. TanStack dedupes
+			 * head meta on `m.name ?? m.property`
+			 * (@tanstack/react-router headContentUtils.js:31), and `media` is not
+			 * part of that key, so the second silently replaced the first. Nothing
+			 * errors; the code just reads as though it works.
+			 *
+			 * The static value is the light one, so a reader with JavaScript off
+			 * gets the right colour in the common case. The script corrects it
+			 * before paint and on every scheme change.
+			 */
 			{
 				name: "theme-color",
 				content: "#ffffff",
-				media: "(prefers-color-scheme: light)",
-			},
-			{
-				name: "theme-color",
-				content: "#252525",
-				media: "(prefers-color-scheme: dark)",
 			},
 		],
 		scripts: [
