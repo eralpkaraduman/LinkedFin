@@ -202,9 +202,9 @@ export function SpeciesProfile({
 			{/* Names for this species */}
 			{names.length > 0 && (
 				<div className="space-y-3">
-					<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+					<h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Names ({names.length})
-					</h3>
+					</h2>
 					<div className="flex flex-wrap gap-2">
 						{names.map((name) => (
 							<Link

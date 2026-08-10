@@ -56,11 +56,29 @@ export default function Header() {
 					doubles as the way out of a detail view.
 				*/}
 				<div className="relative flex-1">
+					{/*
+						A real <label>, not just the placeholder: a placeholder is
+						announced as a hint and vanishes the moment the field has text.
+						`htmlFor` needs a *stable* id, which is also why one is written
+						out here rather than left to Base UI's generated `base-ui-_R_…`
+						— that value is not stable across renders, so nothing could
+						reference it. `name="q"` matches the `?q=` search param the
+						homepage already reads.
+					*/}
+					<label htmlFor="site-search" className="sr-only">
+						Search fish names, regions and languages
+					</label>
 					<Input
+						id="site-search"
+						name="q"
+						type="search"
 						value={localQuery}
 						onChange={(e) => handleSearch(e.target.value)}
 						placeholder="Search fish names, regions, languages..."
-						className="h-8 text-sm sm:h-9"
+						// The native WebKit clear button that comes with type="search"
+						// is suppressed: this field already has its own Clear button
+						// below, and two of them side by side is worse than either.
+						className="h-8 text-sm sm:h-9 [&::-webkit-search-cancel-button]:appearance-none"
 						autoComplete="off"
 						autoCorrect="off"
 						autoCapitalize="off"
