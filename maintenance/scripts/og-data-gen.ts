@@ -33,7 +33,8 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { getLanguageName } from "../../src/lib/language.ts";
-import { SITE_ORIGIN } from "../../src/lib/site.ts";
+import type { NameMetaInput } from "../../src/shared/pageMeta.ts";
+import { SITE_ORIGIN } from "../../src/shared/site.ts";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const DB_PATH = resolve(ROOT, "public/fish.db");
@@ -56,13 +57,15 @@ interface NameRow {
 	lang: string;
 	etymology: string | null;
 	transliteration: string | null;
-	region_name: string;
+	region: string;
+	scientific_name: string;
 	updated_at: string | null;
 }
 
 interface SpeciesRow {
 	id: string;
 	scientific_name: string;
+	notes: string | null;
 	updated_at: string | null;
 }
 
@@ -79,12 +82,16 @@ interface RegionRow {
 
 const names: NameRow[] = db
 	.prepare(
-		"SELECT n.id, n.name, n.lang, n.etymology, n.transliteration, n.updated_at, r.name as region_name FROM names n JOIN regions r ON n.region_id = r.id",
+		`SELECT n.id, n.name, n.lang, n.etymology, n.transliteration, n.updated_at,
+		        r.name AS region, s.scientific_name
+		 FROM names n
+		 JOIN regions r ON n.region_id = r.id
+		 JOIN species s ON s.id = n.species_id`,
 	)
 	.all() as NameRow[];
 
 const species: SpeciesRow[] = db
-	.prepare("SELECT id, scientific_name, updated_at FROM species")
+	.prepare("SELECT id, scientific_name, notes, updated_at FROM species")
 	.all() as SpeciesRow[];
 
 /**
@@ -148,30 +155,40 @@ const fishRelations = db
 
 db.close();
 
-// Build lookup maps
-const namesById: Record<
-	string,
-	{
-		name: string;
-		lang: string;
-		etymology: string | null;
-		transliteration: string | null;
-		region_name: string;
-	}
-> = {};
+/**
+ * `functions/og-data.json` — the two things a Worker cannot derive for itself.
+ *
+ * `namesById` and `speciesById` are typed as the *shared* metadata inputs
+ * (`NameMetaInput`, and the species half of `SpeciesMetaInput`) rather than as
+ * shapes invented here. That is the coupling that makes the single source of
+ * truth hold: `src/shared/pageMeta.ts` is the one definition of how a record is
+ * described, the route loaders feed it `FishName` rows, and this generator has
+ * to produce the same fields or fail to compile. `language` is resolved here,
+ * at build time, so the shared module never needs `Intl`.
+ *
+ * Regions are ids only. The middleware needs to know whether a region exists
+ * and how many there are; the region *text* is built by the route from its
+ * loader data, and `/region/*` deliberately has no OG card of its own.
+ */
+const namesById: Record<string, NameMetaInput> = {};
 for (const n of names) {
 	namesById[n.id] = {
 		name: n.name,
 		lang: n.lang,
+		language: getLanguageName(n.lang),
+		scientific_name: n.scientific_name,
+		region: n.region,
 		etymology: n.etymology,
 		transliteration: n.transliteration,
-		region_name: n.region_name,
 	};
 }
 
-const speciesById: Record<string, { scientific_name: string }> = {};
+const speciesById: Record<
+	string,
+	{ scientificName: string; notes: string | null }
+> = {};
 for (const s of species) {
-	speciesById[s.id] = { scientific_name: s.scientific_name };
+	speciesById[s.id] = { scientificName: s.scientific_name, notes: s.notes };
 }
 
 const namesBySpeciesId: Record<string, string[]> = {};
@@ -182,12 +199,9 @@ for (const row of namesBySpecies) {
 	namesBySpeciesId[row.species_id].push(row.name);
 }
 
-const regionsById: Record<string, { name: string; name_count: number }> = {};
-for (const r of regions) {
-	regionsById[r.id] = { name: r.name, name_count: r.name_count };
-}
+const regionIds = regions.map((r) => r.id);
 
-const data = { namesById, speciesById, namesBySpeciesId, regionsById };
+const data = { namesById, speciesById, namesBySpeciesId, regionIds };
 writeFileSync(OUT_PATH, JSON.stringify(data));
 console.log(
 	`Generated ${OUT_PATH} (${names.length} names, ${species.length} species, ${regions.length} regions)`,

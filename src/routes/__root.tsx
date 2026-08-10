@@ -5,6 +5,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import Header from "../components/Header";
 import { DatabaseProvider } from "../lib/DatabaseContext";
 import { queryClient } from "../lib/queryClient";
+import { GENERIC_META } from "../shared/pageMeta";
 
 import appCss from "../styles.css?url";
 
@@ -21,15 +22,26 @@ export const Route = createRootRoute({
 				content:
 					"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
 			},
+			/**
+			 * The fallback title and description, for any match that does not set
+			 * its own. Read from `GENERIC_META` rather than written out again —
+			 * the same two strings are the OG card's generic text and the
+			 * `<meta>` of the SPA shell, and they used to be typed in three
+			 * places.
+			 *
+			 * Every real page overrides both from its own `head()`; TanStack
+			 * Router de-duplicates meta by `name ?? property`, deepest match
+			 * first. The OG, Twitter, robots and JSON-LD tags are set there too
+			 * (see `src/lib/head.ts`) and deliberately have no root-level
+			 * fallback: a generic `og:url` on every page is worse than none.
+			 */
 			{
-				title: "LinkedFin - Fish Names Etymology Database",
+				title: GENERIC_META.title,
 			},
 			{
 				name: "description",
-				content:
-					"Explore the origins and meanings of fish names across languages. A comprehensive etymology database linking Mediterranean fish names from Turkish, Greek, Arabic, and more.",
+				content: GENERIC_META.description,
 			},
-			// OG + Twitter tags injected by Cloudflare Pages middleware
 			// PWA / Mobile
 			{
 				name: "apple-mobile-web-app-capable",
@@ -66,13 +78,10 @@ export const Route = createRootRoute({
 				rel: "stylesheet",
 				href: appCss,
 			},
-			// No canonical here. A root-level tag declared every /name/* and
-			// /species/* page a duplicate of the homepage. It is injected
-			// per-URL by functions/_middleware.ts, the only place that reaches
-			// the HTML a crawler actually fetches — head() links do not make it
-			// into the served shell. Move it into each route's head() once pages
-			// are prerendered, and drop it from the middleware at the same time:
-			// two canonical sources is worse than none.
+			// No canonical here. A root-level tag would declare every /name/*
+			// and /species/* page a duplicate of the homepage. Each route emits
+			// its own from head(), which reaches the prerendered HTML a crawler
+			// fetches.
 			{
 				rel: "icon",
 				type: "image/x-icon",

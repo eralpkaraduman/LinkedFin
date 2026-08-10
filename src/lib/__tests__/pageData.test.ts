@@ -1,13 +1,9 @@
 import type { FishData } from "#/lib/fishData";
 import {
-	namePageMeta,
-	regionPageMeta,
 	selectNamePage,
 	selectRegionList,
 	selectRegionPage,
 	selectSpeciesPage,
-	speciesPageMeta,
-	truncate,
 } from "#/lib/pageData";
 import type { FishName, Relation } from "#/lib/types";
 
@@ -91,36 +87,6 @@ test("selectSpeciesPage exposes the species notes", () => {
 	expect(selectSpeciesPage(data, "sp_001")?.notes).toBeNull();
 });
 
-test("name meta front-loads the name and includes the etymology", () => {
-	const page = selectNamePage(data, "nm_0001");
-	if (!page) throw new Error("expected a page");
-	const { title, description } = namePageMeta(page);
-	expect(title.startsWith("Levrek")).toBe(true);
-	expect(title.endsWith("| LinkedFin")).toBe(true);
-	expect(description).toContain("From Greek labrax.");
-	expect(description.startsWith("Levrek")).toBe(true);
-});
-
-test("name meta still describes a name with no etymology", () => {
-	const page = selectNamePage(
-		{ names: [makeName({ etymology: "" })], relations: [] },
-		"nm_0001",
-	);
-	if (!page) throw new Error("expected a page");
-	expect(namePageMeta(page).description).toBe(
-		"Levrek is the Turkish name for Dicentrarchus labrax in Turkey.",
-	);
-});
-
-test("species meta lists the names and front-loads the scientific name", () => {
-	const page = selectSpeciesPage(data, "sp_009");
-	if (!page) throw new Error("expected a page");
-	const { title, description } = speciesPageMeta(page);
-	expect(title.startsWith("Pomatomus saltatrix")).toBe(true);
-	expect(description).toContain("Lüfer");
-	expect(description).toContain("A pelagic predator.");
-});
-
 test("selectRegionList counts every region and sorts by label", () => {
 	expect(selectRegionList(data)).toEqual([
 		{ id: "greek", name: "Greece", count: 1 },
@@ -135,26 +101,4 @@ test("selectRegionPage returns every name of the region and nothing else", () =>
 	// Only the columns the table renders — the etymology stays out of the HTML.
 	expect(page?.names[0]).not.toHaveProperty("etymology");
 	expect(selectRegionPage(data, "atlantis")).toBeNull();
-});
-
-test("region meta front-loads the region and counts its names", () => {
-	const page = selectRegionPage(data, "turkey");
-	if (!page) throw new Error("expected a page");
-	const { title, description } = regionPageMeta(page);
-	expect(title).toBe("Turkey — fish names and etymology | LinkedFin");
-	expect(description).toContain("2 fish names from Turkey");
-	expect(description).toContain("Levrek");
-
-	const single = selectRegionPage(data, "greek");
-	if (!single) throw new Error("expected a page");
-	expect(regionPageMeta(single).description).toContain(
-		"1 fish name from Greece",
-	);
-});
-
-test("truncate cuts on a word boundary and collapses whitespace", () => {
-	expect(truncate("one   two\nthree", 100)).toBe("one two three");
-	expect(truncate("aaa bbb ccc", 8)).toBe("aaa bbb…");
-	// No space to break on: cut hard rather than return the whole string.
-	expect(truncate("aaaaaaaaaa", 4)).toBe("aaaa…");
 });

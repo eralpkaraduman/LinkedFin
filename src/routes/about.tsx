@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { canonical } from "#/lib/site";
+import { buildHead } from "#/lib/head";
+import { GENERIC_META, SITE_NAME } from "#/shared/pageMeta";
 
 export const Route = createFileRoute("/about")({
-	head: () => ({
-		meta: [{ title: "About — LinkedFin" }],
-		links: [{ rel: "canonical", href: canonical("/about") }],
-	}),
+	head: () =>
+		buildHead({
+			path: "/about",
+			meta: {
+				...GENERIC_META,
+				title: `About — ${SITE_NAME}`,
+				headline: `About ${SITE_NAME}`,
+			},
+		}),
 	component: About,
 });
 

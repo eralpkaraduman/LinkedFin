@@ -8,6 +8,10 @@
  *
  * Keeping them pure (data in, data out, no `import.meta.env`, no database)
  * makes them testable in plain Node and reusable from either environment.
+ *
+ * The title/description builders that used to live at the bottom of this file
+ * moved to `src/shared/pageMeta.ts`, which the Pages Functions import too. This
+ * file imports `#/lib/fishData` (sqlite-wasm) and can never follow them there.
  */
 
 import {
@@ -159,70 +163,4 @@ export function selectRegionPage(
 	const names = data.names.filter((n) => n.region_id === id);
 	if (names.length === 0) return null;
 	return { id, name: names[0].region, names: names.map(toTableRow) };
-}
-
-function collapse(text: string): string {
-	return text.replace(/\s+/g, " ").trim();
-}
-
-/** Trim to `max` characters on a word boundary, appending an ellipsis. */
-export function truncate(text: string, max: number): string {
-	const value = collapse(text);
-	if (value.length <= max) return value;
-	const cut = value.lastIndexOf(" ", max - 1);
-	return `${value.slice(0, cut > 0 ? cut : max)}…`;
-}
-
-/**
- * Google cuts a snippet around 155 characters and shows roughly 60 of a title,
- * so both put the page-specific words first. "Kalamar — LinkedFin", never
- * "LinkedFin … | Kalamar", which would bury the one word that distinguishes
- * this page from the other 619.
- */
-export function namePageMeta(page: NamePageData): {
-	title: string;
-	description: string;
-} {
-	const { name } = page;
-	const etymology = collapse(name.etymology ?? "");
-	const lead = `${name.name} is the ${name.language} name for ${name.scientific_name} in ${name.region}.`;
-	return {
-		/**
-		 * The language is in the title because the name alone is not unique:
-		 * Finnish and Estonian both call Perca fluviatilis "Ahven", Norwegian and
-		 * Danish both call Clupea harengus "Sild", and six such pairs would
-		 * otherwise ship byte-identical titles.
-		 */
-		title: `${name.name} — ${name.language} name for ${name.scientific_name} | LinkedFin`,
-		description: truncate(etymology ? `${lead} ${etymology}` : lead, 300),
-	};
-}
-
-/**
- * These pages exist to answer "Turkish fish names", "Greek fish names" — so the
- * region leads the title and the words a searcher typed follow immediately.
- */
-export function regionPageMeta(page: RegionPageData): {
-	title: string;
-	description: string;
-} {
-	const count = page.names.length;
-	const lead = `${count} fish ${count === 1 ? "name" : "names"} from ${page.name}, with etymology, transliteration and pronunciation.`;
-	const names = page.names.map((n) => n.name).join(", ");
-	return {
-		title: `${page.name} — fish names and etymology | LinkedFin`,
-		description: truncate(`${lead} ${names}`, 300),
-	};
-}
-
-export function speciesPageMeta(page: SpeciesPageData): {
-	title: string;
-	description: string;
-} {
-	const names = page.names.map((n) => n.name).join(", ");
-	const lead = `${page.scientificName} is called ${names}.`;
-	return {
-		title: `${page.scientificName} — fish names and etymology | LinkedFin`,
-		description: truncate(page.notes ? `${lead} ${page.notes}` : lead, 300),
-	};
 }

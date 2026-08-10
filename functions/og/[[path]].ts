@@ -1,14 +1,25 @@
 import { ImageResponse } from "workers-og";
-import data from "../og-data.json";
 import {
-	buildNameOg,
-	buildSpeciesOg,
-	GENERIC_OG,
-	isArabicLang,
-	stripArabic,
+	buildNameMeta,
+	buildSpeciesMeta,
+	CARD_DESCRIPTION_LIMIT,
+	CARD_TITLE_LIMIT,
+	GENERIC_META,
 	truncate,
-} from "../og-utils.ts";
+} from "../../src/shared/pageMeta.ts";
+import data from "../og-data.json";
+import { isArabicLang, stripArabic, stripPolytonicMarks } from "../og-utils.ts";
 
+/**
+ * The card's words come from the same builders as the page's `<title>`,
+ * `og:title` and JSON-LD — `src/shared/pageMeta.ts`, imported with a relative
+ * path because the `#/` alias does not survive `tsc -p functions/tsconfig.json`.
+ *
+ * What the card takes differently is *length*, not content: `headline` is the
+ * record's own name without the "| LinkedFin" suffix (80px type in a 1200x630
+ * box cannot hold the full title) and the description is asked for at
+ * `CARD_DESCRIPTION_LIMIT` instead of the 300 a search snippet gets.
+ */
 const namesById = data.namesById as Record<
 	string,
 	(typeof data.namesById)[keyof typeof data.namesById]
@@ -58,17 +69,6 @@ function buildHtml(title: string, description: string): string {
 	].join("");
 }
 
-/**
- * Strip polytonic Greek combining marks unsupported by Noto Sans monotonic Greek.
- * Targets: smooth/rough breathing (U+0313/0314), perispomeni (U+0342), iota subscript (U+0345).
- */
-function stripPolytonicMarks(str: string): string {
-	return str
-		.normalize("NFD")
-		.replace(/[\u0313\u0314\u0342\u0345]/g, "")
-		.normalize("NFC");
-}
-
 function escapeImageHtml(str: string): string {
 	return str.replace(/↳/g, "—").replace(/&/g, "&amp;").replace(/</g, "&lt;");
 }
@@ -82,29 +82,34 @@ export async function onRequest(
 	const parts = ((params as { path?: string[] }).path || []).filter(Boolean);
 	const [type, id] = parts;
 
-	let title = GENERIC_OG.title;
-	let description = GENERIC_OG.description;
+	let title = GENERIC_META.headline;
+	let description = GENERIC_META.description;
 
 	try {
 		if (type === "name" && id) {
 			const row = namesById[id];
 			if (row) {
-				const og = buildNameOg(row);
+				const meta = buildNameMeta(row, {
+					descriptionLimit: CARD_DESCRIPTION_LIMIT,
+				});
+				// The card is the one place an Arabic name cannot be drawn as
+				// itself — satori has no RTL shaping — so it falls back to the
+				// transliteration. Every text consumer keeps the original script.
 				title =
 					isArabicLang(row.lang) && row.transliteration
 						? row.transliteration
-						: og.title;
-				description = og.description;
+						: meta.headline;
+				description = meta.description;
 			}
 		} else if (type === "species" && id) {
 			const species = speciesById[id];
 			if (species) {
-				const names = (namesBySpeciesId[id] ?? []).map((name) => ({
-					name,
-				}));
-				const og = buildSpeciesOg(species, names);
-				title = og.title;
-				description = og.description;
+				const meta = buildSpeciesMeta(
+					{ ...species, names: namesBySpeciesId[id] ?? [] },
+					{ descriptionLimit: CARD_DESCRIPTION_LIMIT },
+				);
+				title = meta.headline;
+				description = meta.description;
 			}
 		}
 	} catch (e) {
@@ -112,10 +117,13 @@ export async function onRequest(
 	}
 
 	title = escapeImageHtml(
-		truncate(stripArabic(stripPolytonicMarks(title)), 60),
+		truncate(stripArabic(stripPolytonicMarks(title)), CARD_TITLE_LIMIT),
 	);
 	description = escapeImageHtml(
-		truncate(stripArabic(stripPolytonicMarks(description)), 120),
+		truncate(
+			stripArabic(stripPolytonicMarks(description)),
+			CARD_DESCRIPTION_LIMIT,
+		),
 	);
 
 	try {
