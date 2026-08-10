@@ -301,6 +301,17 @@ function HomePage() {
 	if (isLoading || error) {
 		return (
 			<main className="page-wrap flex flex-col px-4 pb-8">
+				{/*
+				 * The homepage's h1, visually hidden.
+				 *
+				 * It has to live here rather than on the hero: the hero sits inside
+				 * the featured-species component, which only renders once the client
+				 * database has loaded, so the prerendered document — this branch —
+				 * would otherwise ship no h1 at all. The visible "Welcome to
+				 * LinkedFin" stays an h2, since it is a greeting rather than the
+				 * page's subject.
+				 */}
+				<h1 className="sr-only">LinkedFin — fish name etymology database</h1>
 				<div className="flex min-h-[50vh] items-center justify-center">
 					{error ? (
 						<div className="text-center text-destructive">
@@ -321,6 +332,10 @@ function HomePage() {
 
 	return (
 		<main className="page-wrap flex flex-col px-4 pb-8">
+			{/* Same hidden h1 as the loading branch — the hero below is conditional
+			    (it hides during a search), so it cannot be relied on to provide one. */}
+			<h1 className="sr-only">LinkedFin — fish name etymology database</h1>
+
 			{/* Welcome hero when in random mode */}
 			{!isValidSearch && heroItem && (
 				<WelcomeHero

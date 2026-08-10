@@ -39,7 +39,14 @@ export default function Header() {
 	return (
 		<header className="safe-top sticky top-0 z-50 overflow-hidden border-b border-border bg-background/95 px-2 backdrop-blur-sm sm:px-4">
 			<nav className="flex items-center gap-2 py-2 sm:gap-3 sm:py-3">
-				<h1 className="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
+				{/*
+				 * Deliberately not an <h1>. The header renders on every page, so a
+				 * heading here made the site name the top-level heading of pages
+				 * about a fish — /name/nm_0118 shipped "LinkedFin" and "Kalamar" as
+				 * two h1s, and a reader navigating by heading met the brand first.
+				 * The page's own subject owns the h1; the homepage's is its hero.
+				 */}
+				<div className="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
 					<Link
 						to="/"
 						search={{}}
@@ -48,7 +55,7 @@ export default function Header() {
 						<span className="text-foreground">Linked</span>
 						<span className="rounded bg-[#0891B2] px-1 text-white">Fin</span>
 					</Link>
-				</h1>
+				</div>
 
 				{/*
 					The search box stays fully active on every route, detail pages
