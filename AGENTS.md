@@ -677,6 +677,36 @@ Hauki        ←────alternate_of────→  Gädda
 Muikku       ←────alternate_of────→  Mujka
 ```
 
+### What relations deliberately cannot express
+
+Two kinds of link have no relation type, **by decision, not by oversight** (TREK-587).
+When you meet one, put the fact in the etymology prose of both names and move on —
+do not bend an existing type to fit it, and do not re-propose a schema change unless
+the product goal changes.
+
+**1. Cross-species links.** Every type except `confused_with` requires the same
+species, and `pnpm db:validate` enforces it. So two names for *different* animals
+cannot be connected, however tightly their histories are bound:
+
+- Turkish `kerevit` (`nm_0114`, *Astacus astacus*) and `karavide` (`nm_0564`,
+  *Nephrops norvegicus*) are the same Greek word, καραβίδα, borrowed twice and
+  settled on different animals.
+- Finnish `Jokirapu` (`nm_0421`, *Astacus astacus*) is a retronym — it only carries
+  its `joki-` qualifier because `Täplärapu` (`nm_0620`, *Pacifastacus leniusculus*)
+  arrived and displaced it.
+
+**2. Temporal sequences.** All six types are synchronic; none orders names in time.
+The blue crab moult stages on `sp_023` (green crab → peeler → buster → soft-shell →
+paper-shell → buckram → hard crab) are a real progression and are deliberately left
+**unlinked**. Do not reach for `smaller_than`: it would encode a falsehood, since a
+soft-shell crab is not smaller than a hard-shell one — it is the same animal hours
+later.
+
+The cost is accepted: these facts live in prose, so they render and are readable but
+are not queryable and not validated. Prefer stating the connection explicitly in both
+etymologies (naming the other form and why it differs) so a reader on either page can
+find the other.
+
 ---
 
 ## Regional/Dialect Handling
