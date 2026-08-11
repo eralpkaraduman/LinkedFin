@@ -6,8 +6,8 @@ import { GENERIC_META, SITE_NAME } from "#/shared/pageMeta";
 /**
  * Counts come from the same isomorphic loader the region and detail pages use,
  * so they end up in the prerendered HTML rather than appearing after hydration.
- * Hardcoding them would go stale on the next content pass — the mistake llms.txt
- * used to make.
+ * Hardcoding them would go stale on the next content pass, the same mistake
+ * llms.txt used to make.
  */
 export const Route = createFileRoute("/about")({
 	loader: async () => {
@@ -107,9 +107,35 @@ function About() {
 							Names are connected where one was borrowed from another, where two
 							languages name the same fish, or where a name is commonly applied
 							to the wrong species. These links only run between names for the
-							same species, so some real connections — a word borrowed twice
-							that ended up on two different animals, for instance — are
+							same species. A connection that crosses that line, like a word
+							borrowed twice that ended up on two different animals, is
 							described in the entry text instead.
+						</p>
+					</section>
+
+					<section>
+						<h2 className="mb-2 text-xl font-semibold text-[var(--sea-ink)]">
+							Who makes this
+						</h2>
+						<p className="m-0 mb-3">
+							{SITE_NAME} is a hobby project by{" "}
+							<a
+								href="https://eralp.dev"
+								target="_blank"
+								rel="noreferrer"
+								className="underline"
+							>
+								Eralp Karaduman
+							</a>
+							. A name says a lot about the people who coined it: one culture
+							names a fish for how it moves or feeds, another for a belief
+							attached to it, another for what it is at the market or on the
+							plate. The same animal carries all of those names at once.
+						</p>
+						<p className="m-0">
+							Names travel, too. A borrowed name is a record of contact between
+							cultures, kept by accident in everyday words. That history is what
+							keeps me at this.
 						</p>
 					</section>
 
