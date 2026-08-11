@@ -1,6 +1,11 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+	createRootRoute,
+	HeadContent,
+	Link,
+	Scripts,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import Header from "../components/Header";
 import { DatabaseProvider } from "../lib/DatabaseContext";
@@ -129,6 +134,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					<DatabaseProvider>
 						<Header />
 						{children}
+						{/*
+							/about is prerendered and indexable, so it was reachable by
+							crawlers but by nobody else — there was no link to it anywhere
+							in the app. This is that link.
+						*/}
+						<footer className="px-4 py-8 text-center text-sm text-muted-foreground">
+							<Link to="/about" className="underline">
+								About this database
+							</Link>
+						</footer>
 					</DatabaseProvider>
 				</QueryClientProvider>
 				<TanStackDevtools
