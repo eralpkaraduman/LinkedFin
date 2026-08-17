@@ -42,6 +42,10 @@ const SOURCES = [
 	["Eesti Keele Instituut", "Estonian"],
 	["Liddell–Scott–Jones", "Ancient Greek"],
 	["Svenska Akademiens ordbok", "Swedish"],
+	[
+		"Uysal, Türkçe Balık Adları Üzerine Bir İnceleme (BİBAD 4(1), 2011)",
+		"Turkish regional names",
+	],
 ];
 
 function About() {
