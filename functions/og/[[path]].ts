@@ -8,7 +8,11 @@ import {
 	truncate,
 } from "../../src/shared/pageMeta.ts";
 import data from "../og-data.json";
-import { isArabicLang, stripArabic, stripPolytonicMarks } from "../og-utils.ts";
+import {
+	hasArabicScript,
+	stripArabic,
+	stripPolytonicMarks,
+} from "../og-utils.ts";
 
 /**
  * The card's words come from the same builders as the page's `<title>`,
@@ -89,16 +93,17 @@ export async function onRequest(
 		if (type === "name" && id) {
 			const row = namesById[id];
 			if (row) {
-				const meta = buildNameMeta(row, {
+				// The card is the one place an Arabic-script name cannot be drawn as
+				// itself — satori has no RTL shaping — so headline and description
+				// use the transliteration. Every text consumer keeps the original.
+				const card =
+					hasArabicScript(row.name) && row.transliteration
+						? { ...row, name: row.transliteration }
+						: row;
+				const meta = buildNameMeta(card, {
 					descriptionLimit: CARD_DESCRIPTION_LIMIT,
 				});
-				// The card is the one place an Arabic name cannot be drawn as
-				// itself — satori has no RTL shaping — so it falls back to the
-				// transliteration. Every text consumer keeps the original script.
-				title =
-					isArabicLang(row.lang) && row.transliteration
-						? row.transliteration
-						: meta.headline;
+				title = meta.headline;
 				description = meta.description;
 			}
 		} else if (type === "species" && id) {

@@ -6,28 +6,31 @@
  * tags and the structured data cannot disagree. What is left below is purely
  * about satori's font rendering: it cannot shape RTL Arabic and Noto Sans has
  * no polytonic Greek marks, so those two scripts have to be rewritten before
- * they reach the renderer. None of that applies to a `<meta>` tag, where the
+ * they reach the renderer. Arabic-script names are drawn as their
+ * transliteration instead. None of that applies to a `<meta>` tag, where the
  * browser renders the original characters perfectly well.
  */
 
-const ARABIC_LANGS = new Set(["arb", "arz", "apc"]);
+const ARABIC_SCRIPT =
+	/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g;
 
-export function isArabicLang(lang: string): boolean {
-	return ARABIC_LANGS.has(lang);
+/** True when `str` contains any Arabic-script character (Arabic, Persian, …). */
+export function hasArabicScript(str: string): boolean {
+	return new RegExp(ARABIC_SCRIPT.source).test(str);
 }
 
 /**
- * Replace Arabic script words with … — satori cannot render RTL/Arabic shaping.
- * Transliterations are already inline so meaning is preserved.
+ * Delete Arabic-script words — satori cannot shape RTL/Arabic. Every etymology
+ * writes the Arabic word followed by its transliteration, so dropping the word
+ * leaves readable text. A compound line that was all Arabic ("Compound: X + Y")
+ * collapses to "Compound:", so orphaned "+" after a colon or at the end go too.
  */
 export function stripArabic(str: string): string {
 	return str
-		.replace(
-			/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g,
-			"…",
-		)
-		.replace(/\s*…\s*/g, " … ")
-		.replace(/ {2,}/g, " ")
+		.replace(ARABIC_SCRIPT, "")
+		.replace(/:\s*(\+\s*)+/g, ": ")
+		.replace(/\s*\+\s*$/, "")
+		.replace(/\s+/g, " ")
 		.trim();
 }
 

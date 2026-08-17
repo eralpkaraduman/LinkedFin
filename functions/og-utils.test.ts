@@ -1,24 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { isArabicLang, stripArabic, stripPolytonicMarks } from "./og-utils.ts";
+import {
+	hasArabicScript,
+	stripArabic,
+	stripPolytonicMarks,
+} from "./og-utils.ts";
 
-describe("isArabicLang", () => {
-	it("detects Arabic language codes", () => {
-		expect(isArabicLang("arb")).toBe(true);
-		expect(isArabicLang("arz")).toBe(true);
-		expect(isArabicLang("apc")).toBe(true);
+describe("hasArabicScript", () => {
+	it("detects Arabic and Persian script", () => {
+		expect(hasArabicScript("سلطان ابراهيم")).toBe(true);
+		expect(hasArabicScript("ساسان")).toBe(true);
 	});
-
-	it("returns false for non-Arabic languages", () => {
-		expect(isArabicLang("tur")).toBe(false);
-		expect(isArabicLang("ell")).toBe(false);
-		expect(isArabicLang("eng")).toBe(false);
+	it("is false for Latin and Greek", () => {
+		expect(hasArabicScript("Levrek")).toBe(false);
+		expect(hasArabicScript("μπαρμπούνι")).toBe(false);
 	});
 });
 
 describe("stripArabic", () => {
-	it("replaces Arabic word with ellipsis, keeps transliteration", () => {
+	it("drops the Arabic word, keeps the transliteration", () => {
 		expect(stripArabic("From Arabic مزيت mazīt (oily/greasy)")).toBe(
-			"From Arabic \u2026 maz\u012Bt (oily/greasy)",
+			"From Arabic mazīt (oily/greasy)",
 		);
 	});
 
@@ -27,15 +28,19 @@ describe("stripArabic", () => {
 			stripArabic(
 				"From Arabic مزيت mazīt (oily/greasy) — From زيت zayt (olive oil)",
 			),
-		).toBe(
-			"From Arabic \u2026 maz\u012Bt (oily/greasy) \u2014 From \u2026 zayt (olive oil)",
-		);
+		).toBe("From Arabic mazīt (oily/greasy) — From zayt (olive oil)");
 	});
 
-	it("handles Arabic-only compound", () => {
-		expect(stripArabic("Compound: سلطان + ابراهيم")).toBe(
-			"Compound: \u2026 + \u2026",
-		);
+	it("collapses an all-Arabic compound line", () => {
+		expect(
+			stripArabic(
+				"Compound: سلطان + ابراهيم سلطان sulṭān: sultan, ابراهيم ibrāhīm: Ibrahim",
+			),
+		).toBe("Compound: sulṭān: sultan, ibrāhīm: Ibrahim");
+	});
+
+	it("keeps Latin compounds intact", () => {
+		expect(stripArabic("Compound: kum + pire")).toBe("Compound: kum + pire");
 	});
 
 	it("returns string unchanged when no Arabic", () => {
@@ -44,21 +49,11 @@ describe("stripArabic", () => {
 		);
 	});
 
-	it("handles empty string", () => {
+	it("handles empty and pure Arabic strings", () => {
 		expect(stripArabic("")).toBe("");
-	});
-
-	it("handles pure Arabic string", () => {
-		expect(stripArabic("مرجان")).toBe("\u2026");
-	});
-
-	it("normalizes whitespace around ellipsis", () => {
-		const result = stripArabic("word  مزيت  next");
-		expect(result).not.toContain("  ");
-		expect(result).toContain("\u2026");
+		expect(stripArabic("مرجان")).toBe("");
 	});
 });
-
 describe("stripPolytonicMarks", () => {
 	it("drops breathings and iota subscript Noto Sans cannot draw", () => {
 		expect(stripPolytonicMarks("ἰχθύς")).toBe("ιχθύς");
