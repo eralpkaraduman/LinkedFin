@@ -88,6 +88,30 @@ describe("buildNameMeta", () => {
 		expect(meta.title).toContain("سمك");
 	});
 
+	it("adds the transliteration to the title when it differs from the name", () => {
+		const meta = buildNameMeta(
+			makeName({
+				name: "Çinekop",
+				transliteration: "Chinekop",
+			}),
+		);
+		expect(meta.title).toBe(
+			"Çinekop (Chinekop) — Turkish name for Dicentrarchus labrax | LinkedFin",
+		);
+		// headline and description are unaffected — only the <title> changes
+		expect(meta.headline).toBe("Çinekop");
+		expect(meta.description.startsWith("Çinekop is the")).toBe(true);
+	});
+
+	it("does not duplicate the name when transliteration equals it", () => {
+		const meta = buildNameMeta(
+			makeName({ name: "Levrek", transliteration: "Levrek" }),
+		);
+		expect(meta.title).toBe(
+			"Levrek — Turkish name for Dicentrarchus labrax | LinkedFin",
+		);
+	});
+
 	/**
 	 * The reason there is one builder rather than two: a 1200x630 card and a
 	 * link preview want the same words at different lengths.

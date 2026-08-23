@@ -165,14 +165,24 @@ export function buildNameMeta(
 ): PageMeta {
 	const etymology = sanitize(row.etymology);
 	const lead = `${row.name} is the ${row.language} name for ${row.scientific_name} in ${row.region}.`;
+	const transliteration = sanitize(row.transliteration);
+	const titleName =
+		transliteration && transliteration !== row.name
+			? `${row.name} (${transliteration})`
+			: row.name;
 	return {
 		/**
 		 * The language is in the title because the name alone is not unique:
 		 * Finnish and Estonian both call Perca fluviatilis "Ahven", Norwegian and
 		 * Danish both call Clupea harengus "Sild", and six such pairs would
 		 * otherwise ship byte-identical titles.
+		 *
+		 * The transliteration rides along for names in non-Latin script (same
+		 * `transliteration !== name` guard as `alternateName` in jsonld.ts) so a
+		 * searcher who types the Latin form — "cinekop", "sasan" — has it to
+		 * match against, not just the original script.
 		 */
-		title: `${row.name} — ${row.language} name for ${row.scientific_name} | ${SITE_NAME}`,
+		title: `${titleName} — ${row.language} name for ${row.scientific_name} | ${SITE_NAME}`,
 		headline: row.name,
 		description: truncate(
 			etymology ? `${lead} ${etymology}` : lead,

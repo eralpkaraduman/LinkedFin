@@ -32,8 +32,7 @@ export const Route = createRootRoute({
 			},
 			{
 				name: "viewport",
-				content:
-					"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+				content: "width=device-width, initial-scale=1, viewport-fit=cover",
 			},
 			/**
 			 * The fallback title and description, for any match that does not set
